@@ -25,7 +25,7 @@ Inner loop per task: `spec -> build -> verify -> ship` with repetition on valida
 - Spawns workers via Codex, validators via Claude subagents
 
 ### Workers
-- One worker per vertical slice (tracer bullet pattern)
+- One worker per task (vertical slice pattern)
 - Receive a brief file -- self-contained, includes task + proposal excerpt + design excerpt + procedures
 - Do NOT receive the validation contract (adversarial separation)
 - Do NOT receive previous workers' handoff reports (clean context)
@@ -44,7 +44,7 @@ Validators receive: commit SHA + contract assertions. They do NOT receive propos
 - On validation failure: orchestrator writes failure details to mission/issues/, spawns a fix worker with the failure context + commit SHA
 - Fix worker commits a single fix commit
 - Both validators re-run after every fix (not just the one that failed)
-- Circuit breaker: 3 attempts on the same slice -> pause and ask human
+- Circuit breaker: 3 attempts on the same task -> pause and ask human
 
 ## Key Design Decisions
 
@@ -66,8 +66,8 @@ Validators receive: commit SHA + contract assertions. They do NOT receive propos
 
 ### Vertical slices
 - Each task in tasks.md should be a thin vertical slice cutting through all layers
-- A completed slice is demoable and verifiable on its own
-- One slice = one worker = one commit = one validation cycle
+- A completed task is demoable and verifiable on its own
+- One task = one worker = one commit = one validation cycle
 
 ### Configurable engines
 - mission/config.yaml specifies which engine per role (codex/claude)
@@ -111,9 +111,9 @@ openspec/changes/<change-name>/mission/
 - Alignment: /grill-me (during planning, before artifacts are created)
 - Shared language: /ubiquitous-language (during planning, establish terms)
 - Planning: /opsx:propose (create proposal, design, tasks)
-- Slice breakdown: follow /prd-to-plan tracer bullet pattern for tasks
+- Task breakdown: follow /prd-to-plan tracer bullet pattern for tasks
 - Contract: written by orchestrator after planning, before workers start
-- Worker briefs: assembled from proposal.md + design.md + slice description
+- Worker briefs: assembled from proposal.md + design.md + task description
 - Scrutiny validation: build/test/lint + /review + /code-simplify against contract
 - Security validation: /security-review (for slices touching auth/sensitive paths)
 - User-test validation: /test-app (agent-browser) and/or HTTP tests against API
@@ -122,17 +122,17 @@ openspec/changes/<change-name>/mission/
 - Archival: /opsx:archive (after merge)
 
 ## Mission Flow
-For each unchecked slice in tasks.md:
+For each unchecked task in tasks.md:
 1. Read mission state from mission/progress.md
-2. Write brief to mission/briefs/slice-N.md
+2. Write brief to mission/briefs/task-N.md
 3. Kick off Codex worker via Monitor
-4. On completion, read mission/handoffs/slice-N.md
+4. On completion, read mission/handoffs/task-N.md
 5. Spawn scrutiny validator (commit SHA + contract assertions)
 6. If fail -> write to mission/issues/, spawn fix worker, re-validate. Circuit breaker: 3 attempts -> ask human.
 7. Spawn user-test validator (commit SHA + contract assertions)
 8. If fail -> same fix/re-validate loop
-9. If frontend slice -> spawn demo video
-10. Mark slice complete in tasks.md, update progress.md
+9. If frontend task -> spawn demo video
+10. Mark task complete in tasks.md, update progress.md
 
 ## Rules
 - One worker at a time (serial execution)
@@ -155,26 +155,26 @@ openspec/changes/<change-name>/
     config.yaml
     progress.md
     briefs/
-      slice-1.md
-      slice-2.md
+      task-1.md
+      task-2.md
     handoffs/
-      slice-1.md
-      slice-2.md
+      task-1.md
+      task-2.md
     validations/
-      slice-1-scrutiny.md
-      slice-1-usertest.md
-      slice-1-demo.mp4
+      task-1-scrutiny.md
+      task-1-usertest.md
+      task-1-demo.mp4
     issues/
-      slice-1-v1.md
+      task-1-v1.md
 ```
 
 ## Worker Brief Format
 
 ```markdown
-# Worker Brief: Slice N - [name]
+# Worker Brief: Task N - [name]
 
 ## Your Task
-[Slice description and acceptance criteria]
+[Task description and acceptance criteria]
 
 ## Project Context
 [Relevant excerpt from proposal.md]
@@ -183,12 +183,12 @@ openspec/changes/<change-name>/
 [Relevant excerpt from design.md]
 
 ## Procedures
-- Implement the slice as described
-- Commit all changes in a single commit with message: "[slice-N] description"
-- Write your handoff report to mission/handoffs/slice-N.md using the format below
+- Implement the task as described
+- Commit all changes in a single commit with message: "[task-N] description"
+- Write your handoff report to mission/handoffs/task-N.md using the format below
 
 ## Handoff Report Format
-- Task: [which slice]
+- Task: [which task]
 - Commit SHA: [the SHA]
 - Approach: [brief explanation of what you did and why]
 - Commands run: [build/test/lint commands and exit codes]
@@ -200,18 +200,18 @@ openspec/changes/<change-name>/
 ```markdown
 # Validation Contract
 
-## Slice 1: [name]
+## Task 1: [name]
 - [Assertion verifiable from outside without knowing the code]
 - [Another assertion]
 
-## Slice 2: [name]
+## Task 2: [name]
 - [Assertion]
 ```
 
 ## Fix Brief Format
 
 ```markdown
-# Fix Brief: Slice N - [name] (Attempt 2)
+# Fix Brief: Task N - [name] (Attempt 2)
 
 ## What Failed
 [Specific failed assertions from the validator report]
@@ -225,8 +225,8 @@ openspec/changes/<change-name>/
 ## Procedures
 - Fix only the issues described above
 - Do not refactor or change anything unrelated
-- Commit as a single commit with message: "[slice-N] fix: description"
-- Write handoff report to mission/handoffs/slice-N-fix-v2.md
+- Commit as a single commit with message: "[task-N] fix: description"
+- Write handoff report to mission/handoffs/task-N-fix-v2.md
 ```
 
 ## Build Order (Darkfactory itself)

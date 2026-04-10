@@ -708,7 +708,7 @@ Run `/pr` to create a **draft** pull request. Never create a ready-for-review PR
 
 ## Resume Support
 
-If `/mission resume` is invoked (via the mission-resume skill), the orchestrator should:
+If `/mission-resume` is invoked (via the mission-resume skill), the orchestrator should:
 
 1. Enter plan mode.
 2. Find the mission directory by scanning `openspec/changes/*/mission/config.yaml`.

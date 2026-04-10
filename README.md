@@ -93,29 +93,40 @@ This means missions survive session death (resume from file state) and can be mo
 | `/mission-resume` | Resume an interrupted mission from file state. Detects where it left off. |
 | `/mission-status` | Read-only progress check. Run from another session while a mission runs. |
 
-Supporting skills (installed as dependencies):
+### Required external skills
 
-| Skill | Purpose |
-|-------|---------|
-| `/grill-me` | Adversarial interview to reach shared understanding before planning |
-| `/ubiquitous-language` | Extract domain terms into a shared glossary |
-| `/prd-to-plan` | Break a PRD into vertical slice phases (tracer bullet pattern) |
-| `/opsx:propose` | Create OpenSpec change with proposal, design, tasks |
-| `/opsx:apply` | Implement tasks from an OpenSpec change |
-| `/opsx:archive` | Archive a completed change |
+These skills are referenced by `/mission` but are **not bundled** in this repo. You need to install them separately.
+
+| Skill | Source | Used by |
+|-------|--------|---------|
+| `/grill-me` | [mattpocock/skills](https://github.com/mattpocock/skills/tree/main/grill-me) | Spec phase: alignment interview |
+| `/ubiquitous-language` | [mattpocock/skills](https://github.com/mattpocock/skills/tree/main/ubiquitous-language) | Spec phase: shared glossary |
+| `/prd-to-plan` | [mattpocock/skills](https://github.com/mattpocock/skills/tree/main/prd-to-plan) | Spec phase: vertical slice pattern |
+| `/review` | Your project's Claude skills | Scrutiny validator: code review |
+| `/code-simplify` | Your project's Claude skills | Scrutiny validator: complexity check |
+| `/security-review` | Your project's Claude skills | Scrutiny validator: security audit |
+| `/test-app` | Your project's Claude skills | User-test validator: browser tests |
+| `/demo-video` | Your project's Claude skills | Demo recording for frontend tasks |
+| `/pr` | Your project's Claude skills | Completion: draft PR creation |
+| `/opsx:propose` | Installed by `openspec init` | Spec phase: create artifacts |
+| `/opsx:apply` | Installed by `openspec init` | Manual implementation (non-mission) |
+| `/opsx:archive` | Installed by `openspec init` | Post-merge: archive the change |
+
+Skills marked "Your project's Claude skills" are project-specific. If your project doesn't have them, the validator will skip those checks. The mission will still run -- these are best-effort enhancements, not hard blockers.
 
 ## Setup
 
 ### Prerequisites
 
-- [Claude Code](https://docs.anthropic.com/en/docs/claude-code) installed
+- [Claude Code](https://docs.anthropic.com/en/docs/claude-code) installed and authenticated
 - [OpenSpec CLI](https://github.com/Fission-AI/OpenSpec) installed (`npm install -g openspec`)
-- [Codex CLI](https://github.com/openai/codex) installed (`npm install -g @openai/codex`)
+- [Codex CLI](https://github.com/openai/codex) installed (`npm install -g @openai/codex`) and authenticated (`codex login`)
+- [GitHub CLI](https://cli.github.com/) installed and authenticated (`gh auth login`) -- used for draft PR creation
 - Git repository initialized
 
 ### Install
 
-1. Copy the skills into your project's `.claude/skills/` directory:
+1. Copy the Darkfactory mission skills into your project:
 
 ```bash
 # From the darkfactory repo
@@ -124,12 +135,14 @@ cp -r .claude/skills/mission-resume /path/to/your/project/.claude/skills/
 cp -r .claude/skills/mission-status /path/to/your/project/.claude/skills/
 ```
 
-2. Install the supporting skills if you don't already have them:
+2. Install the required external skills from Matt Pocock's repo:
 
 ```bash
-cp -r .claude/skills/grill-me /path/to/your/project/.claude/skills/
-cp -r .claude/skills/ubiquitous-language /path/to/your/project/.claude/skills/
-cp -r .claude/skills/prd-to-plan /path/to/your/project/.claude/skills/
+# Clone or download from https://github.com/mattpocock/skills
+# Then copy each skill directory:
+cp -r /path/to/mattpocock-skills/grill-me /path/to/your/project/.claude/skills/
+cp -r /path/to/mattpocock-skills/ubiquitous-language /path/to/your/project/.claude/skills/
+cp -r /path/to/mattpocock-skills/prd-to-plan /path/to/your/project/.claude/skills/
 ```
 
 3. Initialize OpenSpec in your project (if not already):
@@ -139,10 +152,14 @@ cd /path/to/your/project
 openspec init --tools claude,codex
 ```
 
-4. Ensure Codex is authenticated:
+This creates the `openspec/` directory structure and installs `/opsx:propose`, `/opsx:apply`, `/opsx:archive` skills. You may need to restart your Claude Code session for the new slash commands to register.
+
+4. Verify everything is working:
 
 ```bash
-codex login
+codex login          # Ensure Codex is authenticated
+gh auth status       # Ensure GitHub CLI is authenticated
+openspec --version   # Ensure OpenSpec is installed
 ```
 
 ### Configuration
@@ -193,6 +210,8 @@ If your session dies:
 ```
 /mission-resume
 ```
+
+(This is a separate skill, not a flag on `/mission`.)
 
 ### When it's done
 
