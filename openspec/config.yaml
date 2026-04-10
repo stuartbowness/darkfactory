@@ -1,0 +1,19 @@
+schema: spec-driven
+
+context: |
+  Darkfactory is a lightweight multi-agent mission system built from Claude Code
+  primitives (skills, subagents, plan mode, Monitor) and Codex CLI.
+
+  It orchestrates autonomous code generation using three roles:
+  - Orchestrator (Claude Code session in plan mode)
+  - Workers (Codex by default, configurable)
+  - Validators (Claude subagents)
+
+  The system is built as Claude Code skills, markdown templates, and bash scripts.
+  No custom IDE or app. See docs/design-decisions.md and UBIQUITOUS_LANGUAGE.md
+  for full architecture and terminology.
+
+rules:
+  tasks:
+    - Each task should be a vertical slice -- a thin but complete path through all layers that is demoable and verifiable on its own
+    - One task = one worker = one commit = one validation cycle

@@ -1,0 +1,92 @@
+# Ubiquitous Language
+
+## Mission system
+
+| Term | Definition | Aliases to avoid |
+| --- | --- | --- |
+| **Mission** | An autonomous run of the full plan-build-validate cycle for a single OpenSpec change | Job, run, session, task |
+| **Orchestrator** | The main Claude Code session that plans work, dispatches workers, reads results, and decides what to do next | Coordinator, manager, controller |
+| **Worker** | A subagent (default: Codex) that implements a single task and commits the result | Builder, implementer, coder |
+| **Validator** | A Claude subagent that checks a worker's output against the contract without having seen the code before | Reviewer, checker, tester |
+
+## Planning and contracts
+
+| Term | Definition | Aliases to avoid |
+| --- | --- | --- |
+| **Contract** | A set of assertions written during planning that define "done" independently of implementation, consumed only by validators | Test plan, acceptance criteria, spec |
+| **Assertion** | A single verifiable statement in a contract that a validator can check from outside the code | Test case, requirement, check |
+| **Brief** | A self-contained markdown file the orchestrator writes for a worker, containing the task description, project context, and procedures | Prompt, instructions, spec |
+| **Handoff** | A structured report a worker writes to disk after completing a task, including the commit SHA, approach taken, and any concerns | Report, summary, output |
+| **Vertical slice** | A best practice for how to write good tasks -- each task should be a thin tracer-bullet path through all layers (schema, API, UI, tests) that delivers narrow but complete functionality | Horizontal slice, layer |
+
+## Validation
+
+| Term | Definition | Aliases to avoid |
+| --- | --- | --- |
+| **Scrutiny validator** | The first validator type that runs build, test, lint, code review, and code simplify checks against the contract | Code reviewer, linter, static validator |
+| **User-test validator** | The second validator type that tests behavior by hitting the API (HTTP tests) or driving a browser (agent-browser) | QA, E2E tester, integration tester |
+| **Demo video** | A recording of frontend functionality captured after both validators pass, created for human review | Screencast, screen recording |
+| **Fix loop** | The cycle where a validation failure spawns a fix worker, then both validators re-run, up to 3 attempts before asking the human | Retry, repair cycle |
+| **Circuit breaker** | The rule that stops the fix loop after 3 failed attempts on the same task and asks the human for guidance | Retry limit, fail-safe |
+
+## Execution model
+
+| Term | Definition | Aliases to avoid |
+| --- | --- | --- |
+| **Serial execution** | The rule that only one worker runs at a time to prevent conflicts | Sequential, single-threaded |
+| **Monitor** | The Claude Code tool used as the single pattern for all background work notification throughout a mission | Watcher, poller, listener |
+| **Engine** | The configurable AI model/tool used for a given role (e.g. Codex for workers, Claude for validators) | Model, provider, backend |
+| **Plan mode** | The Claude Code plan that serves as the orchestrator's durable operating manual, guaranteed to survive context compaction | System prompt, instructions |
+
+## File artifacts
+
+| Term | Definition | Aliases to avoid |
+| --- | --- | --- |
+| **Mission directory** | The `mission/` folder nested inside an OpenSpec change directory that holds all runtime state for a mission | State folder, workspace |
+| **Progress log** | The `progress.md` file where the orchestrator records slice status, decisions, and issues as the mission runs | Status file, mission log |
+| **Mission config** | The `config.yaml` file specifying which engine to use for each role in the mission | Settings, preferences |
+
+## OpenSpec integration
+
+| Term | Definition | Aliases to avoid |
+| --- | --- | --- |
+| **Change** | An OpenSpec unit of work with its own proposal, design, tasks, and now contract and mission directory | Feature, epic, project |
+| **Proposal** | The OpenSpec artifact describing what is being built and why | PRD, requirements doc |
+| **Design** | The OpenSpec artifact describing how it will be built (architecture decisions) | Architecture doc, technical spec |
+| **Tasks** | The OpenSpec artifact listing tasks as checkboxes, each representing one worker's worth of work (should follow the vertical slice best practice) | Checklist, todo list, backlog |
+
+## Relationships
+
+- A **Mission** belongs to exactly one **Change**
+- A **Change** contains one **Proposal**, one **Design**, one **Tasks** list, one **Contract**, and one **Mission directory**
+- Each **Task** maps to one **Worker** invocation, one git commit, and one validation cycle
+- A **Contract** contains **Assertions** grouped by **Task**
+- The **Orchestrator** writes **Briefs** and reads **Handoffs**
+- **Workers** read **Briefs** and write **Handoffs** -- they never see the **Contract**
+- **Validators** read the **Contract** and the commit diff -- they never see the **Proposal** or **Design**
+- A **Fix loop** produces versioned **Handoffs** (task-N-fix-v2.md) and re-runs both **Validators**
+- The **Circuit breaker** halts the **Fix loop** and returns control to the human
+
+## Example dialogue
+
+> **Dev:** "I want to add real-time notifications to Toyo. Should I start a **Mission**?"
+>
+> **Orchestrator:** "That depends on the scope. How many **Tasks** do you think it involves?"
+>
+> **Dev:** "At least three -- WebSocket setup, notification delivery, and the UI. Each is a **Vertical slice** cutting through the API and frontend."
+>
+> **Orchestrator:** "That's a good fit. Let me **/grill-me** you on the requirements first, then I'll create the **Change** via **/opsx:propose** and write the **Contract** before any **Workers** start."
+>
+> **Dev:** "What if the **User-test validator** fails on the WebSocket task?"
+>
+> **Orchestrator:** "I'll write the failure to **Issues**, spawn a fix **Worker** with the failure context, and re-run both **Validators**. If it fails three times, the **Circuit breaker** kicks in and I'll ask you what to do."
+>
+> **Dev:** "And I can check on progress while it runs?"
+>
+> **Orchestrator:** "Yes -- read the **Progress log** directly, or run **/mission-status** in another session for a formatted summary."
+
+## Resolved ambiguities
+
+- **"task"** was used early in the conversation to mean both a micro-step within a feature and a vertical slice of work. **Resolved:** keep "task" as the standard term. The guidance is that each task should follow the **Vertical slice** best practice (thin, end-to-end, demoable), but the term "task" is unchanged from OpenSpec. "Slice" is not a standalone noun -- it's a quality standard for tasks.
+- **"spec"** was used to mean both SDD spec files and the planning phase of the mission flow. **Resolved:** SDD specs are not part of Darkfactory's vocabulary. In Darkfactory, **Spec** refers exclusively to the planning phase (`idea -> spec -> build -> verify -> ship -> merge`) where the orchestrator creates OpenSpec artifacts and the contract. SDD is a separate workflow for documenting existing code after the fact.
+- **"validation"** was used for both the contract assertions and the act of running validators. **Resolved:** the **Contract** contains **Assertions**. **Validation** is the act of a **Validator** checking those assertions against the code. Be consistent: don't use "validation" to refer to the contract itself.
