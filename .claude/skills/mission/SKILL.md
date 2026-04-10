@@ -452,16 +452,86 @@ Track the attempt number. This is attempt 1 if it's the first failure, 2 after t
 
    After the fix worker completes: go back to **Step 4** (re-run scrutiny validation with the new commit SHA). Both validators must re-run after every fix.
 
-**Step 6: Run user-test validation.** (placeholder -- implemented in change: usertest-validation)
+**Step 6: Run user-test validation.**
 
-When the user-test validator is available, spawn it here with the commit SHA and contract assertions. On failure, enter the fix loop (Step 5a) with the user-test failures. For now, skip to Step 7.
+Spawn a Claude subagent via the Agent tool. The subagent is the **User-Test Validator**. Its prompt must contain:
+
+1. The commit SHA (from the worker handoff, or the latest fix commit)
+2. The contract assertions for this task (read from contract.md)
+3. The following instructions:
+
+```
+You are the User-Test Validator. You test whether the implementation actually works
+by interacting with the running application. You have NOT seen this code before.
+You do not know how it was built -- only what it should do.
+
+## Your inputs
+- Commit SHA: [SHA]
+- Contract assertions for this task:
+  [paste the assertions from contract.md for this task]
+
+## Decide your test strategy
+
+Run `git show [SHA] --stat` to see which files changed.
+
+- If only backend files changed (API routes, database, server logic): run HTTP API tests only
+- If only frontend files changed (components, pages, styles): run browser tests only
+- If both: run both API tests and browser tests
+
+## Ensure the app is running
+
+Check if the dev server is running. If not, start it using the project's dev command
+(check CLAUDE.md, package.json scripts, or Makefile for the correct command).
+Wait for it to be ready before testing.
+
+## Run your tests
+
+**For API assertions:** Construct HTTP requests (using curl or similar) that test each
+assertion. For example, if the assertion says "creating a duplicate returns an error,"
+POST to create once, POST again with the same data, and check the response.
+
+**For UI assertions:** Use /test-app (agent-browser) to drive a browser session.
+Navigate to the relevant page, perform the actions described in the assertion, and
+check that the expected behavior occurs.
+
+**If you cannot test an assertion:** Report it as SKIP with an explanation of why.
+Do not guess PASS or FAIL.
+
+## Write your report
+
+Write your report to: mission/validations/task-N-usertest.md
+
+Format:
+  # User-Test Validation: Task N - [name]
+
+  ## Overall: PASS or FAIL
+
+  ## Test Strategy
+  [API tests / Browser tests / Both -- and why]
+
+  ## Results
+  - [Assertion 1]: PASS/FAIL/SKIP - [what you tested and what happened]
+  - [Assertion 2]: PASS/FAIL/SKIP - [evidence]
+
+  ## Summary
+  [1-2 sentence summary of the overall result]
+```
+
+**CRITICAL:** The validator prompt must NOT contain the proposal, design, worker brief, or worker's reasoning. Only the commit SHA, contract assertions, and test instructions.
+
+**Handle the result:**
+
+Read `mission/validations/task-N-usertest.md`.
+
+- **If overall PASS:** Proceed to Step 7.
+- **If overall FAIL:** Enter the fix loop (Step 5a) with the user-test failure details. The fix loop re-runs BOTH validators after each fix.
 
 **Step 7: Track progress.**
 
 1. Mark the task complete in tasks.md: change `- [ ]` to `- [x]` for this task
 2. Append to `mission/progress.md`:
    ```
-   - [timestamp] Task N complete: [task name]. Commit: [short SHA]. Scrutiny: PASS. Worker: [codex/claude].
+   - [timestamp] Task N complete: [task name]. Commit: [short SHA]. Scrutiny: PASS. User-test: PASS. Worker: [codex/claude].
    ```
 3. Update the plan:
    ```
