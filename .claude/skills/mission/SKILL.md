@@ -239,8 +239,131 @@ Ask the user:
 
 ```
 ## Status
-Phase: spec COMPLETE
-Ready for: build phase (worker loop not yet implemented -- see change: worker-loop)
+Phase: build
+Current task: 1
 ```
 
-The spec phase is complete. The artifacts are ready for the build phase once the worker loop is implemented.
+Proceed to Phase 7.
+
+---
+
+## Phase 7: Build Phase -- Worker Loop
+
+This is the autonomous execution loop. For each unchecked task in tasks.md, the orchestrator assembles a brief, dispatches a worker, reads the handoff, and tracks progress.
+
+**Before starting, read `mission/config.yaml` to determine the worker engine.**
+
+### For each unchecked task in tasks.md:
+
+**Step 1: Assemble the brief.**
+
+Read the task description from tasks.md. Read proposal.md and design.md. Extract the sections relevant to this specific task -- don't dump entire files.
+
+Write the brief to `mission/briefs/task-N.md` using this format:
+
+```markdown
+# Worker Brief: Task N - [task name]
+
+## Your Task
+[Task description from tasks.md with enough context to be self-contained]
+
+## Project Context
+[Relevant excerpt from proposal.md -- the what and why]
+
+## Architecture
+[Relevant excerpt from design.md -- technical decisions relevant to this task]
+
+## Procedures
+- Implement the task as described
+- Commit all changes in a single commit with message: "[task-N] description"
+- Write your handoff report to mission/handoffs/task-N.md using the format below
+
+## Handoff Report Format
+- Task: [which task]
+- Commit SHA: [the full SHA]
+- Approach: [brief explanation of what you did and why]
+- Commands run: [build/test/lint commands and their exit codes]
+- Concerns: [anything you're uncertain about]
+```
+
+**CRITICAL: The brief must NEVER contain content from contract.md.** Workers and validators are adversarially separated.
+
+**Step 2: Dispatch the worker.**
+
+Check the engine in `mission/config.yaml`.
+
+**If `worker: codex`:** Use the Monitor tool to kick off Codex in the background and watch for the handoff file.
+
+Monitor command:
+```bash
+BRIEF_PATH="[path to mission/briefs/task-N.md]"
+HANDOFF_PATH="[path to mission/handoffs/task-N.md]"
+
+# Kick off Codex in background
+codex exec --full-auto --sandbox workspace-write \
+  -m gpt-5.4 -c model_reasoning_effort="high" \
+  -o "$HANDOFF_PATH" \
+  "Read your brief at $BRIEF_PATH and follow its instructions exactly. Implement the task, commit in a single commit with the message format specified, and write your handoff report." \
+  2>/dev/null &
+CODEX_PID=$!
+
+# Watch for completion or failure
+while kill -0 $CODEX_PID 2>/dev/null; do
+  if [ -f "$HANDOFF_PATH" ]; then
+    echo "TASK_COMPLETE: handoff written at $HANDOFF_PATH"
+    break
+  fi
+  sleep 2
+done
+
+# Check if process exited
+wait $CODEX_PID 2>/dev/null
+EXIT_CODE=$?
+if [ $EXIT_CODE -ne 0 ] && [ ! -f "$HANDOFF_PATH" ]; then
+  echo "TASK_FAILED: codex exited with code $EXIT_CODE"
+elif [ ! -f "$HANDOFF_PATH" ]; then
+  echo "TASK_FAILED: codex exited but no handoff file written"
+fi
+```
+
+Monitor description: `"Worker: task N - [task name]"`
+Monitor timeout: 600000 (10 minutes)
+
+**If `worker: claude`:** Use the Agent tool to spawn a Claude subagent. Pass the full brief content as the prompt. Instruct the subagent to write the handoff report to the same file path. Read the handoff file after the subagent returns.
+
+**Step 3: Handle the result.**
+
+When the Monitor fires (or the Agent returns):
+
+- **If TASK_COMPLETE:** Read `mission/handoffs/task-N.md`. Extract the commit SHA. Proceed to Step 4.
+- **If TASK_FAILED:** Log the failure to `mission/progress.md` with the error details. Ask the human for guidance (retry, skip, or abort).
+- **If timeout:** Log the timeout to `mission/progress.md`. Ask the human for guidance.
+
+**Step 4: Track progress.**
+
+1. Mark the task complete in tasks.md: change `- [ ]` to `- [x]` for this task
+2. Append to `mission/progress.md`:
+   ```
+   - [timestamp] Task N complete: [task name]. Commit: [short SHA]. Worker: [codex/claude].
+   ```
+3. Update the plan:
+   ```
+   ## Status
+   Phase: build
+   Current task: [next task number]
+   Completed: [list of completed task numbers]
+   ```
+4. Check if unchecked tasks remain in tasks.md:
+   - **If yes:** Go back to Step 1 for the next unchecked task.
+   - **If no:** All tasks complete. Log to progress.md:
+     ```
+     - [timestamp] Build phase complete. All tasks implemented.
+     ```
+     Update the plan status:
+     ```
+     ## Status
+     Phase: build COMPLETE
+     All tasks implemented. Validation not yet available -- see changes: scrutiny-validation, usertest-validation.
+     ```
+
+The build phase is complete.
