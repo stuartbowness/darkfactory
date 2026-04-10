@@ -1,126 +1,29 @@
 ---
 name: mission
-description: Start an autonomous Darkfactory mission. Grills the user for alignment, creates OpenSpec artifacts, writes a validation contract, and sets up the mission directory. Use when the user wants to start a multi-task autonomous build cycle.
+description: Start an autonomous Darkfactory mission. Grills the user for alignment, creates OpenSpec artifacts, writes a validation contract, writes the mission directory, dispatches workers serially, validates each task against the contract, runs fix loops with circuit breakers, and creates a draft PR on completion.
 ---
 
-# Darkfactory Mission
+# /mission
 
-You are the **Orchestrator**. You guide the user from a goal description through the full spec phase, producing all artifacts needed for autonomous implementation. If UBIQUITOUS_LANGUAGE.md exists, read it now and use those terms precisely. If it doesn't exist yet, read it after Phase 2 of this document and use those terms for all remaining phases.
+Start an autonomous multi-agent mission for a single OpenSpec change. The orchestrator (this session) plans the work, dispatches workers one at a time, and validates each result against a contract the workers never see.
 
-**Input**: The argument after `/mission` is the goal description. If none provided, ask what they want to build.
+**Flow:** `idea -> spec -> build -> verify -> ship -> merge`
 
 ---
 
 ## Phase 0: Enter Plan Mode
 
-**Do this immediately, before anything else.**
+Enter plan mode immediately. Write a durable operating manual as the plan. This plan survives context compaction and is the orchestrator's source of truth.
 
-Enter Claude Code plan mode and write the orchestrator operating manual. This plan survives context compaction -- it is your durable reference for the entire mission. You will update it as artifacts are created.
+### Plan Template
 
-Write this initial plan:
+Write this plan, filling in values as they become known:
 
-```
-# Mission: [goal summary]
+```markdown
+# Mission: <change-name>
 
-## Status
-Phase: spec (idea -> SPEC -> build -> verify -> ship -> merge)
-Step: grill
+## Status: PLANNING | APPROVED | BUILDING | COMPLETE | PAUSED
 
-## State Directory
-(will be set after OpenSpec change is created)
-
-## OpenSpec Artifacts
-(will be populated after /opsx:propose)
-
-## Engine Config
-(will be populated after mission directory is created)
-
-## Skills to Use
-- Alignment: /grill-me (during planning, before artifacts are created)
-- Shared language: /ubiquitous-language (during planning, establish terms)
-- Planning: /opsx:propose (create proposal, design, tasks)
-- Task breakdown: follow /prd-to-plan tracer bullet pattern -- each task is a thin vertical slice through all layers, demoable and verifiable on its own
-- Contract: written by orchestrator after planning, before workers start
-- Worker briefs: assembled from proposal.md + design.md + task description
-- Scrutiny validation: build/test/lint + /review + /code-simplify against contract
-- Security validation: /security-review (for tasks touching auth/sensitive paths)
-- User-test validation: /test-app (agent-browser) and/or HTTP tests against API
-- Demo video: /demo-video (for frontend tasks)
-- Completion: /pr (create draft PR with mission summary)
-- Archival: /opsx:archive (after merge)
-
-## Mission Flow
-For each unchecked task in tasks.md:
-1. Read mission state from mission/progress.md
-2. Write brief to mission/briefs/task-N.md
-3. Kick off worker via Monitor (engine per config.yaml)
-4. On completion, read mission/handoffs/task-N.md
-5. Spawn scrutiny validator (commit SHA + contract assertions)
-6. If fail -> write to mission/issues/, spawn fix worker, re-validate. Circuit breaker: 3 attempts -> ask human.
-7. Spawn user-test validator (commit SHA + contract assertions)
-8. If fail -> same fix/re-validate loop
-9. If frontend task -> spawn demo video
-10. Mark task complete in tasks.md, update progress.md
-
-## Rules
-- One worker at a time (serial execution)
-- Workers never see contract.md (adversarial separation)
-- Validators never see proposal.md or design.md
-- On any failure, re-run BOTH validators after fix
-- Write all decisions to progress.md
-```
-
----
-
-## Phase 1: Grill for Alignment
-
-Run `/grill-me` on the user's goal. Interview them relentlessly until you reach shared understanding. This is the most important step -- the quality of everything downstream depends on it.
-
-Focus on:
-- What exactly they want built
-- What "done" looks like from a user's perspective
-- Edge cases and error scenarios
-- What is explicitly NOT in scope
-- Integration points with existing code
-- Technical constraints or preferences
-
-**If the user asks to skip:** Warn that skipping the grill reduces the quality of the validation contract, which reduces the quality of autonomous validation. Allow it if they insist.
-
-When alignment is reached, proceed to Phase 2.
-
----
-
-## Phase 2: Establish Shared Language
-
-Run `/ubiquitous-language` to extract domain terms from the grill conversation. This creates or updates UBIQUITOUS_LANGUAGE.md.
-
-The shared language improves:
-- How you write the proposal and contract (precise terms)
-- How workers understand their briefs
-- How validators interpret assertions
-
-Proceed to Phase 3.
-
----
-
-## Phase 3: Create OpenSpec Artifacts
-
-Run `/opsx:propose` with a kebab-case name derived from the goal. This creates:
-- `proposal.md` -- what and why
-- `design.md` -- how (architecture decisions)
-- `tasks.md` -- implementation checklist
-
-**Critical guidance for tasks.md:** Each task MUST be a vertical slice following the tracer bullet pattern from /prd-to-plan:
-- Each task delivers a narrow but COMPLETE path through every layer (schema, API, UI, tests)
-- A completed task is demoable or verifiable on its own
-- Prefer many thin tasks over few thick ones
-- Do NOT include specific file names or function names that are likely to change
-- DO include durable decisions: route paths, schema shapes, data model names
-- One task = one worker = one commit = one validation cycle
-
-After `/opsx:propose` completes, update the plan with the state directory and artifact paths:
-
-```
 ## State Directory
 openspec/changes/<change-name>/mission/
 
@@ -129,50 +32,133 @@ openspec/changes/<change-name>/mission/
 - Design: openspec/changes/<change-name>/design.md
 - Tasks: openspec/changes/<change-name>/tasks.md
 - Contract: openspec/changes/<change-name>/contract.md
+
+## Engine Config
+- Workers: <engine from config.yaml, default codex>
+- Scrutiny validator: <engine, default claude>
+- User-test validator: <engine, default claude>
+- Adversarial reviewer A: <engine, default codex>
+- Adversarial reviewer B: <engine, default claude>
+- Demo video: <engine, default claude>
+
+## Skills to Use
+- /grill-me -- alignment interview (planning)
+- /ubiquitous-language -- shared language (planning)
+- /opsx:propose -- create proposal, design, tasks (planning)
+- /review -- code review (scrutiny validation)
+- /code-simplify -- simplify pass (scrutiny validation)
+- /security-review -- security check (scrutiny validation, sensitive tasks only)
+- /test-app -- browser tests (user-test validation)
+- /demo-video -- frontend demo recording (post-validation)
+- /pr -- draft PR (completion)
+- /opsx:archive -- archive change (post-merge)
+
+## Mission Flow
+For each unchecked task in tasks.md (skip `- [~]` tasks):
+1. Read mission state from progress.md
+2. Write brief to mission/briefs/task-N.md
+3. Dispatch worker (engine from config.yaml)
+4. Read handoff from mission/handoffs/task-N.md
+5. Spawn scrutiny validator (commit SHA + contract assertions)
+6. If fail -> write to issues/, spawn fix worker, re-validate all. Circuit breaker at 3.
+7. Spawn user-test validator (commit SHA + contract assertions)
+8. If fail -> same fix/re-validate loop
+9. Run dual adversarial review (reviewer A + reviewer B in parallel), synthesize, fix loop if FAIL
+10. If frontend task -> spawn demo video
+11. Mark task done in tasks.md, update progress.md
+
+## Rules
+- One worker at a time (serial execution)
+- Workers never see contract.md
+- Validators never see proposal.md or design.md
+- On any failure, re-run ALL validators after fix (scrutiny, user-test, adversarial review)
+- Write all decisions to progress.md
+
+## Current Task: <N or "none">
+## Current Step: <step name or "none">
 ```
 
-Proceed to Phase 4.
+### First Action
+
+Check if `UBIQUITOUS_LANGUAGE.md` exists in the repo root. If it does, read it now so all phases use consistent terminology.
 
 ---
 
-## Phase 4: Write the Validation Contract
+## Phase 1: Grill for Alignment
 
-Create `contract.md` in the change directory (alongside proposal.md, design.md, tasks.md).
+Run `/grill-me` to interview the user about their idea. The grill session should drive toward shared understanding of what is being built, why, and what "done" looks like.
 
-The contract defines "done" independently of implementation. Validators use it as their sole definition of correctness. Workers never see it.
+If the user says "skip":
+- Warn: "Skipping the grill means the contract will be based on whatever I can infer. Contract quality depends on alignment quality. Are you sure?"
+- If they confirm, proceed to Phase 2.
 
-**Format:**
+After the grill completes, summarize the key decisions in the plan.
+
+---
+
+## Phase 2: Establish Shared Language
+
+Run `/ubiquitous-language` to create or update `UBIQUITOUS_LANGUAGE.md`.
+
+- If the file already existed and was read in Phase 0, this phase updates it with any new terms from the grill session.
+- If the file did not exist, this phase creates it. Read the file after creation so all subsequent phases use the terms.
+
+---
+
+## Phase 3: Create OpenSpec Artifacts
+
+Run `/opsx:propose` to create the OpenSpec change with:
+- `proposal.md` -- what and why
+- `design.md` -- how (architecture decisions)
+- `tasks.md` -- ordered checklist of tasks
+
+### Task Quality Standard
+
+Each task in tasks.md must be a **vertical slice**: a thin end-to-end path through all layers (schema, API, UI, tests) that delivers narrow but complete functionality. Follow the `/prd-to-plan` tracer bullet pattern.
+
+**One task = one worker = one commit = one validation cycle.**
+
+A task is good if you can demo it and verify it independently after it lands.
+
+After creation, update the plan with the actual artifact paths.
+
+---
+
+## Phase 4: Write Validation Contract
+
+Create `contract.md` in the change directory (`openspec/changes/<change-name>/contract.md`).
+
+### Contract Rules
+
+1. Group assertions by task, matching the task list in tasks.md.
+2. Every assertion must describe **observable behavior** verifiable from outside the code (HTTP response, CLI output, file on disk, UI state, build passing, etc.).
+3. Do NOT reference implementation details (function names, variable names, internal data structures).
+4. Cover the **happy path AND error cases** for each task.
+5. Be specific and unambiguous. A validator reading only the contract and the diff should be able to check every assertion without guessing.
+6. Workers never see this file. This is the adversarial separation that makes validation meaningful.
+
+### Contract Template
 
 ```markdown
-# Validation Contract: [change name]
+# Validation Contract
 
-## Task 1: [task name from tasks.md]
-- [Plain language assertion verifiable from outside the code]
-- [Another assertion]
-- [Each assertion should be checkable by running tests, hitting APIs, or driving a browser]
+## Task 1: <name>
+- [ ] <assertion describing observable behavior>
+- [ ] <assertion describing observable behavior>
+- [ ] <error case assertion>
 
-## Task 2: [task name]
-- [Assertion]
-- [Assertion]
-
-(one section per task in tasks.md)
+## Task 2: <name>
+- [ ] <assertion>
+- [ ] <assertion>
 ```
 
-**Rules for writing assertions:**
-- Describe observable behavior, not implementation details
-- A validator with no knowledge of the code should be able to check each assertion
-- Cover the happy path AND error cases from the grill conversation
-- Be specific enough to be unambiguous ("user sees an error message" is bad, "submitting an empty name shows 'Name is required'" is good)
-- Each task must have at least one assertion
-- The sum of all assertions across all tasks defines the complete "done" criteria
-
-Proceed to Phase 5.
+Update the plan with the contract path after creation.
 
 ---
 
 ## Phase 5: Create Mission Directory
 
-Create the mission directory structure at `openspec/changes/<change-name>/mission/`:
+Create the mission directory at `openspec/changes/<change-name>/mission/` with this structure:
 
 ```
 mission/
@@ -184,454 +170,572 @@ mission/
   issues/
 ```
 
-**config.yaml contents:**
+### config.yaml
 
 ```yaml
 engines:
   worker: codex
   scrutiny_validator: claude
   usertest_validator: claude
+  adversarial_reviewer_a: codex
+  adversarial_reviewer_b: claude
   demo_video: claude
 ```
 
-**progress.md contents:**
+### progress.md
 
 ```markdown
-# Mission: [change name]
-Started: [timestamp]
+# Mission: <change-name>
+
+Started: <ISO 8601 timestamp>
 
 ## Log
-- [timestamp] Plan approved. Spec phase complete. Ready for build phase.
+
+- <timestamp> -- Plan approved. <N> tasks, <M> assertions in contract.
 ```
 
-Create the subdirectories: `briefs/`, `handoffs/`, `validations/`, `issues/`.
-
-Update the plan with the engine config:
-
-```
-## Engine Config
-- Workers: codex (gpt-5.4, high effort)
-- Validators: claude (subagents)
-- Demo video: claude (subagent)
-```
-
-Proceed to Phase 6.
+Create the four subdirectories: `briefs/`, `handoffs/`, `validations/`, `issues/`.
 
 ---
 
 ## Phase 6: Present for Approval
 
-Show the user a summary of everything created:
+Show the user:
+1. **Task breakdown** -- the full task list from tasks.md with descriptions
+2. **Contract assertion counts** -- how many assertions per task, total count
+3. **Engine config** -- which engine runs each role
 
-1. **Tasks** -- list each task from tasks.md with a one-line description
-2. **Contract** -- list the assertion count per task
-3. **Engine config** -- which engine handles each role
-4. **Mission directory** -- confirm it's created and ready
+Ask: "Ready to start the build? You can request changes or approve."
 
-Ask the user:
-- Does the task breakdown look right? Too coarse? Too fine?
-- Are the contract assertions comprehensive enough?
-- Any changes to the engine config?
-
-**If the user requests changes:** Update the relevant artifacts and re-present.
-
-**If the user approves:** Record approval in progress.md and update the plan status:
-
-```
-## Status
-Phase: build
-Current task: 1
-```
-
-Proceed to Phase 7.
+- If changes requested: loop back to whichever phase needs adjustment.
+- If approved: record approval in progress.md with timestamp. Update plan status to BUILDING.
 
 ---
 
-## Phase 7: Build Phase -- Worker Loop
+## Phase 7: Build Loop
 
-This is the autonomous execution loop. For each unchecked task in tasks.md, the orchestrator assembles a brief, dispatches a worker, reads the handoff, and tracks progress.
+For each unchecked task (`- [ ]`) in tasks.md, run Steps 1-8. Process tasks in order, one at a time (serial execution). Skip tasks marked `- [~]` (skipped) and `- [x]` (complete).
 
-**Before starting, read `mission/config.yaml` to determine the worker engine.**
+### Step 1: Assemble Brief
 
-### For each unchecked task in tasks.md:
+Write a brief to `mission/briefs/task-N.md`.
 
-**Step 1: Assemble the brief.**
-
-Read the task description from tasks.md. Read proposal.md and design.md. Extract the sections relevant to this specific task -- don't dump entire files.
-
-Write the brief to `mission/briefs/task-N.md` using this format:
+#### Brief Template
 
 ```markdown
-# Worker Brief: Task N - [task name]
+# Worker Brief: Task N - <name>
 
 ## Your Task
-[Task description from tasks.md with enough context to be self-contained]
+<task description from tasks.md, expanded with acceptance criteria>
 
 ## Project Context
-[Relevant excerpt from proposal.md -- the what and why]
+<relevant excerpt from proposal.md -- what is being built and why>
 
 ## Architecture
-[Relevant excerpt from design.md -- technical decisions relevant to this task]
+<relevant excerpt from design.md -- how this task fits into the system>
+
+## Key Terms (from UBIQUITOUS_LANGUAGE.md)
+<any domain terms the worker needs to understand>
 
 ## Procedures
 - Implement the task as described
-- Commit all changes in a single commit with message: "[task-N] description"
-- Write your handoff report to mission/handoffs/task-N.md using the format below
+- Commit all changes in a single commit with message: "[task-N] <description>"
+- Write your handoff report to openspec/changes/<change-name>/mission/handoffs/task-N.md
 
 ## Handoff Report Format
-- Task: [which task]
-- Commit SHA: [the full SHA]
-- Approach: [brief explanation of what you did and why]
-- Commands run: [build/test/lint commands and their exit codes]
-- Concerns: [anything you're uncertain about]
+- Task: Task N - <name>
+- Commit SHA: <the full SHA>
+- Approach: <brief explanation of what you did and why>
+- Commands run: <any commands and their exit codes>
+- Concerns: <anything you're uncertain about>
 ```
 
-**CRITICAL: The brief must NEVER contain content from contract.md.** Workers and validators are adversarially separated.
+**The brief NEVER contains contract.md content.** This is the adversarial separation.
 
-**Step 2: Dispatch the worker.**
+### Step 2: Dispatch Worker
 
-Check the engine in `mission/config.yaml`.
+Read the engine from `mission/config.yaml`.
 
-**If `worker: codex`:** Use the Monitor tool to kick off Codex in the background and watch for the handoff file.
+#### If engine is `codex`:
 
-Monitor command:
+Use the Monitor tool to run the worker in the background. Use this exact bash script:
+
 ```bash
-BRIEF_PATH="[path to mission/briefs/task-N.md]"
-HANDOFF_PATH="[path to mission/handoffs/task-N.md]"
+BRIEF_PATH="<absolute path to mission/briefs/task-N.md>"
+HANDOFF_PATH="<absolute path to mission/handoffs/task-N.md>"
+BRIEF_CONTENT=$(cat "$BRIEF_PATH")
 
-# Kick off Codex in background
-codex exec --full-auto --sandbox workspace-write \
-  -m gpt-5.4 -c model_reasoning_effort="high" \
+# Start Codex in background
+codex exec \
+  --full-auto \
+  --sandbox workspace-write \
+  -m gpt-5.4 \
+  -c model_reasoning_effort="high" \
   -o "$HANDOFF_PATH" \
-  "Read your brief at $BRIEF_PATH and follow its instructions exactly. Implement the task, commit in a single commit with the message format specified, and write your handoff report." \
+  "$BRIEF_CONTENT" \
   2>/dev/null &
+
 CODEX_PID=$!
 
-# Watch for completion or failure
-while kill -0 $CODEX_PID 2>/dev/null; do
+# Poll for handoff file or process exit
+while true; do
   if [ -f "$HANDOFF_PATH" ]; then
-    echo "TASK_COMPLETE: handoff written at $HANDOFF_PATH"
+    echo "TASK_COMPLETE: Handoff written to $HANDOFF_PATH"
+    break
+  fi
+  if ! kill -0 $CODEX_PID 2>/dev/null; then
+    echo "TASK_FAILED: Codex process exited without writing handoff"
     break
   fi
   sleep 2
 done
-
-# Check if process exited
-wait $CODEX_PID 2>/dev/null
-EXIT_CODE=$?
-if [ $EXIT_CODE -ne 0 ] && [ ! -f "$HANDOFF_PATH" ]; then
-  echo "TASK_FAILED: codex exited with code $EXIT_CODE"
-elif [ ! -f "$HANDOFF_PATH" ]; then
-  echo "TASK_FAILED: codex exited but no handoff file written"
-fi
 ```
 
-Monitor description: `"Worker: task N - [task name]"`
-Monitor timeout: 600000 (10 minutes)
+Use Monitor with a timeout of 600000ms (10 minutes). When Monitor reports:
+- `TASK_COMPLETE` -> proceed to Step 3
+- `TASK_FAILED` -> proceed to Step 3 (failure path)
+- Timeout -> proceed to Step 3 (timeout path)
 
-**If `worker: claude`:** Use the Agent tool to spawn a Claude subagent. Pass the full brief content as the prompt. Instruct the subagent to write the handoff report to the same file path. Read the handoff file after the subagent returns.
+#### If engine is `claude`:
 
-**Step 3: Handle the worker result.**
+Use the Agent tool to spawn a subagent. Pass the full brief content as the prompt. Instruct the subagent to write its handoff to the same path (`mission/handoffs/task-N.md`).
 
-When the Monitor fires (or the Agent returns):
+### Step 3: Handle Result
 
-- **If TASK_COMPLETE:** Read `mission/handoffs/task-N.md`. Extract the commit SHA. Proceed to Step 4.
-- **If TASK_FAILED:** Log the failure to `mission/progress.md` with the error details. Ask the human for guidance (retry, skip, or abort).
-- **If timeout:** Log the timeout to `mission/progress.md`. Ask the human for guidance.
+Read the handoff file at `mission/handoffs/task-N.md`.
 
-**Step 4: Run scrutiny validation.**
+- **TASK_COMPLETE** (handoff exists and contains a commit SHA): Extract the commit SHA. Log to progress.md: `<timestamp> -- Task N: worker completed. Commit: <SHA>`. Proceed to Step 4.
+- **TASK_FAILED** (handoff missing or no commit SHA): Log to progress.md: `<timestamp> -- Task N: worker FAILED. <reason>`. Ask the human: retry, skip, or abort. If skip: mark the task as `- [~]` in tasks.md and log `<timestamp> -- Task N: SKIPPED by human.` to progress.md. The build loop ignores `- [~]` tasks.
+- **Timeout** (Monitor timed out): Log to progress.md: `<timestamp> -- Task N: worker TIMED OUT after 10 minutes.`. Ask the human: retry, skip, or abort. If skip: mark the task as `- [~]` in tasks.md and log `<timestamp> -- Task N: SKIPPED by human.` to progress.md. The build loop ignores `- [~]` tasks.
 
-Spawn a Claude subagent via the Agent tool. The subagent is the **Scrutiny Validator**. Its prompt must contain:
+### Step 4: Scrutiny Validation
 
-1. The commit SHA from the worker handoff
-2. The contract assertions for this task (read from contract.md, the section matching this task)
-3. The following instructions:
+Spawn a Claude subagent (via the Agent tool) with this prompt:
 
-```
-You are the Scrutiny Validator. You are checking whether a worker's implementation
-satisfies the validation contract. You have NOT seen this code before. You do not
-know how or why it was built -- only what it should do.
-
-## Your inputs
-- Commit SHA: [SHA]
-- Contract assertions for this task:
-  [paste the assertions from contract.md for this task]
-
-## Checks to run (in order)
-
-1. Run `git show [SHA]` to see the full diff
-2. Run the project's build command. Record pass/fail and exit code.
-3. Run the project's test command. Record pass/fail and exit code.
-4. Run the project's lint command. Record pass/fail and exit code.
-5. Run /review against the diff. Record findings by severity.
-6. Run /code-simplify against the diff. Record any simplification findings.
-7. If the diff touches auth, sessions, credentials, or security-sensitive code:
-   run /security-review against the diff. Record findings.
-8. For each contract assertion: determine PASS or FAIL.
-   - PASS: explain briefly how the code satisfies the assertion
-   - FAIL: explain specifically what is missing or broken
-
-## Write your report
-
-Write your report to: mission/validations/task-N-scrutiny.md
-
-Format:
-  # Scrutiny Validation: Task N - [name]
-  
-  ## Overall: PASS or FAIL
-  
-  ## Build/Test/Lint
-  - Build: [PASS/FAIL] (exit code: [N])
-  - Test: [PASS/FAIL] (exit code: [N])
-  - Lint: [PASS/FAIL] (exit code: [N])
-  
-  ## Code Review
-  [/review findings by severity]
-  
-  ## Simplicity
-  [/code-simplify findings]
-  
-  ## Security (if applicable)
-  [/security-review findings]
-  
-  ## Contract Assertions
-  - [Assertion 1]: PASS/FAIL - [evidence]
-  - [Assertion 2]: PASS/FAIL - [evidence]
-  
-  ## Summary
-  [1-2 sentence summary of the overall result]
-```
-
-**CRITICAL:** The validator prompt must NOT contain the proposal, design, worker brief, or worker's reasoning. Only the commit SHA, contract assertions, and check instructions.
-
-**Step 5: Handle the validation result.**
-
-Read `mission/validations/task-N-scrutiny.md`.
-
-- **If overall PASS:** Proceed to Step 6 (user-test validation, when available -- for now, skip to Step 7).
-- **If overall FAIL:** Enter the fix loop (Step 5a).
-
-**Step 5a: Fix loop.**
-
-Track the attempt number. This is attempt 1 if it's the first failure, 2 after the first fix, etc.
-
-1. Write failure details to `mission/issues/task-N-v[attempt].md` containing:
-   - Which assertions failed and why
-   - Build/test/lint failures
-   - Review findings rated Critical or Important
-
-2. If attempt >= 3: **Circuit breaker.** Log all failures to progress.md and ask the human:
-   - **Retry:** Reset attempt counter and try again
-   - **Skip:** Mark task as skipped in progress.md, move to next task
-   - **Abort:** Stop the build phase, log "Mission paused by human"
-
-3. If attempt < 3: Assemble a fix brief and dispatch a fix worker.
-
-   Write the fix brief to `mission/briefs/task-N-fix-v[attempt+1].md`:
-
-   ```markdown
-   # Fix Brief: Task N - [name] (Attempt [attempt+1])
-
-   ## What Failed
-   [Specific failed assertions from the validator report]
-
-   ## Validator Output
-   [Relevant error messages, test failures, review findings]
-
-   ## Commit to Fix
-   [SHA of the broken commit]
-
-   ## Procedures
-   - Fix only the issues described above
-   - Do not refactor or change anything unrelated to the failures
-   - Commit as a single commit with message: "[task-N] fix: description"
-   - Write your handoff report to mission/handoffs/task-N-fix-v[attempt+1].md
-   ```
-
-   Dispatch the fix worker using the same mechanism as Step 2 (Codex or Claude per config). Wait for completion via Monitor.
-
-   After the fix worker completes: go back to **Step 4** (re-run scrutiny validation with the new commit SHA). Both validators must re-run after every fix.
-
-**Step 6: Run user-test validation.**
-
-Spawn a Claude subagent via the Agent tool. The subagent is the **User-Test Validator**. Its prompt must contain:
-
-1. The commit SHA (from the worker handoff, or the latest fix commit)
-2. The contract assertions for this task (read from contract.md)
-3. The following instructions:
+#### Scrutiny Validator Prompt
 
 ```
-You are the User-Test Validator. You test whether the implementation actually works
-by interacting with the running application. You have NOT seen this code before.
-You do not know how it was built -- only what it should do.
+You are a scrutiny validator for the Darkfactory mission system. Your job is to verify that a worker's commit meets the validation contract. You have NOT seen the proposal, design, or worker reasoning. You judge only by the code and the contract.
 
-## Your inputs
-- Commit SHA: [SHA]
-- Contract assertions for this task:
-  [paste the assertions from contract.md for this task]
+## Commit to Validate
+SHA: <commit-sha>
 
-## Decide your test strategy
+## Contract Assertions for This Task
+<paste the assertions from contract.md for task N>
 
-Run `git show [SHA] --stat` to see which files changed.
+## Check Sequence
 
-- If only backend files changed (API routes, database, server logic): run HTTP API tests only
-- If only frontend files changed (components, pages, styles): run browser tests only
-- If both: run both API tests and browser tests
+Run these checks in order. For each, report PASS or FAIL with evidence.
 
-## Ensure the app is running
+1. **Diff review:** Run `git show <commit-sha>` and read the full diff. Does the code look correct and complete?
 
-Check if the dev server is running. If not, start it using the project's dev command
-(check CLAUDE.md, package.json scripts, or Makefile for the correct command).
-Wait for it to be ready before testing.
+2. **Build:** Run the project's build command. Does it pass?
 
-## Run your tests
+3. **Tests:** Run the project's test command. Do all tests pass? Are there new tests covering the task's functionality?
 
-**For API assertions:** Construct HTTP requests (using curl or similar) that test each
-assertion. For example, if the assertion says "creating a duplicate returns an error,"
-POST to create once, POST again with the same data, and check the response.
+4. **Lint:** Run the project's lint command. Are there any violations?
 
-**For UI assertions:** Use /test-app (agent-browser) to drive a browser session.
-Navigate to the relevant page, perform the actions described in the assertion, and
-check that the expected behavior occurs.
+5. **Code review:** Run /review against the diff. Report any bugs, security issues, or logic errors found.
 
-**If you cannot test an assertion:** Report it as SKIP with an explanation of why.
-Do not guess PASS or FAIL.
+6. **Code simplify:** Run /code-simplify against the changed files. Report any unnecessary complexity.
 
-## Write your report
+7. **Security review (if applicable):** If this task touches authentication, authorization, secrets, user input handling, or network boundaries, run /security-review. Otherwise skip and note "N/A -- no sensitive paths touched."
 
-Write your report to: mission/validations/task-N-usertest.md
+8. **Contract assertions:** For each assertion in the contract, check it against the diff and test results. Mark each assertion PASS or FAIL with a one-line explanation.
 
-Format:
-  # User-Test Validation: Task N - [name]
+## Output Format
 
-  ## Overall: PASS or FAIL
+Write your report to: <absolute path to mission/validations/task-N-scrutiny.md>
 
-  ## Test Strategy
-  [API tests / Browser tests / Both -- and why]
+Use this format:
 
-  ## Results
-  - [Assertion 1]: PASS/FAIL/SKIP - [what you tested and what happened]
-  - [Assertion 2]: PASS/FAIL/SKIP - [evidence]
+```markdown
+# Scrutiny Validation: Task N
 
-  ## Summary
-  [1-2 sentence summary of the overall result]
+## Result: PASS | FAIL
+
+## Check Results
+| Check | Result | Notes |
+|-------|--------|-------|
+| Diff review | PASS/FAIL | ... |
+| Build | PASS/FAIL | ... |
+| Tests | PASS/FAIL | ... |
+| Lint | PASS/FAIL | ... |
+| Code review | PASS/FAIL | ... |
+| Code simplify | PASS/FAIL | ... |
+| Security review | PASS/FAIL/N/A | ... |
+
+## Contract Assertions
+| # | Assertion | Result | Evidence |
+|---|-----------|--------|----------|
+| 1 | <assertion text> | PASS/FAIL | <one-line evidence> |
+| 2 | ... | ... | ... |
+
+## Failed Assertions (if any)
+<detailed explanation of each failure>
+
+## Recommendations (if FAIL)
+<specific guidance for fixing the failures>
 ```
 
-**CRITICAL:** The validator prompt must NOT contain the proposal, design, worker brief, or worker's reasoning. Only the commit SHA, contract assertions, and test instructions.
-
-**Handle the result:**
-
-Read `mission/validations/task-N-usertest.md`.
-
-- **If overall PASS:** Proceed to Step 6a.
-- **If overall FAIL:** Enter the fix loop (Step 5a) with the user-test failure details. The fix loop re-runs BOTH validators after each fix.
-
-**Step 6a: Demo video (frontend tasks only).**
-
-Decide whether this task has a frontend component based on the task description and the commit diff. If it does, spawn a Claude subagent to record a demo video.
-
-The subagent prompt:
-
-```
-Record a demo video of this feature using /demo-video.
-
-Feature: [task name and description]
-What to demo: [brief description of the user-facing behavior to demonstrate]
-
-Save the recording to: mission/validations/task-N-demo.mp4
-
-The app should already be running from user-test validation.
-Navigate to the relevant page, perform the key user flow, and record it.
+IMPORTANT: The overall result is FAIL if ANY check fails or ANY contract assertion fails. Be strict. A near-miss is still a FAIL.
 ```
 
-**If the demo succeeds:** The video is saved. Proceed to Step 7.
-**If the demo fails:** Log the failure to progress.md. This does NOT trigger the fix loop -- demo failures are non-blocking. Proceed to Step 7.
-**If the task has no frontend component:** Skip directly to Step 7.
+Read the validator's report from `mission/validations/task-N-scrutiny.md`.
 
-**Step 7: Track progress.**
+### Step 5: Handle Scrutiny Validation Result
 
-1. Mark the task complete in tasks.md: change `- [ ]` to `- [x]` for this task
-2. Append to `mission/progress.md`:
-   ```
-   - [timestamp] Task N complete: [task name]. Commit: [short SHA]. Scrutiny: PASS. User-test: PASS. Worker: [codex/claude].
-   ```
-3. Update the plan:
-   ```
-   ## Status
-   Phase: build
-   Current task: [next task number]
-   Completed: [list of completed task numbers]
-   ```
-4. Check if unchecked tasks remain in tasks.md:
-   - **If yes:** Go back to Step 1 for the next unchecked task.
-   - **If no:** All tasks complete. Log to progress.md:
-     ```
-     - [timestamp] Build phase complete. All tasks implemented and validated.
-     ```
-     Proceed to Phase 8.
+- **PASS**: Log to progress.md: `<timestamp> -- Task N: scrutiny validation PASSED.` Proceed to Step 6.
+- **FAIL**: Proceed to Step 5a (fix loop).
+
+### Step 5a: Fix Loop
+
+Track the attempt number (starts at 1 for the initial worker, increments on each fix).
+
+1. **Write failure details** to `mission/issues/task-N-v<attempt>.md`:
+
+```markdown
+# Issue: Task N - <name> (Attempt <attempt>)
+
+## Failed Checks
+<list of failed checks from validator report>
+
+## Failed Assertions
+<list of failed assertions with evidence>
+
+## Validator Recommendations
+<recommendations from validator>
+```
+
+2. **Circuit breaker check:** If attempt >= 3, stop the loop. Log to progress.md: `<timestamp> -- Task N: circuit breaker triggered after <attempt> attempts.` Update plan status to PAUSED. Ask the human: "Task N has failed validation 3 times. Options: retry (allows one more attempt, counter continues from current value), skip (mark as skipped with `- [~]`, continue to next task), abort (stop the mission)."
+
+   - **Retry:** Increment the attempt counter by 1 (e.g., attempt 3 becomes attempt 4). Allow one more fix attempt. If it fails again, the circuit breaker triggers again at the new count. Retry does NOT reset the counter.
+   - **Skip:** Mark the task as `- [~]` in tasks.md. Log to progress.md: `<timestamp> -- Task N: SKIPPED by human after <attempt> failed attempts.` Continue to the next unchecked task. The build loop ignores `- [~]` tasks (they are neither unchecked nor complete).
+   - **Abort:** Update plan status to PAUSED. Stop the build loop. Report to the human.
+
+3. **Write fix brief** to `mission/briefs/task-N-fix-v<attempt+1>.md`:
+
+#### Fix Brief Template
+
+```markdown
+# Fix Brief: Task N - <name> (Attempt <attempt+1>)
+
+## What Failed
+<specific failed assertions and checks from the validator report>
+
+## Validator Output
+<relevant error messages, test failures, review findings>
+
+## Commit to Fix
+<SHA of the commit that failed validation>
+
+## Procedures
+- Fix only the issues described above
+- Do not refactor or change anything unrelated
+- Commit as a single commit with message: "[task-N] fix: <description of what was fixed>"
+- Write handoff report to openspec/changes/<change-name>/mission/handoffs/task-N-fix-v<attempt+1>.md
+
+## Handoff Report Format
+- Task: Task N - <name> (Fix attempt <attempt+1>)
+- Commit SHA: <the full SHA>
+- Approach: <what you fixed and why>
+- Commands run: <commands and exit codes>
+- Concerns: <anything uncertain>
+```
+
+**The fix brief NEVER contains contract.md content.** Same adversarial separation as the original brief.
+
+4. **Dispatch fix worker** using the same engine and method as Step 2, but with the fix brief.
+
+5. **After fix completes:** Go back to **Step 4** (re-run scrutiny validation with the new commit SHA). All validators must re-run after every fix (scrutiny, user-test, both adversarial reviewers), not just the one that failed.
+
+### Step 6: User-Test Validation
+
+Spawn a Claude subagent (via the Agent tool) with this prompt:
+
+#### User-Test Validator Prompt
+
+```
+You are a user-test validator for the Darkfactory mission system. Your job is to verify that a worker's commit delivers the correct user-facing behavior. You have NOT seen the proposal, design, or worker reasoning.
+
+## Commit to Validate
+SHA: <commit-sha>
+
+## Contract Assertions for This Task
+<paste the assertions from contract.md for task N>
+
+## Instructions
+
+1. **Read the diff:** Run `git show <commit-sha>` to understand what changed.
+
+2. **Decide your test strategy** based on what the diff touches:
+   - **Backend only** (API routes, database, server logic, CLI): Write and run HTTP tests against the API endpoints. Use curl or a test script.
+   - **Frontend only** (UI components, pages, styles): Run /test-app to drive a browser and verify UI behavior.
+   - **Both backend and frontend**: Run HTTP tests first, then /test-app for the UI.
+   - **Infrastructure only** (config, build, CI): Verify the build passes and config is correct. You may mark behavioral assertions as SKIP with reason "infrastructure-only change, not testable via HTTP or browser."
+
+3. **Check each contract assertion:** For each assertion, run the appropriate test. Mark PASS, FAIL, or SKIP.
+   - PASS: The assertion is demonstrably true.
+   - FAIL: The assertion is demonstrably false, or the test reveals a bug.
+   - SKIP: The assertion cannot be tested from outside (e.g., internal refactor). Provide a reason.
+
+## Output Format
+
+Write your report to: <absolute path to mission/validations/task-N-usertest.md>
+
+Use this format:
+
+```markdown
+# User-Test Validation: Task N
+
+## Result: PASS | FAIL
+
+## Test Strategy
+<what you decided and why>
+
+## Tests Run
+| # | Test Description | Method | Result |
+|---|-----------------|--------|--------|
+| 1 | <what was tested> | HTTP/Browser/Manual | PASS/FAIL |
+| 2 | ... | ... | ... |
+
+## Contract Assertions
+| # | Assertion | Result | Evidence |
+|---|-----------|--------|----------|
+| 1 | <assertion text> | PASS/FAIL/SKIP | <evidence or skip reason> |
+| 2 | ... | ... | ... |
+
+## Failed Assertions (if any)
+<detailed explanation of each failure>
+
+## Recommendations (if FAIL)
+<specific guidance for fixing the failures>
+```
+
+IMPORTANT: The overall result is FAIL if ANY contract assertion fails (SKIP does not count as failure). Be thorough -- actually run the tests, don't just read the code and guess.
+```
+
+Read the validator's report from `mission/validations/task-N-usertest.md`.
+
+- **PASS**: Log to progress.md: `<timestamp> -- Task N: user-test validation PASSED.` Proceed to Step 6a.
+- **FAIL**: Enter the fix loop (Step 5a) with the user-test failure details. After the fix, re-run **all** validators (Step 4, then Step 6, then Step 6a).
+- **SKIP** (all assertions skipped): Log to progress.md: `<timestamp> -- Task N: user-test validation SKIPPED (all assertions infrastructure-only).` Proceed to Step 6a.
+
+### Step 6a: Dual Adversarial Review
+
+Run two independent adversarial reviewers in parallel. They receive the commit SHA and the **full contract** (all assertions across all tasks, not just the current task's). They look for flaws, inconsistencies, cross-file compatibility issues, and anything the previous validators missed.
+
+Read the engine assignments from `config.yaml`:
+- `adversarial_reviewer_a` (default: codex) -- dispatched via Monitor since it is an external process
+- `adversarial_reviewer_b` (default: claude) -- dispatched via Agent tool since it runs within the session
+
+#### Adversarial Reviewer Prompt (used for both A and B)
+
+```
+You are an adversarial reviewer for the Darkfactory mission system. Your job is to find flaws, inconsistencies, cross-file compatibility issues, and anything the previous validators (scrutiny + user-test) may have missed.
+
+## Commit to Review
+SHA: <commit-sha>
+
+## Full Validation Contract (all tasks)
+<paste the ENTIRE contract.md>
+
+## Instructions
+
+1. Run `git show <commit-sha>` to read the full diff.
+2. Look for:
+   - Logic errors or edge cases not covered by tests
+   - Cross-file inconsistencies (types, interfaces, naming)
+   - Contract assertions that technically pass but have subtle flaws
+   - Security issues, race conditions, or data integrity problems
+   - Missing error handling or graceful degradation
+   - Anything that would break when integrated with other tasks' code
+3. For each finding, classify as PASS (no issue) or FAIL (real problem that must be fixed).
+4. Be adversarial: assume the code is wrong until proven right.
+
+## Output Format
+
+Write your report to: <absolute path to mission/validations/task-N-adversarial-{a|b}.md>
+
+```markdown
+# Adversarial Review {A|B}: Task N
+
+## Result: PASS | FAIL
+
+## Findings
+| # | Category | Severity | Finding | Verdict |
+|---|----------|----------|---------|---------|
+| 1 | <category> | HIGH/MEDIUM/LOW | <description> | PASS/FAIL |
+| 2 | ... | ... | ... | ... |
+
+## Failed Findings (if any)
+<detailed explanation of each FAIL finding with evidence and fix guidance>
+
+## Summary
+<overall assessment>
+```
+
+IMPORTANT: The overall result is FAIL if ANY finding has a FAIL verdict. Be strict and adversarial.
+```
+
+#### Dispatch Both Reviewers in Parallel
+
+**Reviewer A** (if engine is `codex`): Use Monitor with the same pattern as worker dispatch, but passing the adversarial reviewer prompt. Write report to `mission/validations/task-N-adversarial-a.md`.
+
+**Reviewer B** (if engine is `claude`): Use Agent tool with the adversarial reviewer prompt. Write report to `mission/validations/task-N-adversarial-b.md`.
+
+Both run at the same time. Wait for both to complete before proceeding.
+
+#### Synthesize Results
+
+After both reports are written, the orchestrator reads both and creates a synthesis report at `mission/validations/task-N-adversarial-synthesis.md`:
+
+```markdown
+# Adversarial Review Synthesis: Task N
+
+## Result: PASS | FAIL
+
+## Shared Findings (both reviewers agree)
+| # | Finding | Reviewer A | Reviewer B | Verdict |
+|---|---------|-----------|-----------|---------|
+| 1 | <finding> | PASS/FAIL | PASS/FAIL | PASS/FAIL |
+
+## Disagreements (reviewers differ)
+| # | Finding | Reviewer A | Reviewer B | Orchestrator Verdict | Rationale |
+|---|---------|-----------|-----------|---------------------|-----------|
+| 1 | <finding> | PASS | FAIL | <orchestrator decides> | <why> |
+
+## Unique Findings
+| # | Source | Finding | Verdict |
+|---|--------|---------|---------|
+| 1 | Reviewer A only | <finding> | PASS/FAIL |
+| 2 | Reviewer B only | <finding> | PASS/FAIL |
+
+## Action Items (if FAIL)
+<prioritized list of issues that must be fixed>
+```
+
+**Synthesis rules:**
+- Deduplicate shared findings (same issue reported by both).
+- Flag disagreements and let the orchestrator make the final call based on evidence.
+- Include unique findings from each reviewer.
+- Overall result is FAIL if ANY finding in the synthesis has a FAIL verdict.
+
+#### Handle Adversarial Review Result
+
+- **PASS**: Log to progress.md: `<timestamp> -- Task N: adversarial review PASSED (both reviewers).` Proceed to Step 6b.
+- **FAIL**: Enter the fix loop (Step 5a) with the synthesis findings. After the fix, re-run **all** validators (Step 4, then Step 6, then Step 6a).
+
+### Step 6b: Demo Video (Frontend Only)
+
+The orchestrator decides whether this task has a frontend component by checking the diff. If the task touches UI files (components, pages, styles, templates), it has a frontend component.
+
+**If frontend component exists:**
+
+Spawn a Claude subagent to run `/demo-video`. The subagent should save the recording to `mission/validations/task-N-demo.mp4`.
+
+**Demo failure is non-blocking.** If the demo fails to record:
+- Log to progress.md: `<timestamp> -- Task N: demo video FAILED to record. <reason>. Continuing.`
+- Proceed to Step 7.
+
+**If no frontend component:** Skip this step. Proceed to Step 7.
+
+### Step 7: Track Progress (updated numbering: was Step 7, steps above were renumbered)
+
+1. Mark the task complete in `tasks.md`: change `- [ ]` to `- [x]` for this task.
+
+2. Append to `progress.md`:
+
+```markdown
+- <timestamp> -- Task N complete.
+  - Commit: <SHA>
+  - Scrutiny: PASS
+  - User-test: PASS | SKIP
+  - Adversarial review: PASS
+  - Demo: RECORDED | SKIPPED | FAILED
+  - Fix attempts: <number, 0 if first try passed>
+```
+
+3. Update the plan: set Current Task to the next unchecked task, or "none" if all done.
+
+4. **If more tasks remain:** Go back to Step 1 for the next task.
+
+5. **If all tasks are done:** Proceed to Phase 8.
 
 ---
 
 ## Phase 8: Mission Completion
 
-All tasks are implemented and validated. Create a draft PR for the human to review.
+### Create Draft PR
 
-**Step 1: Update the plan status.**
+Run `/pr` to create a **draft** pull request. Never create a ready-for-review PR.
 
-```
-## Status
-Phase: ship
-Creating draft PR.
-```
-
-**Step 2: Create a draft PR.**
-
-Run the `/pr` skill to create a draft PR. The PR body should follow this structure:
+#### PR Body Template
 
 ```markdown
-## Mission Summary: [change name]
+## Mission: <change-name>
 
-### Tasks Completed
-- [x] Task 1: [name] - Commit: [short SHA]
-- [x] Task 2: [name] - Commit: [short SHA]
-(list all tasks with their commit SHAs)
+### Tasks
+| # | Task | Commit | Status |
+|---|------|--------|--------|
+| 1 | <name> | <short SHA> | Done |
+| 2 | <name> | <short SHA> | Done |
 
 ### Validation Results
-| Task | Scrutiny | User-Test | Demo Video |
-|------|----------|-----------|------------|
-| Task 1 | PASS | PASS | [link or N/A] |
-| Task 2 | PASS | PASS | [link or N/A] |
+| Task | Scrutiny | User-Test | Adversarial | Demo | Fix Attempts |
+|------|----------|-----------|-------------|------|-------------|
+| 1 | PASS | PASS | PASS | N/A | 0 |
+| 2 | PASS | PASS | PASS | RECORDED | 1 |
 
 ### Issues Encountered
-(list any tasks that required fix attempts, with attempt counts)
-(or "None -- all tasks passed on first attempt")
+<list any issues from mission/issues/, or "None">
 
 ### Mission Stats
-- Total tasks: [N]
-- Tasks passed first attempt: [N]
-- Tasks requiring fixes: [N]
-- Total worker invocations: [N]
+- Total tasks: <N>
+- Total assertions: <M>
+- Total fix attempts: <sum>
+- Circuit breakers triggered: <count>
+- Duration: <start to end>
+```
+
+### Finalize
+
+1. Log the draft PR URL to progress.md: `<timestamp> -- Draft PR created: <URL>`
+2. Update plan status to COMPLETE.
+3. Tell the user: "Mission complete. Draft PR is at <URL>. Review it and promote to ready-for-review when satisfied. Run /opsx:archive after merge."
 
 ---
-Generated by Darkfactory Mission System
-```
 
-**IMPORTANT:** Create the PR as a **draft**. Never create a ready-for-review PR. Use `gh pr create --draft` or the equivalent flag in /pr.
+## Resume Support
 
-**Step 3: Log completion.**
+If `/mission resume` is invoked (via the mission-resume skill), the orchestrator should:
 
-Append to `mission/progress.md`:
-```
-- [timestamp] Draft PR created: [PR URL]
-- [timestamp] Mission complete.
-```
+1. Enter plan mode.
+2. Find the mission directory by scanning `openspec/changes/*/mission/config.yaml`.
+3. Read `progress.md` to determine the last completed task.
+4. Read `tasks.md` to find the next unchecked task.
+5. Rebuild the plan from file state.
+6. Continue from the appropriate step in Phase 7.
 
-Update the plan status:
-```
-## Status
-Phase: COMPLETE
-Draft PR: [PR URL]
-Human review required. After merge, run /opsx:archive to archive the change.
-```
+This skill does not implement resume directly -- that is handled by the `/mission-resume` skill. But the file-backed state design ensures resume is always possible.
 
-The mission is complete. The human reviews the draft PR, promotes it, and merges.
+---
+
+## Status Checking
+
+Running `/mission-status` (via the mission-status skill) in a separate session should show the current state by reading `progress.md`, `tasks.md`, and `config.yaml`. This skill does not implement status -- that is handled by the `/mission-status` skill.
+
+---
+
+## Rules (Always Enforced)
+
+1. **Serial execution.** One worker at a time. Never dispatch two workers in parallel. (Exception: adversarial reviewers A and B run in parallel since they are independent read-only reviewers.)
+2. **Adversarial separation.** Workers never see `contract.md`. Validators never see `proposal.md` or `design.md`.
+3. **All validators re-run after every fix.** Even if only one failed, all validators (scrutiny, user-test, both adversarial reviewers) re-run to catch regressions.
+4. **Circuit breaker at 3.** After 3 failed attempts on the same task, stop and ask the human. Retry allows one more attempt but does NOT reset the counter.
+5. **File-backed state.** All decisions and status go to disk. The mission must be resumable from files alone.
+6. **Single commit per task.** One task, one worker, one commit, one validation cycle.
+7. **Draft PRs only.** Never create a ready-for-review PR. The human promotes it.
+8. **Plan is the operating manual.** Keep the plan updated after every phase and step. It must be accurate if context compacts.
+9. **Skipped tasks use `- [~]`.** The build loop treats `- [~]` as neither unchecked nor complete. Skipped tasks are not re-attempted.
+10. **Monitor is for external processes.** Monitor is used for external process dispatch (Codex workers, Codex adversarial reviews). Claude subagent validators use the Agent tool directly since they run within the session and return synchronously.

@@ -5,66 +5,125 @@ description: Check the progress of an active Darkfactory mission. Read-only -- d
 
 # Mission Status
 
-Show the progress of an active mission. This skill is read-only -- it does not modify any mission files.
+Show a formatted progress summary for an active Darkfactory mission. This skill is strictly **read-only** -- it MUST NOT create, modify, or delete any files.
 
----
+## When to use
 
-## Step 1: Find active missions
+- The user runs `/mission-status` or asks "how is the mission going?"
+- The user wants to check on a running mission from a separate Claude Code session without interrupting the orchestrator
 
-Search for OpenSpec changes that have a `mission/` directory:
+## Procedure
 
-```bash
-ls openspec/changes/*/mission/config.yaml 2>/dev/null
-```
+### Step 1: Find active missions
 
-- **If none found:** Report "No active missions found." and stop.
-- **If exactly one:** Use it.
-- **If multiple:** List them and ask the user which one to check.
-
----
-
-## Step 2: Read state
-
-Read these files:
-1. `tasks.md` -- count checked vs unchecked tasks
-2. `mission/progress.md` -- the event log
-3. `mission/config.yaml` -- engine settings
-
----
-
-## Step 3: Gather validation results
-
-For each completed task, check for:
-- `mission/validations/task-N-scrutiny.md` -- read the Overall line
-- `mission/validations/task-N-usertest.md` -- read the Overall line
-- `mission/validations/task-N-demo.mp4` -- check if exists
-- `mission/issues/task-N-*.md` -- count fix attempts
-
----
-
-## Step 4: Present summary
-
-Format:
+Search for OpenSpec changes that have a mission directory:
 
 ```
-Mission: [change name]
-Engine: worker=[codex/claude], validators=[claude]
-Started: [timestamp from first progress.md entry]
+openspec/changes/*/mission/config.yaml
+```
 
-Progress: [completed]/[total] tasks
-[=========>          ] 45%
+Use the Glob tool to find all matching paths.
+
+**Handle zero, one, or multiple results:**
+
+- **No missions found:** Report "No active missions found." and stop.
+- **One mission found:** Use it automatically.
+- **Multiple missions found:** List them by change name and ask the user which one to inspect. Wait for their answer before continuing.
+
+Extract the **change name** from the path (the `*` segment in `openspec/changes/*/mission/`).
+
+### Step 2: Read mission state
+
+Read these files. All reads are non-destructive -- do not write anything.
+
+1. **Mission config** (`openspec/changes/<change>/mission/config.yaml`)
+   - Extract engine settings: `worker`, `scrutiny_validator`, `usertest_validator`, `adversarial_reviewer_a`, `adversarial_reviewer_b`, `demo_video`
+
+2. **Tasks list** (`openspec/changes/<change>/tasks.md`)
+   - Parse each checkbox line: `- [x]` = completed, `- [ ]` = not completed, `- [~]` = skipped
+   - Count total tasks, completed tasks, and skipped tasks
+   - Extract each task's name (the text after the checkbox)
+
+3. **Progress log** (`openspec/changes/<change>/mission/progress.md`)
+   - Read the full file
+   - Extract the timestamp from the first entry (this is the mission start time)
+   - Extract the last 5 entries for the "Recent activity" section
+
+### Step 3: Gather validation results per completed task
+
+For each task (numbered by its position in the tasks list), check for validation artifacts:
+
+1. **Scrutiny validation:** Read `mission/validations/task-N-scrutiny.md`
+   - If it exists, find the first line containing "PASS" or "FAIL" after a heading (look for both `## Overall:` and `## Result:` patterns, or simply the first line in the file containing the word "PASS" or "FAIL")
+   - If it does not exist, report as "pending"
+
+2. **User-test validation:** Read `mission/validations/task-N-usertest.md`
+   - If it exists, find the first line containing "PASS" or "FAIL" after a heading (look for both `## Overall:` and `## Result:` patterns, or simply the first line in the file containing the word "PASS" or "FAIL")
+   - If it does not exist, report as "pending"
+
+3. **Adversarial review:** Read `mission/validations/task-N-adversarial-synthesis.md`
+   - If it exists, find the first line containing "PASS" or "FAIL" (same approach as above)
+   - If it does not exist, check for individual reports (`task-N-adversarial-a.md`, `task-N-adversarial-b.md`) and report partial status
+   - If none exist, report as "pending"
+
+4. **Demo video:** Check if `mission/validations/task-N-demo.mp4` exists
+   - Report "yes" if it exists, omit if it does not
+
+5. **Fix attempts:** Search for `mission/issues/task-N-*.md` files
+   - Count the number of matching files
+   - If any exist, append "(N attempts)" to the task's status line
+
+### Step 4: Detect in-progress tasks
+
+For each unchecked task, check whether work has started:
+
+- If `mission/briefs/task-N.md` exists but `mission/handoffs/task-N.md` does NOT exist, mark the task as:
+  `IN PROGRESS (worker dispatched, awaiting handoff)`
+- If neither brief nor handoff exists, show no extra annotation (the task has not started yet)
+- Mark the first unstarted unchecked task with `(next)` to indicate it is next in the queue
+
+### Step 5: Display formatted progress
+
+Print the summary in this exact format:
+
+```
+Mission: <change name>
+Engine: worker=<engine>, validators=<engine>
+Started: <timestamp from first progress.md entry>
+
+Progress: <completed>/<total> tasks (<skipped> skipped)
+[===========>                    ] <percent>%
 
 Tasks:
-  [x] Task 1: [name] - Scrutiny: PASS, User-test: PASS, Demo: yes
-  [x] Task 2: [name] - Scrutiny: PASS, User-test: PASS (2 attempts)
-  [ ] Task 3: [name] - (next)
-  [ ] Task 4: [name]
+  [x] Task 1: <name> - Scrutiny: PASS, User-test: PASS, Adversarial: PASS, Demo: yes
+  [x] Task 2: <name> - Scrutiny: PASS, User-test: PASS, Adversarial: PASS (2 attempts)
+  [~] Task 3: <name> - SKIPPED
+  [ ] Task 4: <name> - IN PROGRESS (worker dispatched, awaiting handoff)
+  [ ] Task 5: <name> - (next)
+  [ ] Task 6: <name>
 
 Recent activity:
-  [last 5 entries from progress.md]
+  <last 5 entries from progress.md>
 ```
 
-If a task is currently in progress (unchecked but has a brief file and no handoff), note it:
-```
-  [ ] Task 3: [name] - IN PROGRESS (worker dispatched, awaiting handoff)
-```
+**Progress bar rules:**
+- The bar is 30 characters wide (between the square brackets)
+- Fill with `=` up to the completion percentage, ending with `>` at the leading edge
+- Fill the remainder with spaces
+- Show the percentage as a whole number
+
+**Task line rules:**
+- Use `[x]` for completed tasks, `[ ]` for unchecked tasks, and `[~]` for skipped tasks
+- After the task name, show validation results separated by commas
+- Only show Scrutiny/User-test/Adversarial/Demo if the corresponding artifact exists or the task is completed
+- Append fix attempt count in parentheses if any issues were found
+- For skipped tasks, show `SKIPPED` instead of validation results
+- For in-progress tasks, show the `IN PROGRESS` annotation instead of validation results
+- For the next unstarted task, show `(next)`
+- For remaining unstarted tasks, show just the task name with no annotation
+
+## Constraints
+
+- **Read-only:** This skill MUST NOT create, modify, or delete any files. Every operation is a read or a glob search.
+- **Non-intrusive:** This skill does not interact with the running mission. It only reads files on disk.
+- **Graceful degradation:** If any file is missing or malformed, skip it and note what was unavailable rather than failing entirely.
