@@ -331,7 +331,7 @@ Monitor timeout: 600000 (10 minutes)
 
 **If `worker: claude`:** Use the Agent tool to spawn a Claude subagent. Pass the full brief content as the prompt. Instruct the subagent to write the handoff report to the same file path. Read the handoff file after the subagent returns.
 
-**Step 3: Handle the result.**
+**Step 3: Handle the worker result.**
 
 When the Monitor fires (or the Agent returns):
 
@@ -339,12 +339,129 @@ When the Monitor fires (or the Agent returns):
 - **If TASK_FAILED:** Log the failure to `mission/progress.md` with the error details. Ask the human for guidance (retry, skip, or abort).
 - **If timeout:** Log the timeout to `mission/progress.md`. Ask the human for guidance.
 
-**Step 4: Track progress.**
+**Step 4: Run scrutiny validation.**
+
+Spawn a Claude subagent via the Agent tool. The subagent is the **Scrutiny Validator**. Its prompt must contain:
+
+1. The commit SHA from the worker handoff
+2. The contract assertions for this task (read from contract.md, the section matching this task)
+3. The following instructions:
+
+```
+You are the Scrutiny Validator. You are checking whether a worker's implementation
+satisfies the validation contract. You have NOT seen this code before. You do not
+know how or why it was built -- only what it should do.
+
+## Your inputs
+- Commit SHA: [SHA]
+- Contract assertions for this task:
+  [paste the assertions from contract.md for this task]
+
+## Checks to run (in order)
+
+1. Run `git show [SHA]` to see the full diff
+2. Run the project's build command. Record pass/fail and exit code.
+3. Run the project's test command. Record pass/fail and exit code.
+4. Run the project's lint command. Record pass/fail and exit code.
+5. Run /review against the diff. Record findings by severity.
+6. Run /code-simplify against the diff. Record any simplification findings.
+7. If the diff touches auth, sessions, credentials, or security-sensitive code:
+   run /security-review against the diff. Record findings.
+8. For each contract assertion: determine PASS or FAIL.
+   - PASS: explain briefly how the code satisfies the assertion
+   - FAIL: explain specifically what is missing or broken
+
+## Write your report
+
+Write your report to: mission/validations/task-N-scrutiny.md
+
+Format:
+  # Scrutiny Validation: Task N - [name]
+  
+  ## Overall: PASS or FAIL
+  
+  ## Build/Test/Lint
+  - Build: [PASS/FAIL] (exit code: [N])
+  - Test: [PASS/FAIL] (exit code: [N])
+  - Lint: [PASS/FAIL] (exit code: [N])
+  
+  ## Code Review
+  [/review findings by severity]
+  
+  ## Simplicity
+  [/code-simplify findings]
+  
+  ## Security (if applicable)
+  [/security-review findings]
+  
+  ## Contract Assertions
+  - [Assertion 1]: PASS/FAIL - [evidence]
+  - [Assertion 2]: PASS/FAIL - [evidence]
+  
+  ## Summary
+  [1-2 sentence summary of the overall result]
+```
+
+**CRITICAL:** The validator prompt must NOT contain the proposal, design, worker brief, or worker's reasoning. Only the commit SHA, contract assertions, and check instructions.
+
+**Step 5: Handle the validation result.**
+
+Read `mission/validations/task-N-scrutiny.md`.
+
+- **If overall PASS:** Proceed to Step 6 (user-test validation, when available -- for now, skip to Step 7).
+- **If overall FAIL:** Enter the fix loop (Step 5a).
+
+**Step 5a: Fix loop.**
+
+Track the attempt number. This is attempt 1 if it's the first failure, 2 after the first fix, etc.
+
+1. Write failure details to `mission/issues/task-N-v[attempt].md` containing:
+   - Which assertions failed and why
+   - Build/test/lint failures
+   - Review findings rated Critical or Important
+
+2. If attempt >= 3: **Circuit breaker.** Log all failures to progress.md and ask the human:
+   - **Retry:** Reset attempt counter and try again
+   - **Skip:** Mark task as skipped in progress.md, move to next task
+   - **Abort:** Stop the build phase, log "Mission paused by human"
+
+3. If attempt < 3: Assemble a fix brief and dispatch a fix worker.
+
+   Write the fix brief to `mission/briefs/task-N-fix-v[attempt+1].md`:
+
+   ```markdown
+   # Fix Brief: Task N - [name] (Attempt [attempt+1])
+
+   ## What Failed
+   [Specific failed assertions from the validator report]
+
+   ## Validator Output
+   [Relevant error messages, test failures, review findings]
+
+   ## Commit to Fix
+   [SHA of the broken commit]
+
+   ## Procedures
+   - Fix only the issues described above
+   - Do not refactor or change anything unrelated to the failures
+   - Commit as a single commit with message: "[task-N] fix: description"
+   - Write your handoff report to mission/handoffs/task-N-fix-v[attempt+1].md
+   ```
+
+   Dispatch the fix worker using the same mechanism as Step 2 (Codex or Claude per config). Wait for completion via Monitor.
+
+   After the fix worker completes: go back to **Step 4** (re-run scrutiny validation with the new commit SHA). Both validators must re-run after every fix.
+
+**Step 6: Run user-test validation.** (placeholder -- implemented in change: usertest-validation)
+
+When the user-test validator is available, spawn it here with the commit SHA and contract assertions. On failure, enter the fix loop (Step 5a) with the user-test failures. For now, skip to Step 7.
+
+**Step 7: Track progress.**
 
 1. Mark the task complete in tasks.md: change `- [ ]` to `- [x]` for this task
 2. Append to `mission/progress.md`:
    ```
-   - [timestamp] Task N complete: [task name]. Commit: [short SHA]. Worker: [codex/claude].
+   - [timestamp] Task N complete: [task name]. Commit: [short SHA]. Scrutiny: PASS. Worker: [codex/claude].
    ```
 3. Update the plan:
    ```
@@ -357,13 +474,13 @@ When the Monitor fires (or the Agent returns):
    - **If yes:** Go back to Step 1 for the next unchecked task.
    - **If no:** All tasks complete. Log to progress.md:
      ```
-     - [timestamp] Build phase complete. All tasks implemented.
+     - [timestamp] Build phase complete. All tasks implemented and validated.
      ```
      Update the plan status:
      ```
      ## Status
      Phase: build COMPLETE
-     All tasks implemented. Validation not yet available -- see changes: scrutiny-validation, usertest-validation.
+     All tasks implemented and validated.
      ```
 
 The build phase is complete.
