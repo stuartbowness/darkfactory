@@ -13,7 +13,7 @@ Search for OpenSpec changes that have an active mission (unchecked tasks remaini
 
 1. Glob for `openspec/changes/*/mission/config.yaml` to find all mission directories.
 2. For each match, read the corresponding `openspec/changes/<change-name>/tasks.md`.
-3. A mission is **active** if `tasks.md` contains at least one unchecked item (`- [ ]`).
+3. A mission is **active** if `tasks.md` contains at least one unchecked item (`- [ ]`). Tasks marked `- [~]` (skipped) are not considered unchecked.
 4. Collect the list of active missions with their change name and progress count (checked vs total tasks).
 
 ### Handle results
@@ -37,27 +37,51 @@ Read these files:
 | Proposal | `proposal.md` | What is being built and why |
 | Design | `design.md` | Architecture decisions |
 
-Also read all existing handoff files in `mission/handoffs/` and all validation reports in `mission/validations/`. These tell you the outcome of completed tasks.
+Also read all existing handoff files in `mission/handoffs/` and all validation reports in `mission/validations/` (including `task-N-scrutiny.md`, `task-N-usertest.md`, `task-N-adversarial-a.md`, `task-N-adversarial-b.md`, `task-N-adversarial-synthesis.md`). These tell you the outcome of completed tasks and reveal mid-cycle interruptions.
 
-## Phase 3: Detect Orphaned Commits
+## Phase 3: Detect Mid-Cycle State and Orphaned Commits
+
+Check each unchecked task (`- [ ]`) in tasks.md for partial completion. A task can be interrupted at various points in the validation pipeline. The resume skill detects exactly where it stopped and resumes from that point rather than starting over.
+
+For each unchecked task in tasks.md (skip `- [~]` skipped tasks):
+
+### 3a: Check for handoff with missing validations
+
+If `mission/handoffs/task-N.md` exists (worker finished), check which validation reports exist:
+
+| Handoff | Scrutiny Report | User-test Report | Adversarial Synthesis | Resume From |
+|---------|----------------|-----------------|----------------------|-------------|
+| exists | missing | missing | missing | Step 4 (scrutiny validation) |
+| exists | exists (PASS) | missing | missing | Step 6 (user-test validation) |
+| exists | exists (PASS) | exists (PASS) | missing | Step 6a (adversarial review) |
+| exists | exists (PASS) | exists (PASS) | exists (PASS) | Step 6b (demo video) then mark complete |
+
+If a validation report exists but shows FAIL, resume from the fix loop (Step 5a) with that failure.
+
+Log to progress.md: `<timestamp> -- Task N: resuming from <step name>. Previous session interrupted mid-cycle.`
+
+Extract the commit SHA from the handoff file and continue the validation pipeline from the appropriate step.
+
+### 3b: Detect orphaned commits
 
 An orphaned commit is one where a worker committed code (matching the `[task-N]` pattern in the commit message) but no handoff file exists at `mission/handoffs/task-N.md`. This happens when the session died between the worker's commit and the orchestrator recording the result.
 
-For each unchecked task in tasks.md:
+For each unchecked task that did NOT have a handoff in step 3a:
 
 1. Run: `git log --oneline --grep="\[task-N\]" -1`
 2. If a commit is found but `mission/handoffs/task-N.md` does **not** exist, this is an orphaned commit.
 3. Report the orphaned commit to the human: show the commit SHA, message, and the task description.
-4. Ask: "This task has a commit but no handoff. Should I count it as done, or re-run the task?"
+4. Ask: "This task has a commit but no handoff. Should I validate it (run full validation cycle against this commit), or re-run the task from scratch?"
 5. Wait for the human's answer before proceeding.
 
-If the human says count as done:
-- Mark the task as checked in tasks.md (`- [x]`).
-- Append to progress.md: "Task N marked complete from orphaned commit <SHA> (human confirmed)."
+If the human says validate it:
+- Write a synthetic handoff file to `mission/handoffs/task-N.md` with the orphaned commit SHA.
+- Append to progress.md: `<timestamp> -- Task N: orphaned commit <SHA> found. Human confirmed code exists. Running full validation cycle.`
+- Run the full validation cycle against that commit SHA: scrutiny (Step 4), user-test (Step 6), adversarial review (Step 6a). The human is confirming "the code exists," not "the code is correct." Validation still needs to happen.
 
 If the human says re-run:
 - Leave the task unchecked.
-- Append to progress.md: "Task N orphaned commit <SHA> found but human requested re-run."
+- Append to progress.md: `<timestamp> -- Task N: orphaned commit <SHA> found but human requested re-run.`
 
 ## Phase 4: Reconstruct the Orchestrator Plan
 
@@ -84,7 +108,7 @@ The plan must include:
 - Issues directory: `openspec/changes/<change-name>/mission/issues/`
 
 ### Engine configuration
-- Read `config.yaml` and record which engine is assigned to each role (worker, scrutiny_validator, usertest_validator, demo_video).
+- Read `config.yaml` and record which engine is assigned to each role (worker, scrutiny_validator, usertest_validator, adversarial_reviewer_a, adversarial_reviewer_b, demo_video).
 
 ### Orchestrator rules
 - Serial execution: only one worker at a time
@@ -107,7 +131,7 @@ Previously completed: tasks <list of completed task numbers>.
 
 ## Phase 6: Continue the Build Loop
 
-For each remaining unchecked task, execute the following sequence. Process tasks in order -- serial execution, one at a time.
+For each remaining unchecked task (`- [ ]`), execute the following sequence. Process tasks in order -- serial execution, one at a time. Skip tasks marked `- [~]` (skipped) and `- [x]` (complete). If Phase 3a detected a mid-cycle task, resume from the appropriate step rather than starting from Step 1.
 
 ### Step 1: Assemble the brief
 
@@ -177,11 +201,31 @@ The user-test validator decides a test strategy:
 
 Write the validation report to `mission/validations/task-N-usertest.md`. The report must state PASS or FAIL with details.
 
+### Step 4a: Run adversarial review (parallel)
+
+After both scrutiny and user-test pass, run two adversarial reviewers in parallel:
+- **Reviewer A** (engine from `adversarial_reviewer_a` in config.yaml, default codex): Dispatch via Monitor if external (codex), or Agent if local (claude).
+- **Reviewer B** (engine from `adversarial_reviewer_b` in config.yaml, default claude): Dispatch via Agent tool.
+
+Both receive the commit SHA and the **full contract** (all tasks, not just the current one). They independently look for flaws, inconsistencies, cross-file compatibility issues, and anything previous validators missed.
+
+Reports written to:
+- `mission/validations/task-N-adversarial-a.md`
+- `mission/validations/task-N-adversarial-b.md`
+
+After both complete, the orchestrator synthesizes the results into `mission/validations/task-N-adversarial-synthesis.md`:
+- Deduplicate shared findings
+- Flag disagreements (one PASS, one FAIL) and make a final call
+- Include unique findings from each reviewer
+- Overall FAIL if any finding has a FAIL verdict
+
+If synthesis is PASS, proceed to demo video. If FAIL, enter the fix loop (Step 6). After any fix, re-run ALL validators (scrutiny, user-test, both adversarial reviewers).
+
 ### Step 5: Handle validation results
 
-**If both validators pass:** Mark the task as checked in tasks.md (`- [x]`). Append to progress.md: "Task N passed scrutiny and user-test validation." Move to the next task.
+**If all validators pass (scrutiny, user-test, adversarial review):** Mark the task as checked in tasks.md (`- [x]`). Append to progress.md: "Task N passed scrutiny, user-test, and adversarial review validation." Move to demo video if applicable, then to the next task.
 
-**If either validator fails:** Enter the fix loop.
+**If any validator fails:** Enter the fix loop.
 
 ### Step 6: Fix loop
 
@@ -194,11 +238,15 @@ When validation fails:
    - The commit SHA of the failed attempt
    - Instructions: fix the failures, commit with message `[task-N] Fix: <description>`, write a handoff to `mission/handoffs/task-N-fix-vM.md`
 3. Dispatch a fix worker using the same engine as the original worker.
-4. After the fix worker completes, re-run both validators (scrutiny and user-test).
-5. If both pass, mark the task as done and continue.
-6. If either fails again, increment M and repeat from step 1.
+4. After the fix worker completes, re-run all validators (scrutiny, user-test, and both adversarial reviewers).
+5. If all pass, mark the task as done and continue.
+6. If any fails again, increment M and repeat from step 1.
 
-**Circuit breaker:** After 3 failed fix attempts on the same task, stop the fix loop. Log the situation to progress.md. Report to the human: "Task N has failed validation 3 times. Here are the failures: [summary]. What would you like to do?" Wait for human guidance.
+**Circuit breaker:** After 3 failed fix attempts on the same task, stop the fix loop. Log the situation to progress.md. Report to the human: "Task N has failed validation 3 times. Here are the failures: [summary]. Options: retry (allows one more attempt, counter continues from current value), skip (mark as `- [~]`, continue to next task), abort (stop the mission)."
+
+- **Retry:** Increment the attempt counter by 1 (e.g., attempt 3 becomes attempt 4). Allow one more fix attempt. Retry does NOT reset the counter.
+- **Skip:** Mark the task as `- [~]` in tasks.md. Log to progress.md: `<timestamp> -- Task N: SKIPPED by human after <attempt> failed attempts.` Continue to the next unchecked task.
+- **Abort:** Stop the build loop. Report to the human.
 
 ### Step 7: Update progress
 

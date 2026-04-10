@@ -37,6 +37,8 @@ openspec/changes/<change-name>/mission/
 - Workers: <engine from config.yaml, default codex>
 - Scrutiny validator: <engine, default claude>
 - User-test validator: <engine, default claude>
+- Adversarial reviewer A: <engine, default codex>
+- Adversarial reviewer B: <engine, default claude>
 - Demo video: <engine, default claude>
 
 ## Skills to Use
@@ -52,23 +54,24 @@ openspec/changes/<change-name>/mission/
 - /opsx:archive -- archive change (post-merge)
 
 ## Mission Flow
-For each unchecked task in tasks.md:
+For each unchecked task in tasks.md (skip `- [~]` tasks):
 1. Read mission state from progress.md
 2. Write brief to mission/briefs/task-N.md
 3. Dispatch worker (engine from config.yaml)
 4. Read handoff from mission/handoffs/task-N.md
 5. Spawn scrutiny validator (commit SHA + contract assertions)
-6. If fail -> write to issues/, spawn fix worker, re-validate both. Circuit breaker at 3.
+6. If fail -> write to issues/, spawn fix worker, re-validate all. Circuit breaker at 3.
 7. Spawn user-test validator (commit SHA + contract assertions)
 8. If fail -> same fix/re-validate loop
-9. If frontend task -> spawn demo video
-10. Mark task done in tasks.md, update progress.md
+9. Run dual adversarial review (reviewer A + reviewer B in parallel), synthesize, fix loop if FAIL
+10. If frontend task -> spawn demo video
+11. Mark task done in tasks.md, update progress.md
 
 ## Rules
 - One worker at a time (serial execution)
 - Workers never see contract.md
 - Validators never see proposal.md or design.md
-- On any failure, re-run BOTH validators after fix
+- On any failure, re-run ALL validators after fix (scrutiny, user-test, adversarial review)
 - Write all decisions to progress.md
 
 ## Current Task: <N or "none">
@@ -170,10 +173,12 @@ mission/
 ### config.yaml
 
 ```yaml
-engine:
+engines:
   worker: codex
   scrutiny_validator: claude
   usertest_validator: claude
+  adversarial_reviewer_a: codex
+  adversarial_reviewer_b: claude
   demo_video: claude
 ```
 
@@ -209,7 +214,7 @@ Ask: "Ready to start the build? You can request changes or approve."
 
 ## Phase 7: Build Loop
 
-For each unchecked task in tasks.md, run Steps 1-7. Process tasks in order, one at a time (serial execution).
+For each unchecked task (`- [ ]`) in tasks.md, run Steps 1-8. Process tasks in order, one at a time (serial execution). Skip tasks marked `- [~]` (skipped) and `- [x]` (complete).
 
 ### Step 1: Assemble Brief
 
@@ -300,8 +305,8 @@ Use the Agent tool to spawn a subagent. Pass the full brief content as the promp
 Read the handoff file at `mission/handoffs/task-N.md`.
 
 - **TASK_COMPLETE** (handoff exists and contains a commit SHA): Extract the commit SHA. Log to progress.md: `<timestamp> -- Task N: worker completed. Commit: <SHA>`. Proceed to Step 4.
-- **TASK_FAILED** (handoff missing or no commit SHA): Log to progress.md: `<timestamp> -- Task N: worker FAILED. <reason>`. Ask the human: retry, skip, or abort.
-- **Timeout** (Monitor timed out): Log to progress.md: `<timestamp> -- Task N: worker TIMED OUT after 10 minutes.`. Ask the human: retry, skip, or abort.
+- **TASK_FAILED** (handoff missing or no commit SHA): Log to progress.md: `<timestamp> -- Task N: worker FAILED. <reason>`. Ask the human: retry, skip, or abort. If skip: mark the task as `- [~]` in tasks.md and log `<timestamp> -- Task N: SKIPPED by human.` to progress.md. The build loop ignores `- [~]` tasks.
+- **Timeout** (Monitor timed out): Log to progress.md: `<timestamp> -- Task N: worker TIMED OUT after 10 minutes.`. Ask the human: retry, skip, or abort. If skip: mark the task as `- [~]` in tasks.md and log `<timestamp> -- Task N: SKIPPED by human.` to progress.md. The build loop ignores `- [~]` tasks.
 
 ### Step 4: Scrutiny Validation
 
@@ -402,7 +407,11 @@ Track the attempt number (starts at 1 for the initial worker, increments on each
 <recommendations from validator>
 ```
 
-2. **Circuit breaker check:** If attempt >= 3, stop the loop. Log to progress.md: `<timestamp> -- Task N: circuit breaker triggered after <attempt> attempts.` Update plan status to PAUSED. Ask the human: "Task N has failed validation 3 times. Options: retry (resets counter), skip (mark as skipped, continue), abort (stop the mission)."
+2. **Circuit breaker check:** If attempt >= 3, stop the loop. Log to progress.md: `<timestamp> -- Task N: circuit breaker triggered after <attempt> attempts.` Update plan status to PAUSED. Ask the human: "Task N has failed validation 3 times. Options: retry (allows one more attempt, counter continues from current value), skip (mark as skipped with `- [~]`, continue to next task), abort (stop the mission)."
+
+   - **Retry:** Increment the attempt counter by 1 (e.g., attempt 3 becomes attempt 4). Allow one more fix attempt. If it fails again, the circuit breaker triggers again at the new count. Retry does NOT reset the counter.
+   - **Skip:** Mark the task as `- [~]` in tasks.md. Log to progress.md: `<timestamp> -- Task N: SKIPPED by human after <attempt> failed attempts.` Continue to the next unchecked task. The build loop ignores `- [~]` tasks (they are neither unchecked nor complete).
+   - **Abort:** Update plan status to PAUSED. Stop the build loop. Report to the human.
 
 3. **Write fix brief** to `mission/briefs/task-N-fix-v<attempt+1>.md`:
 
@@ -438,7 +447,7 @@ Track the attempt number (starts at 1 for the initial worker, increments on each
 
 4. **Dispatch fix worker** using the same engine and method as Step 2, but with the fix brief.
 
-5. **After fix completes:** Go back to **Step 4** (re-run scrutiny validation with the new commit SHA). Both validators must re-run after every fix, not just the one that failed.
+5. **After fix completes:** Go back to **Step 4** (re-run scrutiny validation with the new commit SHA). All validators must re-run after every fix (scrutiny, user-test, both adversarial reviewers), not just the one that failed.
 
 ### Step 6: User-Test Validation
 
@@ -509,10 +518,115 @@ IMPORTANT: The overall result is FAIL if ANY contract assertion fails (SKIP does
 Read the validator's report from `mission/validations/task-N-usertest.md`.
 
 - **PASS**: Log to progress.md: `<timestamp> -- Task N: user-test validation PASSED.` Proceed to Step 6a.
-- **FAIL**: Enter the fix loop (Step 5a) with the user-test failure details. After the fix, re-run **both** validators (Step 4 first, then Step 6).
+- **FAIL**: Enter the fix loop (Step 5a) with the user-test failure details. After the fix, re-run **all** validators (Step 4, then Step 6, then Step 6a).
 - **SKIP** (all assertions skipped): Log to progress.md: `<timestamp> -- Task N: user-test validation SKIPPED (all assertions infrastructure-only).` Proceed to Step 6a.
 
-### Step 6a: Demo Video (Frontend Only)
+### Step 6a: Dual Adversarial Review
+
+Run two independent adversarial reviewers in parallel. They receive the commit SHA and the **full contract** (all assertions across all tasks, not just the current task's). They look for flaws, inconsistencies, cross-file compatibility issues, and anything the previous validators missed.
+
+Read the engine assignments from `config.yaml`:
+- `adversarial_reviewer_a` (default: codex) -- dispatched via Monitor since it is an external process
+- `adversarial_reviewer_b` (default: claude) -- dispatched via Agent tool since it runs within the session
+
+#### Adversarial Reviewer Prompt (used for both A and B)
+
+```
+You are an adversarial reviewer for the Darkfactory mission system. Your job is to find flaws, inconsistencies, cross-file compatibility issues, and anything the previous validators (scrutiny + user-test) may have missed.
+
+## Commit to Review
+SHA: <commit-sha>
+
+## Full Validation Contract (all tasks)
+<paste the ENTIRE contract.md>
+
+## Instructions
+
+1. Run `git show <commit-sha>` to read the full diff.
+2. Look for:
+   - Logic errors or edge cases not covered by tests
+   - Cross-file inconsistencies (types, interfaces, naming)
+   - Contract assertions that technically pass but have subtle flaws
+   - Security issues, race conditions, or data integrity problems
+   - Missing error handling or graceful degradation
+   - Anything that would break when integrated with other tasks' code
+3. For each finding, classify as PASS (no issue) or FAIL (real problem that must be fixed).
+4. Be adversarial: assume the code is wrong until proven right.
+
+## Output Format
+
+Write your report to: <absolute path to mission/validations/task-N-adversarial-{a|b}.md>
+
+```markdown
+# Adversarial Review {A|B}: Task N
+
+## Result: PASS | FAIL
+
+## Findings
+| # | Category | Severity | Finding | Verdict |
+|---|----------|----------|---------|---------|
+| 1 | <category> | HIGH/MEDIUM/LOW | <description> | PASS/FAIL |
+| 2 | ... | ... | ... | ... |
+
+## Failed Findings (if any)
+<detailed explanation of each FAIL finding with evidence and fix guidance>
+
+## Summary
+<overall assessment>
+```
+
+IMPORTANT: The overall result is FAIL if ANY finding has a FAIL verdict. Be strict and adversarial.
+```
+
+#### Dispatch Both Reviewers in Parallel
+
+**Reviewer A** (if engine is `codex`): Use Monitor with the same pattern as worker dispatch, but passing the adversarial reviewer prompt. Write report to `mission/validations/task-N-adversarial-a.md`.
+
+**Reviewer B** (if engine is `claude`): Use Agent tool with the adversarial reviewer prompt. Write report to `mission/validations/task-N-adversarial-b.md`.
+
+Both run at the same time. Wait for both to complete before proceeding.
+
+#### Synthesize Results
+
+After both reports are written, the orchestrator reads both and creates a synthesis report at `mission/validations/task-N-adversarial-synthesis.md`:
+
+```markdown
+# Adversarial Review Synthesis: Task N
+
+## Result: PASS | FAIL
+
+## Shared Findings (both reviewers agree)
+| # | Finding | Reviewer A | Reviewer B | Verdict |
+|---|---------|-----------|-----------|---------|
+| 1 | <finding> | PASS/FAIL | PASS/FAIL | PASS/FAIL |
+
+## Disagreements (reviewers differ)
+| # | Finding | Reviewer A | Reviewer B | Orchestrator Verdict | Rationale |
+|---|---------|-----------|-----------|---------------------|-----------|
+| 1 | <finding> | PASS | FAIL | <orchestrator decides> | <why> |
+
+## Unique Findings
+| # | Source | Finding | Verdict |
+|---|--------|---------|---------|
+| 1 | Reviewer A only | <finding> | PASS/FAIL |
+| 2 | Reviewer B only | <finding> | PASS/FAIL |
+
+## Action Items (if FAIL)
+<prioritized list of issues that must be fixed>
+```
+
+**Synthesis rules:**
+- Deduplicate shared findings (same issue reported by both).
+- Flag disagreements and let the orchestrator make the final call based on evidence.
+- Include unique findings from each reviewer.
+- Overall result is FAIL if ANY finding in the synthesis has a FAIL verdict.
+
+#### Handle Adversarial Review Result
+
+- **PASS**: Log to progress.md: `<timestamp> -- Task N: adversarial review PASSED (both reviewers).` Proceed to Step 6b.
+- **FAIL**: Enter the fix loop (Step 5a) with the synthesis findings. After the fix, re-run **all** validators (Step 4, then Step 6, then Step 6a).
+
+### Step 6b: Demo Video (Frontend Only)
 
 The orchestrator decides whether this task has a frontend component by checking the diff. If the task touches UI files (components, pages, styles, templates), it has a frontend component.
 
@@ -526,7 +640,7 @@ Spawn a Claude subagent to run `/demo-video`. The subagent should save the recor
 
 **If no frontend component:** Skip this step. Proceed to Step 7.
 
-### Step 7: Track Progress
+### Step 7: Track Progress (updated numbering: was Step 7, steps above were renumbered)
 
 1. Mark the task complete in `tasks.md`: change `- [ ]` to `- [x]` for this task.
 
@@ -537,6 +651,7 @@ Spawn a Claude subagent to run `/demo-video`. The subagent should save the recor
   - Commit: <SHA>
   - Scrutiny: PASS
   - User-test: PASS | SKIP
+  - Adversarial review: PASS
   - Demo: RECORDED | SKIPPED | FAILED
   - Fix attempts: <number, 0 if first try passed>
 ```
@@ -567,10 +682,10 @@ Run `/pr` to create a **draft** pull request. Never create a ready-for-review PR
 | 2 | <name> | <short SHA> | Done |
 
 ### Validation Results
-| Task | Scrutiny | User-Test | Demo | Fix Attempts |
-|------|----------|-----------|------|-------------|
-| 1 | PASS | PASS | N/A | 0 |
-| 2 | PASS | PASS | RECORDED | 1 |
+| Task | Scrutiny | User-Test | Adversarial | Demo | Fix Attempts |
+|------|----------|-----------|-------------|------|-------------|
+| 1 | PASS | PASS | PASS | N/A | 0 |
+| 2 | PASS | PASS | PASS | RECORDED | 1 |
 
 ### Issues Encountered
 <list any issues from mission/issues/, or "None">
@@ -614,11 +729,13 @@ Running `/mission-status` (via the mission-status skill) in a separate session s
 
 ## Rules (Always Enforced)
 
-1. **Serial execution.** One worker at a time. Never dispatch two workers in parallel.
+1. **Serial execution.** One worker at a time. Never dispatch two workers in parallel. (Exception: adversarial reviewers A and B run in parallel since they are independent read-only reviewers.)
 2. **Adversarial separation.** Workers never see `contract.md`. Validators never see `proposal.md` or `design.md`.
-3. **Both validators re-run after every fix.** Even if only one failed, both re-run to catch regressions.
-4. **Circuit breaker at 3.** After 3 failed attempts on the same task, stop and ask the human.
+3. **All validators re-run after every fix.** Even if only one failed, all validators (scrutiny, user-test, both adversarial reviewers) re-run to catch regressions.
+4. **Circuit breaker at 3.** After 3 failed attempts on the same task, stop and ask the human. Retry allows one more attempt but does NOT reset the counter.
 5. **File-backed state.** All decisions and status go to disk. The mission must be resumable from files alone.
 6. **Single commit per task.** One task, one worker, one commit, one validation cycle.
 7. **Draft PRs only.** Never create a ready-for-review PR. The human promotes it.
 8. **Plan is the operating manual.** Keep the plan updated after every phase and step. It must be accurate if context compacts.
+9. **Skipped tasks use `- [~]`.** The build loop treats `- [~]` as neither unchecked nor complete. Skipped tasks are not re-attempted.
+10. **Monitor is for external processes.** Monitor is used for external process dispatch (Codex workers, Codex adversarial reviews). Claude subagent validators use the Agent tool directly since they run within the session and return synchronously.

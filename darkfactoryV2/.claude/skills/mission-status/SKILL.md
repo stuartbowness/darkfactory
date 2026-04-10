@@ -37,11 +37,11 @@ Extract the **change name** from the path (the `*` segment in `openspec/changes/
 Read these files. All reads are non-destructive -- do not write anything.
 
 1. **Mission config** (`openspec/changes/<change>/mission/config.yaml`)
-   - Extract engine settings: `worker`, `scrutiny_validator`, `usertest_validator`, `demo_video`
+   - Extract engine settings: `worker`, `scrutiny_validator`, `usertest_validator`, `adversarial_reviewer_a`, `adversarial_reviewer_b`, `demo_video`
 
 2. **Tasks list** (`openspec/changes/<change>/tasks.md`)
-   - Parse each checkbox line: `- [x]` = completed, `- [ ]` = not completed
-   - Count total tasks and completed tasks
+   - Parse each checkbox line: `- [x]` = completed, `- [ ]` = not completed, `- [~]` = skipped
+   - Count total tasks, completed tasks, and skipped tasks
    - Extract each task's name (the text after the checkbox)
 
 3. **Progress log** (`openspec/changes/<change>/mission/progress.md`)
@@ -54,17 +54,22 @@ Read these files. All reads are non-destructive -- do not write anything.
 For each task (numbered by its position in the tasks list), check for validation artifacts:
 
 1. **Scrutiny validation:** Read `mission/validations/task-N-scrutiny.md`
-   - If it exists, find the line starting with "Overall" and extract the result (PASS or FAIL)
+   - If it exists, find the first line containing "PASS" or "FAIL" after a heading (look for both `## Overall:` and `## Result:` patterns, or simply the first line in the file containing the word "PASS" or "FAIL")
    - If it does not exist, report as "pending"
 
 2. **User-test validation:** Read `mission/validations/task-N-usertest.md`
-   - If it exists, find the line starting with "Overall" and extract the result (PASS or FAIL)
+   - If it exists, find the first line containing "PASS" or "FAIL" after a heading (look for both `## Overall:` and `## Result:` patterns, or simply the first line in the file containing the word "PASS" or "FAIL")
    - If it does not exist, report as "pending"
 
-3. **Demo video:** Check if `mission/validations/task-N-demo.mp4` exists
+3. **Adversarial review:** Read `mission/validations/task-N-adversarial-synthesis.md`
+   - If it exists, find the first line containing "PASS" or "FAIL" (same approach as above)
+   - If it does not exist, check for individual reports (`task-N-adversarial-a.md`, `task-N-adversarial-b.md`) and report partial status
+   - If none exist, report as "pending"
+
+4. **Demo video:** Check if `mission/validations/task-N-demo.mp4` exists
    - Report "yes" if it exists, omit if it does not
 
-4. **Fix attempts:** Search for `mission/issues/task-N-*.md` files
+5. **Fix attempts:** Search for `mission/issues/task-N-*.md` files
    - Count the number of matching files
    - If any exist, append "(N attempts)" to the task's status line
 
@@ -86,15 +91,16 @@ Mission: <change name>
 Engine: worker=<engine>, validators=<engine>
 Started: <timestamp from first progress.md entry>
 
-Progress: <completed>/<total> tasks
+Progress: <completed>/<total> tasks (<skipped> skipped)
 [===========>                    ] <percent>%
 
 Tasks:
-  [x] Task 1: <name> - Scrutiny: PASS, User-test: PASS, Demo: yes
-  [x] Task 2: <name> - Scrutiny: PASS, User-test: PASS (2 attempts)
-  [ ] Task 3: <name> - IN PROGRESS (worker dispatched, awaiting handoff)
-  [ ] Task 4: <name> - (next)
-  [ ] Task 5: <name>
+  [x] Task 1: <name> - Scrutiny: PASS, User-test: PASS, Adversarial: PASS, Demo: yes
+  [x] Task 2: <name> - Scrutiny: PASS, User-test: PASS, Adversarial: PASS (2 attempts)
+  [~] Task 3: <name> - SKIPPED
+  [ ] Task 4: <name> - IN PROGRESS (worker dispatched, awaiting handoff)
+  [ ] Task 5: <name> - (next)
+  [ ] Task 6: <name>
 
 Recent activity:
   <last 5 entries from progress.md>
@@ -107,10 +113,11 @@ Recent activity:
 - Show the percentage as a whole number
 
 **Task line rules:**
-- Use `[x]` for completed tasks and `[ ]` for unchecked tasks
+- Use `[x]` for completed tasks, `[ ]` for unchecked tasks, and `[~]` for skipped tasks
 - After the task name, show validation results separated by commas
-- Only show Scrutiny/User-test/Demo if the corresponding artifact exists or the task is completed
+- Only show Scrutiny/User-test/Adversarial/Demo if the corresponding artifact exists or the task is completed
 - Append fix attempt count in parentheses if any issues were found
+- For skipped tasks, show `SKIPPED` instead of validation results
 - For in-progress tasks, show the `IN PROGRESS` annotation instead of validation results
 - For the next unstarted task, show `(next)`
 - For remaining unstarted tasks, show just the task name with no annotation
