@@ -11,6 +11,22 @@ Start an autonomous multi-agent mission for a single OpenSpec change. The orches
 
 ---
 
+## Pre-flight Check
+
+**Run this before anything else.** Verify the project is ready for a mission.
+
+1. **Git repo:** Run `git status`. If not a git repo, run `git init`.
+
+2. **GitHub remote:** Run `git remote -v`. If no remote exists, warn: "No GitHub remote found. The mission will run but cannot create a draft PR at the end. Add a remote with `git remote add origin <url>` if you want a PR."
+
+3. **OpenSpec:** Check if `openspec/config.yaml` exists. If not, run `openspec init --tools claude,codex`. If the `openspec` CLI is not installed, stop and tell the user: "OpenSpec is required. Install with `npm install -g openspec`."
+
+4. **Codex CLI:** Run `codex --version`. If not found, warn: "Codex CLI not installed. Workers will use Claude subagents instead. Install Codex with `npm install -g @openai/codex` for the default worker engine."
+
+If any check fails with a hard stop (OpenSpec not installed), do not proceed. For warnings (no remote, no Codex), continue and note the limitation in the plan.
+
+---
+
 ## Phase 0: Enter Plan Mode
 
 Enter plan mode immediately. Write a durable operating manual as the plan. This plan survives context compaction and is the orchestrator's source of truth.
