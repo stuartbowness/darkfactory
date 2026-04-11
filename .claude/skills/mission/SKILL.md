@@ -349,7 +349,12 @@ Run these checks in order. For each, report PASS or FAIL with evidence.
 
 4. **Lint:** Run the project's lint command. Are there any violations?
 
-5. **Code review:** Run /review against the diff (this includes reading the full diff). Report any bugs, security issues, or logic errors found.
+5. **Code review:** Run /review against the diff (this includes reading the full diff). Check specifically for:
+   - Bugs: off-by-one errors, null/undefined access, race conditions, missing error handling at boundaries
+   - Security: injection, auth issues, secrets in code, unsafe input handling
+   - Logic: wrong conditions, missing edge cases, incorrect assumptions
+   - Breaking changes: API contract changes, removed exports, changed behavior
+   Report findings by severity (critical / warning / nit) with file:line references.
 
 6. **Code standards check:** Review the diff for these specific anti-patterns. Flag any found:
    - Backwards-compatibility code: old code paths kept "just in case" (renamed `_` variables, re-exports of removed types, `// removed` comments, deprecated shims). If unused, it should be deleted.
