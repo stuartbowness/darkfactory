@@ -137,10 +137,10 @@ Clone the darkfactory repo and copy the skills globally:
 
 ```bash
 git clone https://github.com/layercodedev/darkfactory.git ~/.darkfactory
-cp -r ~/.darkfactory/.claude/skills/mission ~/.claude/skills/
-cp -r ~/.darkfactory/.claude/skills/mission-resume ~/.claude/skills/
-cp -r ~/.darkfactory/.claude/skills/mission-status ~/.claude/skills/
-cp -r ~/.darkfactory/.claude/skills/darkfactory-init ~/.claude/skills/
+ln -sf ~/.darkfactory/.claude/skills/mission ~/.claude/skills/mission
+ln -sf ~/.darkfactory/.claude/skills/mission-resume ~/.claude/skills/mission-resume
+ln -sf ~/.darkfactory/.claude/skills/mission-status ~/.claude/skills/mission-status
+ln -sf ~/.darkfactory/.claude/skills/darkfactory-init ~/.claude/skills/darkfactory-init
 ```
 
 Restart Claude Code, then from any project run:
@@ -158,14 +158,10 @@ It checks what's installed and tells you exactly what's missing. It will:
 
 ### Updating
 
-Pull the latest and re-copy:
+Since skills are symlinked, just pull:
 
 ```bash
 cd ~/.darkfactory && git pull
-cp -r .claude/skills/mission ~/.claude/skills/
-cp -r .claude/skills/mission-resume ~/.claude/skills/
-cp -r .claude/skills/mission-status ~/.claude/skills/
-cp -r .claude/skills/darkfactory-init ~/.claude/skills/
 ```
 
 ### Configuration

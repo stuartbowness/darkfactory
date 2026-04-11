@@ -24,10 +24,10 @@ If any are missing, report:
 Missing core skills. Install them:
 
   git clone https://github.com/layercodedev/darkfactory.git ~/.darkfactory
-  cp -r ~/.darkfactory/.claude/skills/mission ~/.claude/skills/
-  cp -r ~/.darkfactory/.claude/skills/mission-resume ~/.claude/skills/
-  cp -r ~/.darkfactory/.claude/skills/mission-status ~/.claude/skills/
-  cp -r ~/.darkfactory/.claude/skills/darkfactory-init ~/.claude/skills/
+  ln -sf ~/.darkfactory/.claude/skills/mission ~/.claude/skills/mission
+  ln -sf ~/.darkfactory/.claude/skills/mission-resume ~/.claude/skills/mission-resume
+  ln -sf ~/.darkfactory/.claude/skills/mission-status ~/.claude/skills/mission-status
+  ln -sf ~/.darkfactory/.claude/skills/darkfactory-init ~/.claude/skills/darkfactory-init
 
 Then restart Claude Code and re-run /darkfactory-init.
 ```
@@ -51,14 +51,13 @@ If any are missing, report only the missing ones:
 ```
 Missing supporting skills. Install them:
 
-  git clone https://github.com/layercodedev/skills.git /tmp/layercode-skills
-  cd /tmp/layercode-skills && git checkout 651eab033bdf8f7fd535c274f8cbe839075aba5e
-  cp -r /tmp/layercode-skills/grill-me ~/.claude/skills/        # if missing
-  cp -r /tmp/layercode-skills/ubiquitous-language ~/.claude/skills/  # if missing
-  cp -r /tmp/layercode-skills/write-a-prd ~/.claude/skills/     # if missing
-  cp -r /tmp/layercode-skills/prd-to-plan ~/.claude/skills/     # if missing
-  cp -r /tmp/layercode-skills/tdd ~/.claude/skills/             # if missing
-  rm -rf /tmp/layercode-skills
+  git clone https://github.com/layercodedev/skills.git ~/.darkfactory-skills
+  cd ~/.darkfactory-skills && git checkout 651eab033bdf8f7fd535c274f8cbe839075aba5e
+  ln -sf ~/.darkfactory-skills/grill-me ~/.claude/skills/grill-me
+  ln -sf ~/.darkfactory-skills/ubiquitous-language ~/.claude/skills/ubiquitous-language
+  ln -sf ~/.darkfactory-skills/write-a-prd ~/.claude/skills/write-a-prd
+  ln -sf ~/.darkfactory-skills/prd-to-plan ~/.claude/skills/prd-to-plan
+  ln -sf ~/.darkfactory-skills/tdd ~/.claude/skills/tdd
 
 Then restart Claude Code and re-run /darkfactory-init.
 ```
