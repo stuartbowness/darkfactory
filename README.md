@@ -131,16 +131,16 @@ These skills are referenced by `/mission` but are **not bundled** in this repo. 
 
 ### Install
 
-From the darkfactory repo directory, run:
+From any directory (including the project you want to set up), run:
 
 ```
 /darkfactory-init
 ```
 
 This will:
-1. Install `/mission`, `/mission-resume`, `/mission-status` to `~/.claude/skills/` (global, works in any project)
+1. Install `/mission`, `/mission-resume`, `/mission-status` to `~/.claude/skills/` (pulled from GitHub if not in the local repo)
 2. Check for and install supporting skills (`grill-me`, `ubiquitous-language`, `write-a-prd`, `prd-to-plan`, `tdd`) from [layercodedev/skills](https://github.com/layercodedev/skills) (pinned fork of mattpocock/skills)
-3. Initialize OpenSpec in the target project if needed
+3. Initialize OpenSpec in the current project if needed
 4. Verify CLI dependencies (codex, gh, openspec) are installed and authenticated
 5. Report what's ready and what needs manual action
 
