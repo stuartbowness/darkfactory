@@ -153,7 +153,7 @@ Supporting skills:
   [x] /write-a-prd
   [x] /prd-to-plan
   [x] /tdd
-  [x] /review (required -- from your dotfiles)
+  [x] /review (built-in to Claude Code)
   [x] /simplify (built-in to Claude Code)
   [x] /security-review (conditional -- from your dotfiles)
   [ ] /test-app (optional -- project-specific)

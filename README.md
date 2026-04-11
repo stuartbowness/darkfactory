@@ -109,7 +109,7 @@ These skills are referenced by `/mission` but are **not bundled** in this repo. 
 | `/write-a-prd` | [layercodedev/skills](https://github.com/layercodedev/skills/tree/main/write-a-prd) | Spec phase: structured PRD from grill conversation |
 | `/prd-to-plan` | [layercodedev/skills](https://github.com/layercodedev/skills/tree/main/prd-to-plan) | Spec phase: vertical slice pattern |
 | `/tdd` | [layercodedev/skills](https://github.com/layercodedev/skills/tree/main/tdd) | Build phase: test-driven development for workers |
-| `/review` | Your global Claude skills (required) | Scrutiny validator: code review |
+| `/review` | Built-in Claude Code (required) | Scrutiny validator: code review |
 | `/simplify` | Built-in Claude Code (required) | Scrutiny validator: complexity check |
 | `/security-review` | Your global Claude skills (conditional) | Scrutiny validator: security audit (runs when diff touches auth/secrets/input handling) |
 | `/test-app` | Your project's Claude skills (optional) | User-test validator: browser tests |
