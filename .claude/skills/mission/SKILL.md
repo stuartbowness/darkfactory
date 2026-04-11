@@ -248,12 +248,7 @@ Write a brief to `mission/briefs/task-N.md`.
 <any domain terms the worker needs to understand>
 
 ## Procedures
-- Use `/tdd` to implement this task. Follow the red-green-refactor loop:
-  1. For each acceptance criterion, write a failing test first (RED)
-  2. Implement the minimum code to make the test pass (GREEN)
-  3. Refactor if needed while keeping tests green (REFACTOR)
-  4. Repeat for the next criterion
-- Do NOT write all tests first then all implementation -- work in vertical slices, one test-implementation pair at a time
+- Use `/tdd` to implement this task
 - Commit all changes (code + tests) in a single commit with message: "[task-N] <description>"
 - Write your handoff report to openspec/changes/<change-name>/mission/handoffs/task-N.md
 
@@ -445,7 +440,7 @@ Track the attempt number (starts at 1 for the initial worker, increments on each
 <SHA of the commit that failed validation>
 
 ## Procedures
-- Use `/tdd` to fix: write a failing test that reproduces the issue (RED), then fix the code to make it pass (GREEN)
+- Use `/tdd` to fix the issues described above
 - Do not refactor or change anything unrelated
 - Commit as a single commit with message: "[task-N] fix: <description of what was fixed>"
 - Write handoff report to openspec/changes/<change-name>/mission/handoffs/task-N-fix-v<attempt+1>.md
