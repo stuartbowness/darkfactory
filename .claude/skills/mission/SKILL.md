@@ -77,7 +77,7 @@ After all tasks complete:
 - One worker at a time (serial execution)
 - Workers never see contract.md
 - Validators never see proposal.md or design.md
-- On any failure, re-run ALL validators after fix (scrutiny, user-test, adversarial review)
+- On any failure, re-run both per-task validators after fix (scrutiny, user-test)
 - Write all decisions to progress.md
 
 ## Current Task: <N or "none">

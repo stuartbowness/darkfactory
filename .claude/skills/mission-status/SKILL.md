@@ -91,7 +91,7 @@ Progress: <completed>/<total> tasks (<skipped> skipped)
 
 Tasks:
   [x] Task 1: <name> - Scrutiny: PASS, User-test: PASS, Demo: yes
-  [x] Task 2: <name> - Scrutiny: PASS, User-test: PASS, Adversarial: PASS (2 attempts)
+  [x] Task 2: <name> - Scrutiny: PASS, User-test: PASS (2 attempts)
   [~] Task 3: <name> - SKIPPED
   [ ] Task 4: <name> - IN PROGRESS (worker dispatched, awaiting handoff)
   [ ] Task 5: <name> - (next)
