@@ -103,7 +103,9 @@ These skills are referenced by `/mission` but are **not bundled** in this repo. 
 |-------|--------|---------|
 | `/grill-me` | [layercodedev/skills](https://github.com/layercodedev/skills/tree/main/grill-me) | Spec phase: alignment interview |
 | `/ubiquitous-language` | [layercodedev/skills](https://github.com/layercodedev/skills/tree/main/ubiquitous-language) | Spec phase: shared glossary |
+| `/write-a-prd` | [layercodedev/skills](https://github.com/layercodedev/skills/tree/main/write-a-prd) | Spec phase: structured PRD from grill conversation |
 | `/prd-to-plan` | [layercodedev/skills](https://github.com/layercodedev/skills/tree/main/prd-to-plan) | Spec phase: vertical slice pattern |
+| `/tdd` | [layercodedev/skills](https://github.com/layercodedev/skills/tree/main/tdd) | Build phase: test-driven development for workers |
 | `/review` | Your project's Claude skills | Scrutiny validator: code review |
 | `/code-simplify` | Your project's Claude skills | Scrutiny validator: complexity check |
 | `/security-review` | Your project's Claude skills | Scrutiny validator: security audit |

@@ -44,10 +44,12 @@ openspec/changes/<change-name>/mission/
 ## Skills to Use
 - /grill-me -- alignment interview (planning)
 - /ubiquitous-language -- shared language (planning)
-- /opsx:propose -- create proposal, design, tasks (planning)
+- /write-a-prd -- structured PRD from grill conversation (planning)
+- /opsx:propose -- create proposal, design, tasks from PRD (planning)
 - /review -- code review (scrutiny validation)
 - /code-simplify -- simplify pass (scrutiny validation)
 - /security-review -- security check (scrutiny validation, sensitive tasks only)
+- /tdd -- test-driven development for workers (build phase)
 - /test-app -- browser tests (user-test validation)
 - /demo-video -- frontend demo recording (post-validation)
 - /pr -- draft PR (completion)
@@ -105,7 +107,15 @@ Run `/ubiquitous-language` to create or update `UBIQUITOUS_LANGUAGE.md`.
 
 ---
 
-## Phase 3: Create OpenSpec Artifacts
+## Phase 3: Write a PRD
+
+Run `/write-a-prd` to turn the grill conversation into a structured product requirements document. The PRD captures: problem statement, solution, user stories, implementation decisions, testing decisions, and out-of-scope items.
+
+The PRD is filed as a GitHub issue. This issue becomes the source of truth that `/opsx:propose` reads when creating the OpenSpec artifacts. The PRD ensures nothing from the grill conversation is lost or misinterpreted during the transition to technical artifacts.
+
+---
+
+## Phase 4: Create OpenSpec Artifacts
 
 Run `/opsx:propose` to create the OpenSpec change with:
 - `proposal.md` -- what and why
@@ -124,7 +134,7 @@ After creation, update the plan with the actual artifact paths.
 
 ---
 
-## Phase 4: Write Validation Contract
+## Phase 5: Write Validation Contract
 
 Create `contract.md` in the change directory (`openspec/changes/<change-name>/contract.md`).
 
@@ -156,7 +166,7 @@ Update the plan with the contract path after creation.
 
 ---
 
-## Phase 5: Create Mission Directory
+## Phase 6: Create Mission Directory
 
 Create the mission directory at `openspec/changes/<change-name>/mission/` with this structure:
 
@@ -198,7 +208,7 @@ Create the four subdirectories: `briefs/`, `handoffs/`, `validations/`, `issues/
 
 ---
 
-## Phase 6: Present for Approval
+## Phase 7: Present for Approval
 
 Show the user:
 1. **Task breakdown** -- the full task list from tasks.md with descriptions
@@ -212,7 +222,7 @@ Ask: "Ready to start the build? You can request changes or approve."
 
 ---
 
-## Phase 7: Build Loop
+## Phase 8: Build Loop
 
 For each unchecked task (`- [ ]`) in tasks.md, run Steps 1-8. Process tasks in order, one at a time (serial execution). Skip tasks marked `- [~]` (skipped) and `- [x]` (complete).
 
@@ -238,11 +248,12 @@ Write a brief to `mission/briefs/task-N.md`.
 <any domain terms the worker needs to understand>
 
 ## Procedures
-- Use test-driven development (TDD):
-  1. For each acceptance criterion, write a failing test first
-  2. Implement the minimum code to make the test pass
-  3. Refactor if needed while keeping tests green
+- Use `/tdd` to implement this task. Follow the red-green-refactor loop:
+  1. For each acceptance criterion, write a failing test first (RED)
+  2. Implement the minimum code to make the test pass (GREEN)
+  3. Refactor if needed while keeping tests green (REFACTOR)
   4. Repeat for the next criterion
+- Do NOT write all tests first then all implementation -- work in vertical slices, one test-implementation pair at a time
 - Commit all changes (code + tests) in a single commit with message: "[task-N] <description>"
 - Write your handoff report to openspec/changes/<change-name>/mission/handoffs/task-N.md
 
@@ -434,7 +445,7 @@ Track the attempt number (starts at 1 for the initial worker, increments on each
 <SHA of the commit that failed validation>
 
 ## Procedures
-- Fix only the issues described above using TDD: write a failing test that reproduces the issue, then fix the code to make it pass
+- Use `/tdd` to fix: write a failing test that reproduces the issue (RED), then fix the code to make it pass (GREEN)
 - Do not refactor or change anything unrelated
 - Commit as a single commit with message: "[task-N] fix: <description of what was fixed>"
 - Write handoff report to openspec/changes/<change-name>/mission/handoffs/task-N-fix-v<attempt+1>.md
@@ -668,7 +679,7 @@ Spawn a Claude subagent to run `/demo-video`. The subagent should save the recor
 
 ---
 
-## Phase 8: Mission Completion
+## Phase 9: Mission Completion
 
 ### Create Draft PR
 

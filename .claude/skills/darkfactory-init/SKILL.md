@@ -47,10 +47,12 @@ Report which skills were installed (new) and which were already present (skipped
 
 Check for required external skills in `~/.claude/skills/`:
 
-**Required (used by /mission during the spec phase):**
+**Required (used by /mission during spec and build phases):**
 - `grill-me` -- from [layercodedev/skills](https://github.com/layercodedev/skills) (fork of mattpocock/skills)
 - `ubiquitous-language` -- from [layercodedev/skills](https://github.com/layercodedev/skills)
+- `write-a-prd` -- from [layercodedev/skills](https://github.com/layercodedev/skills)
 - `prd-to-plan` -- from [layercodedev/skills](https://github.com/layercodedev/skills)
+- `tdd` -- from [layercodedev/skills](https://github.com/layercodedev/skills)
 
 **Security:** These are installed from our own fork, pinned to a known-good commit. This prevents supply chain attacks from upstream changes.
 
