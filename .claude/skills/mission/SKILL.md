@@ -11,12 +11,6 @@ Start an autonomous multi-agent mission for a single OpenSpec change. The orches
 
 ---
 
-## Pre-flight Check
-
-**Run `/darkfactory-preflight` before anything else.** It verifies git, GitHub remote, OpenSpec, and Codex -- auto-fixing what it can. If it reports a hard stop, do not proceed. If it reports warnings, note them in the plan and continue.
-
----
-
 ## Phase 0: Enter Plan Mode
 
 Enter plan mode immediately. Write a durable operating manual as the plan. This plan survives context compaction and is the orchestrator's source of truth.
