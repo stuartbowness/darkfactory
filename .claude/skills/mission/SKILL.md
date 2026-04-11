@@ -1,6 +1,6 @@
 ---
 name: mission
-description: Start an autonomous Darkfactory mission. Grills the user for alignment, creates OpenSpec artifacts, writes a validation contract, writes the mission directory, dispatches workers serially, validates each task against the contract, runs fix loops with circuit breakers, and creates a draft PR on completion.
+description: Start an autonomous Darkfactory mission. Grills the user for alignment, creates OpenSpec artifacts, writes a contract, writes the mission directory, dispatches workers serially, validates each task against the contract, runs fix loops with circuit breakers, and creates a draft PR on completion.
 ---
 
 # /mission
@@ -138,7 +138,7 @@ After creation, update the plan with the actual artifact paths.
 
 ---
 
-## Phase 5: Write Validation Contract
+## Phase 5: Write Contract
 
 Create `contract.md` in the change directory (`openspec/changes/<change-name>/contract.md`).
 
@@ -154,7 +154,7 @@ Create `contract.md` in the change directory (`openspec/changes/<change-name>/co
 ### Contract Template
 
 ```markdown
-# Validation Contract
+# Contract
 
 ## Task 1: <name>
 - [ ] <assertion describing observable behavior>

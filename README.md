@@ -10,7 +10,7 @@ Darkfactory turns a goal into working, validated code -- autonomously. You descr
 
 A mission has three stages:
 
-1. **You and the orchestrator plan together.** The orchestrator grills you on what you want, establishes shared terminology, creates a proposal/design/tasks via OpenSpec, writes a validation contract, and presents everything for your approval.
+1. **You and the orchestrator plan together.** The orchestrator grills you on what you want, establishes shared terminology, creates a proposal/design/tasks via OpenSpec, writes a contract, and presents everything for your approval.
 
 2. **The orchestrator builds and validates autonomously.** For each task, it dispatches a worker (Codex or Claude, configurable), then runs two layers of validation: scrutiny (test presence gate, build/test/lint, code review, code standards, simplify, security review) and user-testing (API and browser tests). If anything fails, a fix worker addresses the issues and both validators re-run. This repeats until the task passes or a circuit breaker asks for your input.
 
@@ -53,7 +53,7 @@ A mission has three stages:
 
 **Orchestrator** -- the main Claude Code session. Plans the work, dispatches workers one at a time, reads results, decides what to do next. Runs in plan mode so its operating manual survives context compaction.
 
-**Workers** -- implement one task each. Default engine: Codex (GPT-5.4). Get a self-contained brief with the task description, project context, and procedures. Commit in a single commit. Write a structured handoff report. Never see the validation contract.
+**Workers** -- implement one task each. Default engine: Codex (GPT-5.4). Get a self-contained brief with the task description, project context, and procedures. Commit in a single commit. Write a structured handoff report. Never see the contract.
 
 **Validators** -- check each task against the contract. Two types run sequentially per task:
 - **Scrutiny validator** (Claude) -- test presence gate, build, tests, lint, code review, code standards, simplify, security review (conditional), contract assertions
@@ -77,7 +77,7 @@ All mission state lives on disk:
 openspec/changes/<change-name>/
   proposal.md              # What and why
   design.md                # How (architecture decisions)
-  tasks.md                 # Task checklist (vertical slices)
+  tasks.md                 # Task checklist
   contract.md              # Validation assertions
   mission/
     config.yaml            # Engine settings per role
@@ -97,6 +97,7 @@ This means missions survive session death (resume from file state) and can be mo
 | `/mission` | Start an autonomous mission. Grills you, plans, dispatches workers, validates, creates draft PR. |
 | `/mission-resume` | Resume an interrupted mission from file state. Detects where it left off. |
 | `/mission-status` | Read-only progress check. Run from another session while a mission runs. |
+| `/darkfactory-init` | Check project setup. Reports what's installed and what's missing. |
 
 ### Required external skills
 
@@ -129,11 +130,9 @@ These skills are referenced by `/mission` but are **not bundled** in this repo. 
 - [GitHub CLI](https://cli.github.com/) installed and authenticated (`gh auth login`) -- used for draft PR creation
 - Git repository initialized
 
-### Install
-
 ### First-time install
 
-Clone the darkfactory repo and copy the skills globally:
+Clone the darkfactory repo and symlink the skills globally:
 
 ```bash
 git clone https://github.com/layercodedev/darkfactory.git ~/.darkfactory
@@ -192,7 +191,7 @@ The orchestrator will:
 3. Create a shared language glossary (`/ubiquitous-language`)
 4. Write a structured PRD (`/write-a-prd`)
 5. Create OpenSpec artifacts from the PRD (`/opsx:propose`)
-6. Write a validation contract
+6. Write a contract
 7. Create the mission directory
 8. Present the plan for your approval
 
@@ -230,7 +229,7 @@ Use `/mission` for everything. The scope adapts naturally -- a small bug fix pro
 
 | Scope | What happens |
 |-------|-------------|
-| Quick bug fix | Short grill (3-5 questions), 1 task, full validation, draft PR |
+| Quick bug fix | Short grill, 1 task, full validation, draft PR |
 | Small feature | Medium grill, 1-2 tasks, full validation, draft PR |
 | Multi-task feature | Long grill, many tasks, full validation per task, draft PR |
 | Large refactor | Long grill (40+ questions), many tasks, full validation, draft PR |
@@ -250,7 +249,7 @@ The full build history is in `archive/` (ignored by Claude via `.claudeignore`):
 - [Factory Missions talk](docs/reference_factory_talk.md) -- the multi-agent architecture that inspired this
 - [Matt Pocock skills talk](docs/reference_pocock_talk.md) -- design alignment, ubiquitous language, TDD patterns
 - [Design decisions](docs/design-decisions.md) -- every architectural choice with rationale
-- [Ubiquitous language](UBIQUITOUS_LANGUAGE.md) -- shared terminology (22 terms)
+- [Ubiquitous language](UBIQUITOUS_LANGUAGE.md) -- shared terminology (25 terms)
 
 ## License
 

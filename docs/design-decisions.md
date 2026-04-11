@@ -27,25 +27,27 @@ Inner loop per task: `spec -> build -> verify -> ship` with repetition on valida
 ### Workers
 - One worker per task (vertical slice pattern)
 - Receive a brief file -- self-contained, includes task + proposal excerpt + design excerpt + procedures
-- Do NOT receive the validation contract (adversarial separation)
+- Do NOT receive the contract (adversarial separation)
 - Do NOT receive previous workers' handoff reports (clean context)
 - Commit all work in a single commit
 - Write a structured handoff report to disk
 - Default engine: Codex (configurable in mission/config.yaml)
 
-### Validators (run sequentially per task)
-1. **Scrutiny validator** -- build/test/lint + /review + /simplify against contract. Always runs.
+### Per-task validators (run sequentially)
+1. **Scrutiny validator** -- test presence gate, build/test/lint, /review, code standards, /simplify, /security-review (conditional), contract assertions. Always runs.
 2. **User-test validator** -- decides API tests (HTTP) and/or browser tests (agent-browser) based on what changed. Always runs.
-3. **Dual adversarial review** -- Codex and Claude independently review the code in parallel. Orchestrator synthesizes findings. Catches cross-file inconsistencies and issues single-model validators miss.
-4. **Demo video** -- recorded after all validators pass, for frontend tasks. Orchestrator decides when.
+3. **Demo video** -- recorded after both validators pass, for frontend tasks. Orchestrator decides when.
+
+### End-of-mission review
+4. **Dual adversarial review** -- runs once after the draft PR is created, against the full diff. Codex and Claude independently review the code. Both reports are presented to the human. No automated fix loop -- the human decides what to address.
 
 Validators receive: commit SHA + contract assertions. They do NOT receive proposal, design, or worker reasoning.
 
 ### Fix Loop
-- On validation failure: orchestrator writes failure details to mission/issues/, spawns a fix worker with the failure context + commit SHA
-- Fix worker uses `/tdd` to fix: write a failing test that reproduces the issue, then fix
+- On validation failure: orchestrator writes a symptom-based fix brief (no contract text) to mission/issues/, spawns a fix worker
+- Fix worker uses `/tdd` to fix
 - Fix worker commits a single fix commit
-- ALL validators re-run after every fix (scrutiny, user-test, both adversarial reviewers)
+- Both per-task validators re-run after every fix (scrutiny + user-test)
 - Circuit breaker: 3 attempts on the same task -> pause and ask human
 - Skipped tasks marked with `- [~]` in tasks.md -- the build loop ignores them
 
@@ -105,7 +107,7 @@ openspec/changes/<change-name>/mission/
 - Contract: openspec/changes/<change-name>/contract.md
 
 ## Engine Config
-- Workers: codex (gpt-5.4, high effort)
+- Workers: codex
 - Scrutiny validator: claude
 - User-test validator: claude
 - Adversarial reviewer A: codex
@@ -136,12 +138,16 @@ For each unchecked task in tasks.md:
 3. Kick off worker via Monitor (engine per config.yaml)
 4. On completion, read mission/handoffs/task-N.md
 5. Spawn scrutiny validator (commit SHA + contract assertions)
-6. If fail -> write to mission/issues/, spawn fix worker, re-validate all. Circuit breaker: 3 attempts -> ask human.
+6. If fail -> write symptom-based fix brief, spawn fix worker, re-validate both. Circuit breaker: 3 attempts -> ask human.
 7. Spawn user-test validator (commit SHA + contract assertions)
 8. If fail -> same fix/re-validate loop
-9. Run dual adversarial review (Codex + Claude in parallel), synthesize, fix loop if FAIL
-10. If frontend task -> spawn demo video
-11. Mark task complete in tasks.md, update progress.md
+9. If frontend task -> spawn demo video
+10. Mark task complete in tasks.md, update progress.md
+
+After all tasks complete:
+11. Create draft PR
+12. Run dual adversarial review (Codex + Claude) against full diff
+13. Present both reports to human alongside PR link
 
 ## Rules
 - One worker at a time (serial execution)
@@ -204,10 +210,10 @@ openspec/changes/<change-name>/
 - Concerns: [anything you're uncertain about]
 ```
 
-## Validation Contract Format
+## Contract Format
 
 ```markdown
-# Validation Contract
+# Contract
 
 ## Task 1: [name]
 - [Assertion verifiable from outside without knowing the code]

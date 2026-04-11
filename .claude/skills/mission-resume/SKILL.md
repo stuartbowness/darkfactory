@@ -18,252 +18,142 @@ Search for OpenSpec changes that have an active mission (unchecked tasks remaini
 
 ### Handle results
 
-- **No active missions found:** Report "No active missions found." and stop. Do not proceed to Phase 2.
+- **No active missions found:** Report "No active missions found." and stop.
 - **Exactly one active mission:** Use it. Report "Resuming mission: <change-name>".
-- **Multiple active missions:** List each one with its progress (e.g., "darkfactory-v2: 1/3 tasks complete"). Ask the user to pick which mission to resume. Wait for their answer before proceeding.
+- **Multiple active missions:** List each one with its progress. Ask the user to pick one.
 
 ## Phase 2: Read Mission State
 
-Read all artifacts for the selected mission. The change directory is `openspec/changes/<change-name>/` and the mission directory is `openspec/changes/<change-name>/mission/`.
-
-Read these files:
+Read all artifacts for the selected mission:
 
 | File | Path | Purpose |
 |------|------|---------|
 | Tasks | `openspec/changes/<change-name>/tasks.md` | Which tasks are done, which remain |
 | Progress log | `mission/progress.md` | Chronological record of what happened |
-| Mission config | `mission/config.yaml` | Engine assignments (worker, validators) |
+| Mission config | `mission/config.yaml` | Engine assignments |
 | Contract | `contract.md` | Assertions grouped by task for validators |
 | Proposal | `proposal.md` | What is being built and why |
 | Design | `design.md` | Architecture decisions |
 
-Also read all existing handoff files in `mission/handoffs/` and all validation reports in `mission/validations/` (including `task-N-scrutiny.md`, `task-N-usertest.md`, `task-N-adversarial-a.md`, `task-N-adversarial-b.md`, `task-N-adversarial-synthesis.md`). These tell you the outcome of completed tasks and reveal mid-cycle interruptions.
+Also read existing handoff files in `mission/handoffs/` and validation reports in `mission/validations/` (including `task-N-scrutiny.md`, `task-N-usertest.md`). These reveal mid-cycle interruptions.
 
 ## Phase 3: Detect Mid-Cycle State and Orphaned Commits
 
-Check each unchecked task (`- [ ]`) in tasks.md for partial completion. A task can be interrupted at various points in the validation pipeline. The resume skill detects exactly where it stopped and resumes from that point rather than starting over.
+Check each unchecked task for partial completion. A task can be interrupted at various points. The resume skill detects where it stopped and resumes from that point.
 
-For each unchecked task in tasks.md (skip `- [~]` skipped tasks):
+For each unchecked task (skip `- [~]` skipped tasks):
 
 ### 3a: Check for handoff with missing validations
 
 If `mission/handoffs/task-N.md` exists (worker finished), check which validation reports exist:
 
-| Handoff | Scrutiny Report | User-test Report | Adversarial Synthesis | Resume From |
-|---------|----------------|-----------------|----------------------|-------------|
-| exists | missing | missing | missing | Step 4 (scrutiny validation) |
-| exists | exists (PASS) | missing | missing | Step 6 (user-test validation) |
-| exists | exists (PASS) | exists (PASS) | missing | Step 6a (adversarial review) |
-| exists | exists (PASS) | exists (PASS) | exists (PASS) | Step 6b (demo video) then mark complete |
+| Handoff | Scrutiny Report | User-test Report | Resume From |
+|---------|----------------|-----------------|-------------|
+| exists | missing | missing | Step 4 (scrutiny validation) |
+| exists | exists (PASS) | missing | Step 6 (user-test validation) |
+| exists | exists (PASS) | exists (PASS) | Step 6a (demo video) then mark complete |
 
 If a validation report exists but shows FAIL, resume from the fix loop (Step 5a) with that failure.
 
 Log to progress.md: `<timestamp> -- Task N: resuming from <step name>. Previous session interrupted mid-cycle.`
 
-Extract the commit SHA from the handoff file and continue the validation pipeline from the appropriate step.
-
 ### 3b: Detect orphaned commits
 
-An orphaned commit is one where a worker committed code (matching the `[task-N]` pattern in the commit message) but no handoff file exists at `mission/handoffs/task-N.md`. This happens when the session died between the worker's commit and the orchestrator recording the result.
+An orphaned commit is one where a worker committed code but no handoff file exists. This happens when the session died between the worker's commit and the orchestrator recording the result.
 
 For each unchecked task that did NOT have a handoff in step 3a:
 
 1. Run: `git log --oneline --grep="\[task-N\]" -1`
-2. If a commit is found but `mission/handoffs/task-N.md` does **not** exist, this is an orphaned commit.
-3. Report the orphaned commit to the human: show the commit SHA, message, and the task description.
-4. Ask: "This task has a commit but no handoff. Should I validate it (run full validation cycle against this commit), or re-run the task from scratch?"
-5. Wait for the human's answer before proceeding.
+2. If a commit is found but no handoff exists, report it to the human.
+3. Ask: "This task has a commit but no handoff. Should I validate it (run full validation against this commit), or re-run the task from scratch?"
 
-If the human says validate it:
-- Write a synthetic handoff file to `mission/handoffs/task-N.md` with the orphaned commit SHA.
-- Append to progress.md: `<timestamp> -- Task N: orphaned commit <SHA> found. Human confirmed code exists. Running full validation cycle.`
-- Run the full validation cycle against that commit SHA: scrutiny (Step 4), user-test (Step 6), adversarial review (Step 6a). The human is confirming "the code exists," not "the code is correct." Validation still needs to happen.
+If validate: write a synthetic handoff file with the commit SHA, then run the full validation cycle (scrutiny + user-test). The human is confirming "the code exists," not "the code is correct."
 
-If the human says re-run:
-- Leave the task unchecked.
-- Append to progress.md: `<timestamp> -- Task N: orphaned commit <SHA> found but human requested re-run.`
+If re-run: leave the task unchecked and start fresh.
 
 ## Phase 4: Reconstruct the Orchestrator Plan
 
-Enter Claude Code **plan mode**. Write a complete orchestrator operating manual that captures the full mission state and rules. This plan must survive context compaction -- it is the orchestrator's durable memory.
+Enter Claude Code **plan mode**. Write a complete orchestrator operating manual from file state. This plan must survive context compaction.
 
-The plan must include:
-
-### Mission identity
-- Change name, proposal summary, design summary
-- Total tasks and their descriptions
-- Which tasks are complete (with commit SHAs from handoffs)
-- Which task is next
-
-### File paths
-- Change directory: `openspec/changes/<change-name>/`
-- Mission directory: `openspec/changes/<change-name>/mission/`
-- Tasks file: `openspec/changes/<change-name>/tasks.md`
-- Contract file: `openspec/changes/<change-name>/contract.md`
-- Progress log: `openspec/changes/<change-name>/mission/progress.md`
-- Config: `openspec/changes/<change-name>/mission/config.yaml`
-- Briefs directory: `openspec/changes/<change-name>/mission/briefs/`
-- Handoffs directory: `openspec/changes/<change-name>/mission/handoffs/`
-- Validations directory: `openspec/changes/<change-name>/mission/validations/`
-- Issues directory: `openspec/changes/<change-name>/mission/issues/`
-
-### Engine configuration
-- Read `config.yaml` and record which engine is assigned to each role (worker, scrutiny_validator, usertest_validator, adversarial_reviewer_a, adversarial_reviewer_b, demo_video).
-
-### Orchestrator rules
-- Serial execution: only one worker at a time
-- Workers never see the contract (adversarial separation)
-- Validators never see the proposal or design
-- Each task maps to one worker invocation, one commit, one validation cycle
-- Fix loop: up to 3 attempts per task before the circuit breaker asks the human
-- Progress log must be updated after every significant event
+The plan must include: mission identity, all file paths, engine configuration, the mission flow (matching the /mission skill's Phase 8 build loop and Phase 9 completion), and the rules.
 
 ## Phase 5: Log the Resume
 
 Append to `mission/progress.md`:
 
 ```
-## Mission Resumed
-
 Mission resumed in new session. Picking up from task <N>.
 Previously completed: tasks <list of completed task numbers>.
 ```
 
 ## Phase 6: Continue the Build Loop
 
-For each remaining unchecked task (`- [ ]`), execute the following sequence. Process tasks in order -- serial execution, one at a time. Skip tasks marked `- [~]` (skipped) and `- [x]` (complete). If Phase 3a detected a mid-cycle task, resume from the appropriate step rather than starting from Step 1.
+Follow the /mission skill's Phase 8 build loop exactly. For each remaining unchecked task, run Steps 1-7 as defined in the /mission skill:
 
-### Step 1: Assemble the brief
-
-Check if a brief already exists at `mission/briefs/task-N.md`.
-- If it exists, read it and use it.
-- If it does not exist, assemble a new brief containing:
-  - Task description from tasks.md
-  - Project context (what the codebase does, relevant architecture)
-  - Relevant excerpts from the design and proposal
-  - Procedures: what to build, how to commit, how to write the handoff
-  - Handoff report format (task name, commit SHA, approach, commands run, concerns)
-
-Write the brief to `mission/briefs/task-N.md`.
-
-**The brief must NOT include any content from the contract.** Workers never see the contract.
-
-### Step 2: Dispatch the worker
-
-Read `config.yaml` to determine the worker engine.
-
-**If engine is `codex`:** Use the Monitor tool to dispatch a Codex worker and watch for the handoff file.
+1. **Assemble brief** -- check if brief exists, reuse or create. Brief never contains contract content.
+2. **Dispatch worker** -- use the full Monitor-based dispatch for Codex:
 
 ```bash
-codex exec --full-auto --sandbox workspace-write -m gpt-5.4 -c model_reasoning_effort="high" -o "<absolute-path-to-handoff>" "You are a Worker in the Darkfactory mission system. Read your brief and follow its instructions exactly. Your brief is at: <absolute-path-to-brief>"
+BRIEF_PATH="<absolute path to mission/briefs/task-N.md>"
+HANDOFF_PATH="<absolute path to mission/handoffs/task-N.md>"
+BRIEF_CONTENT=$(cat "$BRIEF_PATH")
+
+codex exec \
+  --full-auto \
+  --sandbox workspace-write \
+  -m gpt-5.4 \
+  -c model_reasoning_effort="high" \
+  -o "$HANDOFF_PATH" \
+  "$BRIEF_CONTENT" \
+  2>/dev/null &
+
+CODEX_PID=$!
+
+while true; do
+  if [ -f "$HANDOFF_PATH" ]; then
+    echo "TASK_COMPLETE: Handoff written to $HANDOFF_PATH"
+    break
+  fi
+  if ! kill -0 $CODEX_PID 2>/dev/null; then
+    echo "TASK_FAILED: Codex process exited without writing handoff"
+    break
+  fi
+  sleep 2
+done
 ```
 
-Monitor watches for: `mission/handoffs/task-N.md`
+For Claude workers, use the Agent tool with the brief content.
 
-**If engine is `claude`:** Use a Claude subagent via the Agent tool. Pass the same instruction: read the brief, follow it exactly.
+3. **Handle result** -- TASK_COMPLETE, TASK_FAILED, or timeout.
+4. **Scrutiny validation** -- spawn Claude subagent with the full 9-step check sequence:
+   1. Test presence gate (auto-FAIL if no new tests)
+   2. Build
+   3. Tests
+   4. Lint
+   5. Code review (/review) -- check for bugs, security, logic, breaking changes
+   6. Code standards -- 5 anti-pattern checks
+   7. Code simplify (/simplify)
+   8. Security review (/security-review) -- conditional on sensitive code
+   9. Contract assertions
+5. **Handle scrutiny result** -- PASS proceeds to Step 6. FAIL enters fix loop.
+5a. **Fix loop** -- write symptom-based fix brief (no contract text), dispatch fix worker, re-run both per-task validators. Circuit breaker at 3.
+6. **User-test validation** -- spawn Claude subagent that decides API tests, browser tests, or both.
+6a. **Demo video** -- frontend tasks only, non-blocking on failure.
+7. **Track progress** -- mark task complete, update progress.md.
 
-After the worker finishes, verify:
-1. The handoff file exists at `mission/handoffs/task-N.md`
-2. A commit with `[task-N]` in the message exists in git log
-
-If either is missing, log the failure and ask the human for guidance.
-
-### Step 3: Run scrutiny validation
-
-Spawn a Claude subagent as the scrutiny validator. The validator receives:
-- The contract assertions for this task (from contract.md)
-- The commit diff (`git diff HEAD~1`)
-
-The validator does NOT receive the proposal, design, or brief.
-
-The scrutiny validator runs this check sequence:
-1. Read the contract assertions for this task
-2. Check each assertion against the committed code
-3. Run any applicable automated checks (build, test, lint)
-4. Run code review: does the code look correct, clean, and complete?
-5. Run code simplify: is there unnecessary complexity?
-6. Write the validation report to `mission/validations/task-N-scrutiny.md`
-
-The report must state PASS or FAIL, list each assertion checked, and explain any failures.
-
-### Step 4: Run user-test validation
-
-Spawn a Claude subagent as the user-test validator. The validator receives:
-- The contract assertions for this task
-- The commit diff
-
-The validator does NOT receive the proposal, design, or brief.
-
-The user-test validator decides a test strategy:
-- If the task involves an API: write and run HTTP tests
-- If the task involves a UI: use agent-browser to test behavior
-- If the task is purely structural (e.g., markdown generation): verify file existence, structure, and content
-
-Write the validation report to `mission/validations/task-N-usertest.md`. The report must state PASS or FAIL with details.
-
-### Step 4a: Run adversarial review (parallel)
-
-After both scrutiny and user-test pass, run two adversarial reviewers in parallel:
-- **Reviewer A** (engine from `adversarial_reviewer_a` in config.yaml, default codex): Dispatch via Monitor if external (codex), or Agent if local (claude).
-- **Reviewer B** (engine from `adversarial_reviewer_b` in config.yaml, default claude): Dispatch via Agent tool.
-
-Both receive the commit SHA and the **full contract** (all tasks, not just the current one). They independently look for flaws, inconsistencies, cross-file compatibility issues, and anything previous validators missed.
-
-Reports written to:
-- `mission/validations/task-N-adversarial-a.md`
-- `mission/validations/task-N-adversarial-b.md`
-
-After both complete, the orchestrator synthesizes the results into `mission/validations/task-N-adversarial-synthesis.md`:
-- Deduplicate shared findings
-- Flag disagreements (one PASS, one FAIL) and make a final call
-- Include unique findings from each reviewer
-- Overall FAIL if any finding has a FAIL verdict
-
-If synthesis is PASS, proceed to demo video. If FAIL, enter the fix loop (Step 6). After any fix, re-run ALL validators (scrutiny, user-test, both adversarial reviewers).
-
-### Step 5: Handle validation results
-
-**If all validators pass (scrutiny, user-test, adversarial review):** Mark the task as checked in tasks.md (`- [x]`). Append to progress.md: "Task N passed scrutiny, user-test, and adversarial review validation." Move to demo video if applicable, then to the next task.
-
-**If any validator fails:** Enter the fix loop.
-
-### Step 6: Fix loop
-
-When validation fails:
-
-1. Read the validation report(s) that failed.
-2. Assemble a fix brief at `mission/briefs/task-N-fix-vM.md` (where M is the attempt number starting at 2). The fix brief contains:
-   - The original task description
-   - The specific validation failures (copy the relevant sections from the validation report)
-   - The commit SHA of the failed attempt
-   - Instructions: fix the failures, commit with message `[task-N] Fix: <description>`, write a handoff to `mission/handoffs/task-N-fix-vM.md`
-3. Dispatch a fix worker using the same engine as the original worker.
-4. After the fix worker completes, re-run all validators (scrutiny, user-test, and both adversarial reviewers).
-5. If all pass, mark the task as done and continue.
-6. If any fails again, increment M and repeat from step 1.
-
-**Circuit breaker:** After 3 failed fix attempts on the same task, stop the fix loop. Log the situation to progress.md. Report to the human: "Task N has failed validation 3 times. Here are the failures: [summary]. Options: retry (allows one more attempt, counter continues from current value), skip (mark as `- [~]`, continue to next task), abort (stop the mission)."
-
-- **Retry:** Increment the attempt counter by 1 (e.g., attempt 3 becomes attempt 4). Allow one more fix attempt. Retry does NOT reset the counter.
-- **Skip:** Mark the task as `- [~]` in tasks.md. Log to progress.md: `<timestamp> -- Task N: SKIPPED by human after <attempt> failed attempts.` Continue to the next unchecked task.
-- **Abort:** Stop the build loop. Report to the human.
-
-### Step 7: Update progress
-
-After each task completes (or fails and hits the circuit breaker), append the outcome to `mission/progress.md` with:
-- Task number and description
-- Pass/fail status
-- Commit SHA
-- Number of fix attempts if any
-- Timestamp
+If Phase 3a detected a mid-cycle task, resume from the appropriate step rather than starting from Step 1.
 
 ## Phase 7: Mission Completion
 
 When all tasks are checked in tasks.md:
 
-1. Append to progress.md: "All tasks complete. Mission finished."
-2. Create a draft PR using the `gh` CLI. The PR body should summarize:
-   - What the mission built
-   - How many tasks, how many fix loops
-   - Links to handoff files
-3. Report to the human: "Mission complete. Draft PR created: <URL>"
+1. Create a draft PR using `gh pr create --draft` with a mission summary (tasks, validation results, issues, stats).
+2. Run dual adversarial review against the full diff (`git diff <base-branch>...HEAD`):
+   - Reviewer A (engine from config.yaml, default codex) via Monitor
+   - Reviewer B (engine from config.yaml, default claude) via Agent tool
+   - Both receive the full diff and the full contract
+   - Reports written to `mission/validations/adversarial-a.md` and `adversarial-b.md`
+3. Present both reports to the human alongside the draft PR link.
+4. Log to progress.md and update plan status to COMPLETE.
+
+The adversarial review is a human-facing report, not an automated gate. The human decides what to address.

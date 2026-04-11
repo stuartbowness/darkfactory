@@ -61,15 +61,10 @@ For each task (numbered by its position in the tasks list), check for validation
    - If it exists, find the first line containing "PASS" or "FAIL" after a heading (look for both `## Overall:` and `## Result:` patterns, or simply the first line in the file containing the word "PASS" or "FAIL")
    - If it does not exist, report as "pending"
 
-3. **Adversarial review:** Read `mission/validations/task-N-adversarial-synthesis.md`
-   - If it exists, find the first line containing "PASS" or "FAIL" (same approach as above)
-   - If it does not exist, check for individual reports (`task-N-adversarial-a.md`, `task-N-adversarial-b.md`) and report partial status
-   - If none exist, report as "pending"
-
-4. **Demo video:** Check if `mission/validations/task-N-demo.mp4` exists
+3. **Demo video:** Check if `mission/validations/task-N-demo.mp4` exists
    - Report "yes" if it exists, omit if it does not
 
-5. **Fix attempts:** Search for `mission/issues/task-N-*.md` files
+4. **Fix attempts:** Search for `mission/issues/task-N-*.md` files
    - Count the number of matching files
    - If any exist, append "(N attempts)" to the task's status line
 
@@ -95,7 +90,7 @@ Progress: <completed>/<total> tasks (<skipped> skipped)
 [===========>                    ] <percent>%
 
 Tasks:
-  [x] Task 1: <name> - Scrutiny: PASS, User-test: PASS, Adversarial: PASS, Demo: yes
+  [x] Task 1: <name> - Scrutiny: PASS, User-test: PASS, Demo: yes
   [x] Task 2: <name> - Scrutiny: PASS, User-test: PASS, Adversarial: PASS (2 attempts)
   [~] Task 3: <name> - SKIPPED
   [ ] Task 4: <name> - IN PROGRESS (worker dispatched, awaiting handoff)
@@ -115,7 +110,7 @@ Recent activity:
 **Task line rules:**
 - Use `[x]` for completed tasks, `[ ]` for unchecked tasks, and `[~]` for skipped tasks
 - After the task name, show validation results separated by commas
-- Only show Scrutiny/User-test/Adversarial/Demo if the corresponding artifact exists or the task is completed
+- Only show Scrutiny/User-test/Demo if the corresponding artifact exists or the task is completed
 - Append fix attempt count in parentheses if any issues were found
 - For skipped tasks, show `SKIPPED` instead of validation results
 - For in-progress tasks, show the `IN PROGRESS` annotation instead of validation results
