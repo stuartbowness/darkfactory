@@ -126,36 +126,47 @@ Skills marked "Your project's Claude skills" are project-specific. If your proje
 
 ### Install
 
-1. Copy the Darkfactory mission skills into your project:
+From the darkfactory repo directory, run:
 
-```bash
-# From the darkfactory repo
-cp -r .claude/skills/mission /path/to/your/project/.claude/skills/
-cp -r .claude/skills/mission-resume /path/to/your/project/.claude/skills/
-cp -r .claude/skills/mission-status /path/to/your/project/.claude/skills/
+```
+/darkfactory-init
 ```
 
-2. Install the required external skills from Matt Pocock's repo:
+This will:
+1. Install `/mission`, `/mission-resume`, `/mission-status` to `~/.claude/skills/` (global, works in any project)
+2. Check for and install supporting skills (`grill-me`, `ubiquitous-language`, `prd-to-plan`) from [mattpocock/skills](https://github.com/mattpocock/skills)
+3. Initialize OpenSpec in the target project if needed
+4. Verify CLI dependencies (codex, gh, openspec) are installed and authenticated
+5. Report what's ready and what needs manual action
 
+After install, restart your Claude Code session so the new skills register.
+
+### Manual install
+
+If you prefer to set up manually:
+
+1. Copy skills globally:
 ```bash
-# Clone or download from https://github.com/mattpocock/skills
-# Then copy each skill directory:
-cp -r /path/to/mattpocock-skills/grill-me /path/to/your/project/.claude/skills/
-cp -r /path/to/mattpocock-skills/ubiquitous-language /path/to/your/project/.claude/skills/
-cp -r /path/to/mattpocock-skills/prd-to-plan /path/to/your/project/.claude/skills/
+cp -r .claude/skills/mission ~/.claude/skills/
+cp -r .claude/skills/mission-resume ~/.claude/skills/
+cp -r .claude/skills/mission-status ~/.claude/skills/
 ```
 
-3. Initialize OpenSpec in your project (if not already):
+2. Install supporting skills from [mattpocock/skills](https://github.com/mattpocock/skills):
+```bash
+gh repo clone mattpocock/skills /tmp/pocock-skills -- --depth 1
+cp -r /tmp/pocock-skills/grill-me ~/.claude/skills/
+cp -r /tmp/pocock-skills/ubiquitous-language ~/.claude/skills/
+cp -r /tmp/pocock-skills/prd-to-plan ~/.claude/skills/
+```
 
+3. Initialize OpenSpec in your project:
 ```bash
 cd /path/to/your/project
 openspec init --tools claude,codex
 ```
 
-This creates the `openspec/` directory structure and installs `/opsx:propose`, `/opsx:apply`, `/opsx:archive` skills. You may need to restart your Claude Code session for the new slash commands to register.
-
-4. Verify everything is working:
-
+4. Verify dependencies:
 ```bash
 codex login          # Ensure Codex is authenticated
 gh auth status       # Ensure GitHub CLI is authenticated

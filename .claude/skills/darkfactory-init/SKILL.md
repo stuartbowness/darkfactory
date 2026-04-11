@@ -1,0 +1,164 @@
+---
+name: darkfactory-init
+description: Set up Darkfactory in any project. Installs mission skills globally, checks for supporting skills, initializes OpenSpec, verifies CLI dependencies, and reports status.
+---
+
+# Darkfactory Init
+
+Set up the Darkfactory mission system so `/mission`, `/mission-resume`, and `/mission-status` work in this project.
+
+**Run this from the darkfactory repo directory.** It installs skills globally and sets up the current project.
+
+---
+
+## Step 1: Locate the darkfactory repo
+
+Check that the current directory contains the Darkfactory skills:
+
+```bash
+ls .claude/skills/mission/SKILL.md .claude/skills/mission-resume/SKILL.md .claude/skills/mission-status/SKILL.md 2>/dev/null
+```
+
+If these files don't exist, report: "This doesn't look like the darkfactory repo. Run this skill from the darkfactory directory." and stop.
+
+---
+
+## Step 2: Install mission skills globally
+
+Copy the three core mission skills to `~/.claude/skills/` so they're available in every project:
+
+```bash
+cp -r .claude/skills/mission ~/.claude/skills/
+cp -r .claude/skills/mission-resume ~/.claude/skills/
+cp -r .claude/skills/mission-status ~/.claude/skills/
+```
+
+Also install this init skill globally so it can be run from anywhere next time:
+
+```bash
+cp -r .claude/skills/darkfactory-init ~/.claude/skills/
+```
+
+Report: which skills were installed, which were already present (compare file contents).
+
+---
+
+## Step 3: Check and install supporting skills
+
+Check for required external skills in `~/.claude/skills/`:
+
+**Required (used by /mission during the spec phase):**
+- `grill-me` -- from [mattpocock/skills](https://github.com/mattpocock/skills)
+- `ubiquitous-language` -- from [mattpocock/skills](https://github.com/mattpocock/skills)
+- `prd-to-plan` -- from [mattpocock/skills](https://github.com/mattpocock/skills)
+
+For each missing skill:
+
+```bash
+# Clone to a temp directory and copy the skill
+TMPDIR=$(mktemp -d)
+gh repo clone mattpocock/skills "$TMPDIR" -- --depth 1 --filter=blob:none 2>/dev/null
+cp -r "$TMPDIR/<skill-name>" ~/.claude/skills/
+rm -rf "$TMPDIR"
+```
+
+If `gh` is not available, report the skill as missing with a manual install command:
+```
+Missing: grill-me -- install manually:
+  git clone https://github.com/mattpocock/skills /tmp/pocock-skills
+  cp -r /tmp/pocock-skills/grill-me ~/.claude/skills/
+```
+
+**Optional (project-specific, enhance validation but not required):**
+- `/review` -- code review
+- `/code-simplify` -- complexity check
+- `/security-review` -- security audit
+- `/test-app` -- browser tests
+- `/demo-video` -- frontend demo recording
+- `/pr` -- draft PR creation
+
+Check if these exist in `~/.claude/skills/` or in the target project's `.claude/skills/`. Report which are found and which are missing. Don't try to install these -- they're project-specific.
+
+---
+
+## Step 4: Initialize OpenSpec in the target project
+
+If the user specified a target project (as an argument to `/darkfactory-init`), check that project. Otherwise, report that OpenSpec setup should be done in the target project.
+
+Check if `openspec/config.yaml` exists in the target project:
+
+```bash
+ls <target>/openspec/config.yaml 2>/dev/null
+```
+
+If it doesn't exist:
+
+```bash
+cd <target> && openspec init --tools claude,codex
+```
+
+If `openspec` CLI is not available, report it as a missing dependency.
+
+Note: After `openspec init`, the user needs to restart their Claude Code session for the new `/opsx:` commands to register.
+
+---
+
+## Step 5: Verify CLI dependencies
+
+Check each required CLI tool:
+
+```bash
+# Codex
+codex --version 2>/dev/null
+
+# GitHub CLI
+gh --version 2>/dev/null
+gh auth status 2>/dev/null
+
+# OpenSpec
+openspec --version 2>/dev/null
+```
+
+For each tool, report:
+- Installed and authenticated (ready)
+- Installed but not authenticated (needs: `codex login` or `gh auth login`)
+- Not installed (needs: install command)
+
+---
+
+## Step 6: Report status
+
+Print a summary:
+
+```
+Darkfactory Setup Report
+========================
+
+Core skills (installed to ~/.claude/skills/):
+  [x] /mission
+  [x] /mission-resume
+  [x] /mission-status
+  [x] /darkfactory-init
+
+Supporting skills:
+  [x] /grill-me
+  [x] /ubiquitous-language
+  [x] /prd-to-plan
+  [ ] /review (optional -- project-specific)
+  [ ] /code-simplify (optional -- project-specific)
+  ...
+
+CLI tools:
+  [x] codex 0.118.0 (authenticated)
+  [x] gh 2.x.x (authenticated)
+  [x] openspec 1.2.0
+
+OpenSpec:
+  [x] Initialized in <project> (or [ ] Not initialized -- run in target project)
+
+Ready to use:
+  Run /mission in any project to start a mission.
+  Restart Claude Code if this is the first install (new skills need a session restart).
+```
+
+If anything is missing, list the specific commands to fix it at the bottom.
