@@ -99,9 +99,9 @@ These skills are referenced by `/mission` but are **not bundled** in this repo. 
 
 | Skill | Source | Used by |
 |-------|--------|---------|
-| `/grill-me` | [mattpocock/skills](https://github.com/mattpocock/skills/tree/main/grill-me) | Spec phase: alignment interview |
-| `/ubiquitous-language` | [mattpocock/skills](https://github.com/mattpocock/skills/tree/main/ubiquitous-language) | Spec phase: shared glossary |
-| `/prd-to-plan` | [mattpocock/skills](https://github.com/mattpocock/skills/tree/main/prd-to-plan) | Spec phase: vertical slice pattern |
+| `/grill-me` | [layercodedev/skills](https://github.com/layercodedev/skills/tree/main/grill-me) | Spec phase: alignment interview |
+| `/ubiquitous-language` | [layercodedev/skills](https://github.com/layercodedev/skills/tree/main/ubiquitous-language) | Spec phase: shared glossary |
+| `/prd-to-plan` | [layercodedev/skills](https://github.com/layercodedev/skills/tree/main/prd-to-plan) | Spec phase: vertical slice pattern |
 | `/review` | Your project's Claude skills | Scrutiny validator: code review |
 | `/code-simplify` | Your project's Claude skills | Scrutiny validator: complexity check |
 | `/security-review` | Your project's Claude skills | Scrutiny validator: security audit |
@@ -134,7 +134,7 @@ From the darkfactory repo directory, run:
 
 This will:
 1. Install `/mission`, `/mission-resume`, `/mission-status` to `~/.claude/skills/` (global, works in any project)
-2. Check for and install supporting skills (`grill-me`, `ubiquitous-language`, `prd-to-plan`) from [mattpocock/skills](https://github.com/mattpocock/skills)
+2. Check for and install supporting skills (`grill-me`, `ubiquitous-language`, `prd-to-plan`) from [layercodedev/skills](https://github.com/layercodedev/skills) (pinned fork of mattpocock/skills)
 3. Initialize OpenSpec in the target project if needed
 4. Verify CLI dependencies (codex, gh, openspec) are installed and authenticated
 5. Report what's ready and what needs manual action
@@ -152,12 +152,13 @@ cp -r .claude/skills/mission-resume ~/.claude/skills/
 cp -r .claude/skills/mission-status ~/.claude/skills/
 ```
 
-2. Install supporting skills from [mattpocock/skills](https://github.com/mattpocock/skills):
+2. Install supporting skills from [layercodedev/skills](https://github.com/layercodedev/skills) (pinned fork of mattpocock/skills):
 ```bash
-gh repo clone mattpocock/skills /tmp/pocock-skills -- --depth 1
-cp -r /tmp/pocock-skills/grill-me ~/.claude/skills/
-cp -r /tmp/pocock-skills/ubiquitous-language ~/.claude/skills/
-cp -r /tmp/pocock-skills/prd-to-plan ~/.claude/skills/
+git clone --depth 1 https://github.com/layercodedev/skills.git /tmp/layercode-skills
+cd /tmp/layercode-skills && git checkout 651eab033bdf8f7fd535c274f8cbe839075aba5e
+cp -r /tmp/layercode-skills/grill-me ~/.claude/skills/
+cp -r /tmp/layercode-skills/ubiquitous-language ~/.claude/skills/
+cp -r /tmp/layercode-skills/prd-to-plan ~/.claude/skills/
 ```
 
 3. Initialize OpenSpec in your project:

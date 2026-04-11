@@ -48,26 +48,32 @@ Report: which skills were installed, which were already present (compare file co
 Check for required external skills in `~/.claude/skills/`:
 
 **Required (used by /mission during the spec phase):**
-- `grill-me` -- from [mattpocock/skills](https://github.com/mattpocock/skills)
-- `ubiquitous-language` -- from [mattpocock/skills](https://github.com/mattpocock/skills)
-- `prd-to-plan` -- from [mattpocock/skills](https://github.com/mattpocock/skills)
+- `grill-me` -- from [layercodedev/skills](https://github.com/layercodedev/skills) (fork of mattpocock/skills)
+- `ubiquitous-language` -- from [layercodedev/skills](https://github.com/layercodedev/skills)
+- `prd-to-plan` -- from [layercodedev/skills](https://github.com/layercodedev/skills)
+
+**Security:** These are installed from our own fork, pinned to a known-good commit. This prevents supply chain attacks from upstream changes.
 
 For each missing skill:
 
 ```bash
-# Clone to a temp directory and copy the skill
+# Clone our fork at a pinned commit
 TMPDIR=$(mktemp -d)
-gh repo clone mattpocock/skills "$TMPDIR" -- --depth 1 --filter=blob:none 2>/dev/null
+git clone --depth 1 https://github.com/layercodedev/skills.git "$TMPDIR" 2>/dev/null
+cd "$TMPDIR" && git checkout 651eab033bdf8f7fd535c274f8cbe839075aba5e 2>/dev/null
 cp -r "$TMPDIR/<skill-name>" ~/.claude/skills/
 rm -rf "$TMPDIR"
 ```
 
-If `gh` is not available, report the skill as missing with a manual install command:
+If git is not available, report the skill as missing with a manual install command:
 ```
 Missing: grill-me -- install manually:
-  git clone https://github.com/mattpocock/skills /tmp/pocock-skills
-  cp -r /tmp/pocock-skills/grill-me ~/.claude/skills/
+  git clone https://github.com/layercodedev/skills /tmp/layercode-skills
+  cd /tmp/layercode-skills && git checkout 651eab033bdf8f7fd535c274f8cbe839075aba5e
+  cp -r /tmp/layercode-skills/grill-me ~/.claude/skills/
 ```
+
+**To update pinned skills:** Pull upstream changes into the layercodedev/skills fork, review them, then update the commit SHA in this skill file.
 
 **Optional (project-specific, enhance validation but not required):**
 - `/review` -- code review
