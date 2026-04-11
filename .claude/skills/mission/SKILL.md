@@ -351,11 +351,18 @@ Run these checks in order. For each, report PASS or FAIL with evidence.
 
 5. **Code review:** Run /review against the diff. Report any bugs, security issues, or logic errors found.
 
-6. **Code simplify:** Run /simplify against the changed files. Report any unnecessary complexity.
+6. **Code standards check:** Review the diff for these specific anti-patterns. Flag any found:
+   - Backwards-compatibility code: old code paths kept "just in case" (renamed `_` variables, re-exports of removed types, `// removed` comments, deprecated shims). If unused, it should be deleted.
+   - Fallback lookups: code that tries one path and falls back to another. There should be exactly one lookup path. If it fails, throw an error.
+   - Belt-and-suspenders: redundant validation that duplicates what the framework, DB, or upstream already guarantees (re-checking auth after middleware, null-checking non-null TypeScript values, re-validating input that a validator already checked).
+   - Feature flags for dead code: if the old way is being replaced, delete it. Don't gate behind a flag.
+   - Defensive handling of impossible states: catch blocks or null checks for conditions that cannot occur given current code paths.
 
-7. **Security review (if applicable):** If this task touches authentication, authorization, secrets, user input handling, or network boundaries, run /security-review. Otherwise skip and note "N/A -- no sensitive paths touched."
+7. **Code simplify:** Run /simplify against the changed files. Report any additional unnecessary complexity beyond the standards check above.
 
-8. **Contract assertions:** For each assertion in the contract, check it against the diff and test results. Mark each assertion PASS or FAIL with a one-line explanation.
+8. **Security review (if applicable):** If this task touches authentication, authorization, secrets, user input handling, or network boundaries, run /security-review. Otherwise skip and note "N/A -- no sensitive paths touched."
+
+9. **Contract assertions:** For each assertion in the contract, check it against the diff and test results. Mark each assertion PASS or FAIL with a one-line explanation.
 
 ## Output Format
 
@@ -376,6 +383,7 @@ Use this format:
 | Tests | PASS/FAIL | ... |
 | Lint | PASS/FAIL | ... |
 | Code review | PASS/FAIL | ... |
+| Code standards | PASS/FAIL | ... |
 | Code simplify | PASS/FAIL | ... |
 | Security review | PASS/FAIL/N/A | ... |
 
