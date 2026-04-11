@@ -238,8 +238,12 @@ Write a brief to `mission/briefs/task-N.md`.
 <any domain terms the worker needs to understand>
 
 ## Procedures
-- Implement the task as described
-- Commit all changes in a single commit with message: "[task-N] <description>"
+- Use test-driven development (TDD):
+  1. For each acceptance criterion, write a failing test first
+  2. Implement the minimum code to make the test pass
+  3. Refactor if needed while keeping tests green
+  4. Repeat for the next criterion
+- Commit all changes (code + tests) in a single commit with message: "[task-N] <description>"
 - Write your handoff report to openspec/changes/<change-name>/mission/handoffs/task-N.md
 
 ## Handoff Report Format
@@ -430,7 +434,7 @@ Track the attempt number (starts at 1 for the initial worker, increments on each
 <SHA of the commit that failed validation>
 
 ## Procedures
-- Fix only the issues described above
+- Fix only the issues described above using TDD: write a failing test that reproduces the issue, then fix the code to make it pass
 - Do not refactor or change anything unrelated
 - Commit as a single commit with message: "[task-N] fix: <description of what was fixed>"
 - Write handoff report to openspec/changes/<change-name>/mission/handoffs/task-N-fix-v<attempt+1>.md
