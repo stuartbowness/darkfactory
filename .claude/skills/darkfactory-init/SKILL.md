@@ -81,7 +81,7 @@ Missing: grill-me -- install manually:
 
 **Optional (project-specific, enhance validation but not required):**
 - `/review` -- code review
-- `/code-simplify` -- complexity check
+- `/simplify` -- complexity check
 - `/security-review` -- security audit
 - `/test-app` -- browser tests
 - `/demo-video` -- frontend demo recording
@@ -150,7 +150,7 @@ Supporting skills:
   [x] /ubiquitous-language
   [x] /prd-to-plan
   [ ] /review (optional -- project-specific)
-  [ ] /code-simplify (optional -- project-specific)
+  [ ] /simplify (optional -- project-specific)
   ...
 
 CLI tools:

@@ -34,7 +34,7 @@ Inner loop per task: `spec -> build -> verify -> ship` with repetition on valida
 - Default engine: Codex (configurable in mission/config.yaml)
 
 ### Validators (two types, run sequentially)
-1. **Scrutiny validator** -- build/test/lint + /review + /code-simplify against contract. Always runs.
+1. **Scrutiny validator** -- build/test/lint + /review + /simplify against contract. Always runs.
 2. **User-test validator** -- decides API tests (HTTP) and/or browser tests (agent-browser) based on what changed. Always runs.
 3. **Demo video** -- recorded after both validators pass, for frontend slices. Orchestrator decides when.
 
@@ -114,7 +114,7 @@ openspec/changes/<change-name>/mission/
 - Task breakdown: follow /prd-to-plan tracer bullet pattern for tasks
 - Contract: written by orchestrator after planning, before workers start
 - Worker briefs: assembled from proposal.md + design.md + task description
-- Scrutiny validation: build/test/lint + /review + /code-simplify against contract
+- Scrutiny validation: build/test/lint + /review + /simplify against contract
 - Security validation: /security-review (for slices touching auth/sensitive paths)
 - User-test validation: /test-app (agent-browser) and/or HTTP tests against API
 - Demo video: /demo-video (for frontend slices)

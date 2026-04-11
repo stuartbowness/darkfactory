@@ -47,7 +47,7 @@ openspec/changes/<change-name>/mission/
 - /write-a-prd -- structured PRD from grill conversation (planning)
 - /opsx:propose -- create proposal, design, tasks from PRD (planning)
 - /review -- code review (scrutiny validation)
-- /code-simplify -- simplify pass (scrutiny validation)
+- /simplify -- simplify pass (scrutiny validation)
 - /security-review -- security check (scrutiny validation, sensitive tasks only)
 - /tdd -- test-driven development for workers (build phase)
 - /test-app -- browser tests (user-test validation)
@@ -347,7 +347,7 @@ Run these checks in order. For each, report PASS or FAIL with evidence.
 
 5. **Code review:** Run /review against the diff. Report any bugs, security issues, or logic errors found.
 
-6. **Code simplify:** Run /code-simplify against the changed files. Report any unnecessary complexity.
+6. **Code simplify:** Run /simplify against the changed files. Report any unnecessary complexity.
 
 7. **Security review (if applicable):** If this task touches authentication, authorization, secrets, user input handling, or network boundaries, run /security-review. Otherwise skip and note "N/A -- no sensitive paths touched."
 

@@ -107,7 +107,7 @@ These skills are referenced by `/mission` but are **not bundled** in this repo. 
 | `/prd-to-plan` | [layercodedev/skills](https://github.com/layercodedev/skills/tree/main/prd-to-plan) | Spec phase: vertical slice pattern |
 | `/tdd` | [layercodedev/skills](https://github.com/layercodedev/skills/tree/main/tdd) | Build phase: test-driven development for workers |
 | `/review` | Your project's Claude skills | Scrutiny validator: code review |
-| `/code-simplify` | Your project's Claude skills | Scrutiny validator: complexity check |
+| `/simplify` | Built-in (ships with Claude Code) | Scrutiny validator: complexity check |
 | `/security-review` | Your project's Claude skills | Scrutiny validator: security audit |
 | `/test-app` | Your project's Claude skills | User-test validator: browser tests |
 | `/demo-video` | Your project's Claude skills | Demo recording for frontend tasks |
