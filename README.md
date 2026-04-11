@@ -233,15 +233,17 @@ The orchestrator creates a draft PR. Review it, promote to ready, merge, then:
 /opsx:archive
 ```
 
-## When to use a mission vs regular development
+## When to use a mission
 
-| Scope | Approach |
-|-------|----------|
-| Quick bug fix | Just fix it in Claude Code |
-| Small feature | `/opsx:propose` then `/opsx:apply` |
-| Multi-task feature | `/mission` |
-| Large refactor | `/mission` |
-| Overnight build | `/mission` in tmux |
+Use `/mission` for everything. The scope adapts naturally -- a small bug fix produces a short grill, one task, and full validation. A large feature produces a long grill, many tasks, and the same validation per task. One workflow regardless of size.
+
+| Scope | What happens |
+|-------|-------------|
+| Quick bug fix | Short grill (3-5 questions), 1 task, full validation, draft PR |
+| Small feature | Medium grill, 1-2 tasks, full validation, draft PR |
+| Multi-task feature | Long grill, many tasks, full validation per task, draft PR |
+| Large refactor | Long grill (40+ questions), many tasks, full validation, draft PR |
+| Overnight build | Same as above, run in tmux |
 
 ## How it was built
 
