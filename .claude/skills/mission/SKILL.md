@@ -128,7 +128,7 @@ Run `/opsx:propose` to create the OpenSpec change with:
 
 ### Task Quality Standard
 
-Each task in tasks.md must be a **vertical slice**: a thin end-to-end path through all layers (schema, API, UI, tests) that delivers narrow but complete functionality. Follow the `/prd-to-plan` tracer bullet pattern.
+Each task in tasks.md must be a **vertical slice**: a thin end-to-end path through all layers (schema, API, UI, tests) that delivers narrow but complete functionality.
 
 **One task = one worker = one commit = one validation cycle.**
 

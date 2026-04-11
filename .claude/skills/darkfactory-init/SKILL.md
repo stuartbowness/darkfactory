@@ -43,7 +43,6 @@ Check if each required supporting skill exists in `~/.claude/skills/`:
 - `~/.claude/skills/grill-me/SKILL.md`
 - `~/.claude/skills/ubiquitous-language/SKILL.md`
 - `~/.claude/skills/write-a-prd/SKILL.md`
-- `~/.claude/skills/prd-to-plan/SKILL.md`
 - `~/.claude/skills/tdd/SKILL.md`
 
 If any are missing, report only the missing ones:
@@ -55,7 +54,6 @@ Missing supporting skills. Install them:
   ln -sf ~/.darkfactory-skills/grill-me ~/.claude/skills/grill-me
   ln -sf ~/.darkfactory-skills/ubiquitous-language ~/.claude/skills/ubiquitous-language
   ln -sf ~/.darkfactory-skills/write-a-prd ~/.claude/skills/write-a-prd
-  ln -sf ~/.darkfactory-skills/prd-to-plan ~/.claude/skills/prd-to-plan
   ln -sf ~/.darkfactory-skills/tdd ~/.claude/skills/tdd
 
 Then restart Claude Code and re-run /darkfactory-init.
@@ -118,7 +116,6 @@ Supporting skills:
   [x] /grill-me
   [x] /ubiquitous-language
   [x] /write-a-prd
-  [x] /prd-to-plan
   [x] /tdd
   [x] /review (built-in)
   [x] /simplify (built-in)

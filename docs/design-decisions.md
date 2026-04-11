@@ -119,7 +119,7 @@ openspec/changes/<change-name>/mission/
 - Shared language: /ubiquitous-language (during planning, establish terms)
 - PRD: /write-a-prd (turn grill conversation into structured PRD)
 - Planning: /opsx:propose (create proposal, design, tasks from PRD)
-- Task breakdown: follow /prd-to-plan tracer bullet pattern for tasks
+- Task breakdown: each task is a vertical slice through all layers, demoable and verifiable on its own
 - Contract: written by orchestrator after planning, before workers start
 - Worker implementation: /tdd (test-driven development for workers)
 - Worker briefs: assembled from proposal.md + design.md + task description
