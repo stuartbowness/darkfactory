@@ -23,23 +23,23 @@ If these files don't exist, report: "This doesn't look like the darkfactory repo
 
 ---
 
-## Step 2: Install mission skills globally
+## Step 2: Check and install mission skills globally
 
-Copy the three core mission skills to `~/.claude/skills/` so they're available in every project:
+Check if each core skill already exists in `~/.claude/skills/`:
+
+- `~/.claude/skills/mission/SKILL.md`
+- `~/.claude/skills/mission-resume/SKILL.md`
+- `~/.claude/skills/mission-status/SKILL.md`
+- `~/.claude/skills/darkfactory-init/SKILL.md`
+
+**Only install skills that are missing.** For each missing skill, copy it from the darkfactory repo:
 
 ```bash
-cp -r .claude/skills/mission ~/.claude/skills/
-cp -r .claude/skills/mission-resume ~/.claude/skills/
-cp -r .claude/skills/mission-status ~/.claude/skills/
+# Example: only if missing
+[ ! -f ~/.claude/skills/mission/SKILL.md ] && cp -r .claude/skills/mission ~/.claude/skills/
 ```
 
-Also install this init skill globally so it can be run from anywhere next time:
-
-```bash
-cp -r .claude/skills/darkfactory-init ~/.claude/skills/
-```
-
-Report: which skills were installed, which were already present (compare file contents).
+Report which skills were installed (new) and which were already present (skipped).
 
 ---
 
@@ -53,6 +53,8 @@ Check for required external skills in `~/.claude/skills/`:
 - `prd-to-plan` -- from [layercodedev/skills](https://github.com/layercodedev/skills)
 
 **Security:** These are installed from our own fork, pinned to a known-good commit. This prevents supply chain attacks from upstream changes.
+
+**Only install skills that are missing.** Check `~/.claude/skills/<skill-name>/SKILL.md` first. Skip any that already exist.
 
 For each missing skill:
 
@@ -89,23 +91,19 @@ Check if these exist in `~/.claude/skills/` or in the target project's `.claude/
 
 ## Step 4: Initialize OpenSpec in the target project
 
-If the user specified a target project (as an argument to `/darkfactory-init`), check that project. Otherwise, report that OpenSpec setup should be done in the target project.
+If the user specified a target project (as an argument to `/darkfactory-init`), check that project. Otherwise, check the current working directory.
 
-Check if `openspec/config.yaml` exists in the target project:
-
-```bash
-ls <target>/openspec/config.yaml 2>/dev/null
-```
-
-If it doesn't exist:
+Check if `openspec/config.yaml` already exists:
 
 ```bash
-cd <target> && openspec init --tools claude,codex
+ls openspec/config.yaml 2>/dev/null
 ```
 
-If `openspec` CLI is not available, report it as a missing dependency.
+**If it already exists:** Report "OpenSpec already initialized. Skipping."
 
-Note: After `openspec init`, the user needs to restart their Claude Code session for the new `/opsx:` commands to register.
+**If it doesn't exist:** Run `openspec init --tools claude,codex`. If `openspec` CLI is not available, report it as a missing dependency.
+
+Note: After first-time `openspec init`, the user needs to restart their Claude Code session for the new `/opsx:` commands to register.
 
 ---
 
