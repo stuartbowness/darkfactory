@@ -51,10 +51,10 @@ Validators receive: commit SHA + contract assertions. They do NOT receive propos
 
 ## Key Design Decisions
 
-### One pattern: Monitor throughout
-- All background work (workers, validation, builds) uses the Monitor tool
-- Consistent pattern: kick off process, Monitor watches for completion, Claude wakes up on notification
-- Saves tokens vs blocking
+### Monitor for external processes
+- Monitor is used for external process dispatch (Codex workers, Codex adversarial reviews)
+- Claude subagent validators use the Agent tool directly since they run within the session
+- Saves tokens vs blocking on Codex -- Claude goes idle while Codex works
 
 ### File-backed state
 - All mission state lives on disk in the mission directory
@@ -87,7 +87,7 @@ Validators receive: commit SHA + contract assertions. They do NOT receive propos
 - `/mission` skill starts a mission
 - `/mission-resume` resumes from file state
 - `/mission-status` shows progress
-- On completion: draft PR created via /pr skill
+- On completion: draft PR created via `gh pr create --draft`
 - Human reviews and promotes to ready
 
 ## Orchestrator Plan Structure

@@ -201,7 +201,7 @@ Started: <ISO 8601 timestamp>
 
 ## Log
 
-- <timestamp> -- Plan approved. <N> tasks, <M> assertions in contract.
+- <timestamp> -- Mission directory created. Awaiting approval.
 ```
 
 Create the four subdirectories: `briefs/`, `handoffs/`, `validations/`, `issues/`.
@@ -218,7 +218,7 @@ Show the user:
 Ask: "Ready to start the build? You can request changes or approve."
 
 - If changes requested: loop back to whichever phase needs adjustment.
-- If approved: record approval in progress.md with timestamp. Update plan status to BUILDING.
+- If approved: append `<timestamp> -- Plan approved. <N> tasks, <M> assertions in contract.` to progress.md. Update plan status to BUILDING.
 
 ---
 
@@ -670,7 +670,7 @@ Spawn a Claude subagent to run `/demo-video`. The subagent should save the recor
 
 4. **If more tasks remain:** Go back to Step 1 for the next task.
 
-5. **If all tasks are done:** Proceed to Phase 8.
+5. **If all tasks are done:** Proceed to Phase 9.
 
 ---
 
@@ -725,7 +725,7 @@ If `/mission-resume` is invoked (via the mission-resume skill), the orchestrator
 3. Read `progress.md` to determine the last completed task.
 4. Read `tasks.md` to find the next unchecked task.
 5. Rebuild the plan from file state.
-6. Continue from the appropriate step in Phase 7.
+6. Continue from the appropriate step in Phase 8.
 
 This skill does not implement resume directly -- that is handled by the `/mission-resume` skill. But the file-backed state design ensures resume is always possible.
 

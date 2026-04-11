@@ -33,7 +33,8 @@ A mission has three stages:
               |                         |
      /grill-me (align)          For each task:
      /ubiquitous-language           |
-     /opsx:propose             1. Assemble brief
+     /write-a-prd (PRD)        1. Assemble brief
+     /opsx:propose
      Write contract            2. Dispatch worker -----> Codex (or Claude)
      Create mission dir        3. Scrutiny validator --> Claude subagent
               |                4. User-test validator -> Claude subagent
@@ -43,7 +44,7 @@ A mission has three stages:
                                     |
                                All tasks done
                                     |
-                              Draft PR via /pr
+                           Draft PR via gh CLI
 ```
 
 ### Three roles
@@ -112,7 +113,6 @@ These skills are referenced by `/mission` but are **not bundled** in this repo. 
 | `/test-app` | Your project's Claude skills | User-test validator: browser tests |
 | `/demo-video` | Your project's Claude skills | Demo recording for frontend tasks |
 | `/opsx:propose` | Installed by `openspec init` | Spec phase: create artifacts |
-| `/opsx:apply` | Installed by `openspec init` | Manual implementation (non-mission) |
 | `/opsx:archive` | Installed by `openspec init` | Post-merge: archive the change |
 
 Skills marked "Your project's Claude skills" are project-specific. If your project doesn't have them, the validator will skip those checks. The mission will still run -- these are best-effort enhancements, not hard blockers.

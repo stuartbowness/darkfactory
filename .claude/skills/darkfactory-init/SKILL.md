@@ -150,9 +150,11 @@ Core skills (installed to ~/.claude/skills/):
 Supporting skills:
   [x] /grill-me
   [x] /ubiquitous-language
+  [x] /write-a-prd
   [x] /prd-to-plan
+  [x] /tdd
   [ ] /review (optional -- project-specific)
-  [ ] /simplify (optional -- project-specific)
+  [ ] /simplify (built-in to Claude Code)
   ...
 
 CLI tools:
