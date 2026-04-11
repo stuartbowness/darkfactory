@@ -111,7 +111,6 @@ These skills are referenced by `/mission` but are **not bundled** in this repo. 
 | `/security-review` | Your project's Claude skills | Scrutiny validator: security audit |
 | `/test-app` | Your project's Claude skills | User-test validator: browser tests |
 | `/demo-video` | Your project's Claude skills | Demo recording for frontend tasks |
-| `/pr` | Your project's Claude skills | Completion: draft PR creation |
 | `/opsx:propose` | Installed by `openspec init` | Spec phase: create artifacts |
 | `/opsx:apply` | Installed by `openspec init` | Manual implementation (non-mission) |
 | `/opsx:archive` | Installed by `openspec init` | Post-merge: archive the change |

@@ -52,7 +52,7 @@ openspec/changes/<change-name>/mission/
 - /tdd -- test-driven development for workers (build phase)
 - /test-app -- browser tests (user-test validation)
 - /demo-video -- frontend demo recording (post-validation)
-- /pr -- draft PR (completion)
+- gh pr create --draft (completion, no skill needed)
 - /opsx:archive -- archive change (post-merge)
 
 ## Mission Flow
@@ -678,7 +678,7 @@ Spawn a Claude subagent to run `/demo-video`. The subagent should save the recor
 
 ### Create Draft PR
 
-Run `/pr` to create a **draft** pull request. Never create a ready-for-review PR.
+Create a **draft** pull request using `gh pr create --draft`. Never create a ready-for-review PR. Use the PR body template below.
 
 #### PR Body Template
 
