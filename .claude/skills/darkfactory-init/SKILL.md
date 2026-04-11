@@ -56,26 +56,24 @@ Check for required external skills in `~/.claude/skills/`:
 
 **Security:** These are installed from our own fork, pinned to a known-good commit. This prevents supply chain attacks from upstream changes.
 
-**Only install skills that are missing.** Check `~/.claude/skills/<skill-name>/SKILL.md` first. Skip any that already exist.
-
-For each missing skill:
+**Only install skills that are missing.** Check each one individually:
 
 ```bash
-# Clone our fork and fetch the pinned commit
+# Clone once, then copy each missing skill
 TMPDIR=$(mktemp -d)
 git clone https://github.com/layercodedev/skills.git "$TMPDIR" 2>/dev/null
 cd "$TMPDIR" && git checkout 651eab033bdf8f7fd535c274f8cbe839075aba5e 2>/dev/null
-cp -r "$TMPDIR/<skill-name>" ~/.claude/skills/
+
+[ ! -f ~/.claude/skills/grill-me/SKILL.md ] && cp -r "$TMPDIR/grill-me" ~/.claude/skills/ && echo "Installed: grill-me"
+[ ! -f ~/.claude/skills/ubiquitous-language/SKILL.md ] && cp -r "$TMPDIR/ubiquitous-language" ~/.claude/skills/ && echo "Installed: ubiquitous-language"
+[ ! -f ~/.claude/skills/write-a-prd/SKILL.md ] && cp -r "$TMPDIR/write-a-prd" ~/.claude/skills/ && echo "Installed: write-a-prd"
+[ ! -f ~/.claude/skills/prd-to-plan/SKILL.md ] && cp -r "$TMPDIR/prd-to-plan" ~/.claude/skills/ && echo "Installed: prd-to-plan"
+[ ! -f ~/.claude/skills/tdd/SKILL.md ] && cp -r "$TMPDIR/tdd" ~/.claude/skills/ && echo "Installed: tdd"
+
 rm -rf "$TMPDIR"
 ```
 
-If git is not available, report the skill as missing with a manual install command:
-```
-Missing: grill-me -- install manually:
-  git clone https://github.com/layercodedev/skills /tmp/layercode-skills
-  cd /tmp/layercode-skills && git checkout 651eab033bdf8f7fd535c274f8cbe839075aba5e
-  cp -r /tmp/layercode-skills/grill-me ~/.claude/skills/
-```
+Report which were installed (new) and which were already present (skipped).
 
 **To update pinned skills:** Pull upstream changes into the layercodedev/skills fork, review them, then update the commit SHA in this skill file.
 
@@ -155,10 +153,11 @@ Supporting skills:
   [x] /write-a-prd
   [x] /prd-to-plan
   [x] /tdd
-  [x] /review (required)
+  [x] /review (required -- from your dotfiles)
   [x] /simplify (built-in to Claude Code)
-  [x] /security-review (required)
-  ...
+  [x] /security-review (conditional -- from your dotfiles)
+  [ ] /test-app (optional -- project-specific)
+  [ ] /demo-video (optional -- project-specific)
 
 CLI tools:
   [x] codex 0.118.0 (authenticated)
