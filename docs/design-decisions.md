@@ -33,18 +33,21 @@ Inner loop per task: `spec -> build -> verify -> ship` with repetition on valida
 - Write a structured handoff report to disk
 - Default engine: Codex (configurable in mission/config.yaml)
 
-### Validators (two types, run sequentially)
+### Validators (run sequentially per task)
 1. **Scrutiny validator** -- build/test/lint + /review + /simplify against contract. Always runs.
 2. **User-test validator** -- decides API tests (HTTP) and/or browser tests (agent-browser) based on what changed. Always runs.
-3. **Demo video** -- recorded after both validators pass, for frontend slices. Orchestrator decides when.
+3. **Dual adversarial review** -- Codex and Claude independently review the code in parallel. Orchestrator synthesizes findings. Catches cross-file inconsistencies and issues single-model validators miss.
+4. **Demo video** -- recorded after all validators pass, for frontend tasks. Orchestrator decides when.
 
 Validators receive: commit SHA + contract assertions. They do NOT receive proposal, design, or worker reasoning.
 
 ### Fix Loop
 - On validation failure: orchestrator writes failure details to mission/issues/, spawns a fix worker with the failure context + commit SHA
+- Fix worker uses `/tdd` to fix: write a failing test that reproduces the issue, then fix
 - Fix worker commits a single fix commit
-- Both validators re-run after every fix (not just the one that failed)
+- ALL validators re-run after every fix (scrutiny, user-test, both adversarial reviewers)
 - Circuit breaker: 3 attempts on the same task -> pause and ask human
+- Skipped tasks marked with `- [~]` in tasks.md -- the build loop ignores them
 
 ## Key Design Decisions
 
@@ -71,19 +74,18 @@ Validators receive: commit SHA + contract assertions. They do NOT receive propos
 
 ### Configurable engines
 - mission/config.yaml specifies which engine per role (codex/claude)
-- Default: Codex for workers, Claude for validators and demo video
+- Default: Codex for workers and adversarial reviewer A, Claude for validators, adversarial reviewer B, and demo video
 - Swap engines when new models drop without changing anything else
 
 ### OpenSpec integration
-- Mission system is opt-in (large changes only)
-- Small changes use existing /opsx:propose + /opsx:apply flow
+- `/mission` is the single workflow for all work (small fixes to large epics). Scope adapts naturally.
 - contract.md is a new OpenSpec artifact (validation assertions, written during planning)
 - mission/ directory nests inside openspec/changes/<change-name>/
 - Archiving the change archives the mission artifacts too
 
 ### Entry point and completion
 - `/mission` skill starts a mission
-- `/mission resume` resumes from file state
+- `/mission-resume` resumes from file state
 - `/mission-status` shows progress
 - On completion: draft PR created via /pr skill
 - Human reviews and promotes to ready
@@ -104,35 +106,42 @@ openspec/changes/<change-name>/mission/
 
 ## Engine Config
 - Workers: codex (gpt-5.4, high effort)
-- Validators: claude (subagents)
-- Demo video: claude (subagent)
+- Scrutiny validator: claude
+- User-test validator: claude
+- Adversarial reviewer A: codex
+- Adversarial reviewer B: claude
+- Demo video: claude
 
 ## Skills to Use
 - Alignment: /grill-me (during planning, before artifacts are created)
 - Shared language: /ubiquitous-language (during planning, establish terms)
-- Planning: /opsx:propose (create proposal, design, tasks)
+- PRD: /write-a-prd (turn grill conversation into structured PRD)
+- Planning: /opsx:propose (create proposal, design, tasks from PRD)
 - Task breakdown: follow /prd-to-plan tracer bullet pattern for tasks
 - Contract: written by orchestrator after planning, before workers start
+- Worker implementation: /tdd (test-driven development for workers)
 - Worker briefs: assembled from proposal.md + design.md + task description
 - Scrutiny validation: build/test/lint + /review + /simplify against contract
-- Security validation: /security-review (for slices touching auth/sensitive paths)
+- Security validation: /security-review (for tasks touching auth/sensitive paths)
 - User-test validation: /test-app (agent-browser) and/or HTTP tests against API
-- Demo video: /demo-video (for frontend slices)
-- Completion: /pr (create draft PR with mission summary)
+- Adversarial review: dual Codex + Claude review in parallel, orchestrator synthesizes
+- Demo video: /demo-video (for frontend tasks)
+- Completion: gh pr create --draft (draft PR with mission summary)
 - Archival: /opsx:archive (after merge)
 
 ## Mission Flow
 For each unchecked task in tasks.md:
 1. Read mission state from mission/progress.md
 2. Write brief to mission/briefs/task-N.md
-3. Kick off Codex worker via Monitor
+3. Kick off worker via Monitor (engine per config.yaml)
 4. On completion, read mission/handoffs/task-N.md
 5. Spawn scrutiny validator (commit SHA + contract assertions)
-6. If fail -> write to mission/issues/, spawn fix worker, re-validate. Circuit breaker: 3 attempts -> ask human.
+6. If fail -> write to mission/issues/, spawn fix worker, re-validate all. Circuit breaker: 3 attempts -> ask human.
 7. Spawn user-test validator (commit SHA + contract assertions)
 8. If fail -> same fix/re-validate loop
-9. If frontend task -> spawn demo video
-10. Mark task complete in tasks.md, update progress.md
+9. Run dual adversarial review (Codex + Claude in parallel), synthesize, fix loop if FAIL
+10. If frontend task -> spawn demo video
+11. Mark task complete in tasks.md, update progress.md
 
 ## Rules
 - One worker at a time (serial execution)
@@ -236,4 +245,4 @@ openspec/changes/<change-name>/
 3. **Scrutiny validation** -- build/test/lint + /review + fix loop with circuit breaker
 4. **User-test validation** -- agent-browser + HTTP tests
 5. **Demo video + draft PR** -- completion phase
-6. **Resume + status** -- /mission resume, /mission-status skill
+6. **Resume + status** -- /mission-resume, /mission-status skill

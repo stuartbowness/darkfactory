@@ -155,7 +155,7 @@ Read `config.yaml` to determine the worker engine.
 **If engine is `codex`:** Use the Monitor tool to dispatch a Codex worker and watch for the handoff file.
 
 ```bash
-codex exec --approval-mode full-auto "You are a Worker in the Darkfactory mission system. Read your brief and follow its instructions exactly. Your brief is at: <absolute-path-to-brief>"
+codex exec --full-auto --sandbox workspace-write -m gpt-5.4 -c model_reasoning_effort="high" -o "<absolute-path-to-handoff>" "You are a Worker in the Darkfactory mission system. Read your brief and follow its instructions exactly. Your brief is at: <absolute-path-to-brief>"
 ```
 
 Monitor watches for: `mission/handoffs/task-N.md`

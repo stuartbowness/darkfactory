@@ -61,9 +61,9 @@ Check for required external skills in `~/.claude/skills/`:
 For each missing skill:
 
 ```bash
-# Clone our fork at a pinned commit
+# Clone our fork and fetch the pinned commit
 TMPDIR=$(mktemp -d)
-git clone --depth 1 https://github.com/layercodedev/skills.git "$TMPDIR" 2>/dev/null
+git clone https://github.com/layercodedev/skills.git "$TMPDIR" 2>/dev/null
 cd "$TMPDIR" && git checkout 651eab033bdf8f7fd535c274f8cbe839075aba5e 2>/dev/null
 cp -r "$TMPDIR/<skill-name>" ~/.claude/skills/
 rm -rf "$TMPDIR"
@@ -92,17 +92,19 @@ Check if these exist in `~/.claude/skills/` or in the target project's `.claude/
 
 ## Step 4: Initialize OpenSpec in the target project
 
-If the user specified a target project (as an argument to `/darkfactory-init`), check that project. Otherwise, check the current working directory.
+**Important:** This step should run in the target project, not in the darkfactory repo. Ask the user which project to initialize if unclear. If the user provides a path as an argument to `/darkfactory-init`, use that.
 
-Check if `openspec/config.yaml` already exists:
+Check if `openspec/config.yaml` already exists in the target project:
 
 ```bash
-ls openspec/config.yaml 2>/dev/null
+ls <target-project>/openspec/config.yaml 2>/dev/null
 ```
 
-**If it already exists:** Report "OpenSpec already initialized. Skipping."
+**If it already exists:** Report "OpenSpec already initialized in <project>. Skipping."
 
-**If it doesn't exist:** Run `openspec init --tools claude,codex`. If `openspec` CLI is not available, report it as a missing dependency.
+**If it doesn't exist:** Run `cd <target-project> && openspec init --tools claude,codex`. If `openspec` CLI is not available, report it as a missing dependency.
+
+**If no target project specified and current directory is the darkfactory repo:** Report "OpenSpec init skipped -- run `openspec init --tools claude,codex` in your target project."
 
 Note: After first-time `openspec init`, the user needs to restart their Claude Code session for the new `/opsx:` commands to register.
 

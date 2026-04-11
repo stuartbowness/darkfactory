@@ -137,7 +137,7 @@ From the darkfactory repo directory, run:
 
 This will:
 1. Install `/mission`, `/mission-resume`, `/mission-status` to `~/.claude/skills/` (global, works in any project)
-2. Check for and install supporting skills (`grill-me`, `ubiquitous-language`, `prd-to-plan`) from [layercodedev/skills](https://github.com/layercodedev/skills) (pinned fork of mattpocock/skills)
+2. Check for and install supporting skills (`grill-me`, `ubiquitous-language`, `write-a-prd`, `prd-to-plan`, `tdd`) from [layercodedev/skills](https://github.com/layercodedev/skills) (pinned fork of mattpocock/skills)
 3. Initialize OpenSpec in the target project if needed
 4. Verify CLI dependencies (codex, gh, openspec) are installed and authenticated
 5. Report what's ready and what needs manual action
@@ -157,11 +157,13 @@ cp -r .claude/skills/mission-status ~/.claude/skills/
 
 2. Install supporting skills from [layercodedev/skills](https://github.com/layercodedev/skills) (pinned fork of mattpocock/skills):
 ```bash
-git clone --depth 1 https://github.com/layercodedev/skills.git /tmp/layercode-skills
+git clone https://github.com/layercodedev/skills.git /tmp/layercode-skills
 cd /tmp/layercode-skills && git checkout 651eab033bdf8f7fd535c274f8cbe839075aba5e
 cp -r /tmp/layercode-skills/grill-me ~/.claude/skills/
 cp -r /tmp/layercode-skills/ubiquitous-language ~/.claude/skills/
+cp -r /tmp/layercode-skills/write-a-prd ~/.claude/skills/
 cp -r /tmp/layercode-skills/prd-to-plan ~/.claude/skills/
+cp -r /tmp/layercode-skills/tdd ~/.claude/skills/
 ```
 
 3. Initialize OpenSpec in your project:
@@ -201,12 +203,13 @@ engines:
 
 The orchestrator will:
 1. Enter plan mode (durable operating manual)
-2. Grill you with 20-100 questions until aligned
-3. Create a shared language glossary
-4. Create OpenSpec artifacts (proposal, design, tasks)
-5. Write a validation contract
-6. Create the mission directory
-7. Present the plan for your approval
+2. Grill you until aligned (`/grill-me`)
+3. Create a shared language glossary (`/ubiquitous-language`)
+4. Write a structured PRD (`/write-a-prd`)
+5. Create OpenSpec artifacts from the PRD (`/opsx:propose`)
+6. Write a validation contract
+7. Create the mission directory
+8. Present the plan for your approval
 
 After you approve, it runs the build loop autonomously.
 

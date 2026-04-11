@@ -43,7 +43,7 @@
 | Term | Definition | Aliases to avoid |
 | --- | --- | --- |
 | **Mission directory** | The `mission/` folder nested inside an OpenSpec change directory that holds all runtime state for a mission | State folder, workspace |
-| **Progress log** | The `progress.md` file where the orchestrator records slice status, decisions, and issues as the mission runs | Status file, mission log |
+| **Progress log** | The `progress.md` file where the orchestrator records task status, decisions, and issues as the mission runs | Status file, mission log |
 | **Mission config** | The `config.yaml` file specifying which engine to use for each role in the mission | Settings, preferences |
 
 ## OpenSpec integration
