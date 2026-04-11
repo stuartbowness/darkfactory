@@ -79,9 +79,9 @@ Missing: grill-me -- install manually:
 
 **To update pinned skills:** Pull upstream changes into the layercodedev/skills fork, review them, then update the commit SHA in this skill file.
 
-**Optional (project-specific, enhance validation but not required):**
+**Optional (enhance validation but not required):**
 - `/review` -- code review
-- `/simplify` -- complexity check
+- `/simplify` -- complexity check (built-in to Claude Code)
 - `/security-review` -- security audit
 - `/test-app` -- browser tests
 - `/demo-video` -- frontend demo recording

@@ -360,7 +360,7 @@ Run these checks in order. For each, report PASS or FAIL with evidence.
 
 7. **Code simplify:** Run /simplify against the changed files. Report any additional unnecessary complexity beyond the standards check above.
 
-8. **Security review (if applicable):** If this task touches authentication, authorization, secrets, user input handling, or network boundaries, run /security-review. Otherwise skip and note "N/A -- no sensitive paths touched."
+8. **Security review:** Run /security-review against the diff. Report any security findings by severity (Critical, High, Medium).
 
 9. **Contract assertions:** For each assertion in the contract, check it against the diff and test results. Mark each assertion PASS or FAIL with a one-line explanation.
 
@@ -385,7 +385,7 @@ Use this format:
 | Code review | PASS/FAIL | ... |
 | Code standards | PASS/FAIL | ... |
 | Code simplify | PASS/FAIL | ... |
-| Security review | PASS/FAIL/N/A | ... |
+| Security review | PASS/FAIL | ... |
 
 ## Contract Assertions
 | # | Assertion | Result | Evidence |

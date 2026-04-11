@@ -109,7 +109,7 @@ These skills are referenced by `/mission` but are **not bundled** in this repo. 
 | `/tdd` | [layercodedev/skills](https://github.com/layercodedev/skills/tree/main/tdd) | Build phase: test-driven development for workers |
 | `/review` | Your project's Claude skills | Scrutiny validator: code review |
 | `/simplify` | Built-in (ships with Claude Code) | Scrutiny validator: complexity check |
-| `/security-review` | Your project's Claude skills | Scrutiny validator: security audit |
+| `/security-review` | Your global Claude skills | Scrutiny validator: security audit |
 | `/test-app` | Your project's Claude skills | User-test validator: browser tests |
 | `/demo-video` | Your project's Claude skills | Demo recording for frontend tasks |
 | `/opsx:propose` | Installed by `openspec init` | Spec phase: create artifacts |
