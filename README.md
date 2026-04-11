@@ -8,11 +8,13 @@ Inspired by [Factory's Missions architecture](https://www.factory.ai/) and [Matt
 
 Darkfactory turns a goal into working, validated code -- autonomously. You describe what you want to build, the system plans it, dispatches workers to implement it, validates the results against a contract, and delivers a draft PR.
 
-```
-idea -> spec -> build -> verify -> ship -> merge
-```
+A mission has three stages:
 
-The inner loop runs per task: a worker builds a vertical slice, validators check it against the contract, and if it fails, a fix worker addresses the issues. This repeats until the task passes or a circuit breaker asks for human input.
+1. **You and the orchestrator plan together.** The orchestrator grills you on what you want, establishes shared terminology, creates a proposal/design/tasks via OpenSpec, writes a validation contract, and presents everything for your approval.
+
+2. **The orchestrator builds and validates autonomously.** For each task, it dispatches a worker (Codex), then runs three layers of validation: scrutiny (build/test/lint/code review), user-testing (API and browser tests), and dual adversarial review (Codex + Claude). If anything fails, a fix worker addresses the issues and all validators re-run. This repeats until the task passes or a circuit breaker asks for your input.
+
+3. **You review and merge.** The orchestrator creates a draft PR with a mission summary. You review it, promote to ready, and merge.
 
 ## Architecture
 
