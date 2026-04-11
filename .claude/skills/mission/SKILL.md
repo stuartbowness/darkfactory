@@ -341,15 +341,15 @@ SHA: <commit-sha>
 
 Run these checks in order. For each, report PASS or FAIL with evidence.
 
-1. **Diff review:** Run `git show <commit-sha>` and read the full diff. Does the code look correct and complete?
+1. **Test presence gate:** Run `git show <commit-sha> --stat` and check if any test files were added or modified. If the diff contains zero test files and zero new test assertions, this is an automatic FAIL. Workers are required to use /tdd -- no new tests means TDD was not followed.
 
 2. **Build:** Run the project's build command. Does it pass?
 
-3. **Tests:** Run the project's test command. Do all tests pass? Are there new tests covering the task's functionality?
+3. **Tests:** Run the project's test command. Do all tests pass?
 
 4. **Lint:** Run the project's lint command. Are there any violations?
 
-5. **Code review:** Run /review against the diff. Report any bugs, security issues, or logic errors found.
+5. **Code review:** Run /review against the diff (this includes reading the full diff). Report any bugs, security issues, or logic errors found.
 
 6. **Code standards check:** Review the diff for these specific anti-patterns. Flag any found:
    - Backwards-compatibility code: old code paths kept "just in case" (renamed `_` variables, re-exports of removed types, `// removed` comments, deprecated shims). If unused, it should be deleted.
@@ -360,7 +360,7 @@ Run these checks in order. For each, report PASS or FAIL with evidence.
 
 7. **Code simplify:** Run /simplify against the changed files. Report any additional unnecessary complexity beyond the standards check above.
 
-8. **Security review:** Run /security-review against the diff. Report any security findings by severity (Critical, High, Medium).
+8. **Security review (if applicable):** If the diff touches authentication, authorization, secrets, user input handling, or network boundaries, run /security-review against the diff. Report findings by severity (Critical, High, Medium). Otherwise note "N/A -- no sensitive paths touched."
 
 9. **Contract assertions:** For each assertion in the contract, check it against the diff and test results. Mark each assertion PASS or FAIL with a one-line explanation.
 
@@ -378,14 +378,14 @@ Use this format:
 ## Check Results
 | Check | Result | Notes |
 |-------|--------|-------|
-| Diff review | PASS/FAIL | ... |
+| Test presence | PASS/FAIL | ... |
 | Build | PASS/FAIL | ... |
 | Tests | PASS/FAIL | ... |
 | Lint | PASS/FAIL | ... |
 | Code review | PASS/FAIL | ... |
 | Code standards | PASS/FAIL | ... |
 | Code simplify | PASS/FAIL | ... |
-| Security review | PASS/FAIL | ... |
+| Security review | PASS/FAIL/N/A | ... |
 
 ## Contract Assertions
 | # | Assertion | Result | Evidence |
@@ -422,8 +422,8 @@ Track the attempt number (starts at 1 for the initial worker, increments on each
 ## Failed Checks
 <list of failed checks from validator report>
 
-## Failed Assertions
-<list of failed assertions with evidence>
+## Observed Symptoms
+<describe what went wrong in terms of behavior -- error messages, test failures, unexpected output. Do NOT copy contract assertion text here.>
 
 ## Validator Recommendations
 <recommendations from validator>
@@ -443,10 +443,10 @@ Track the attempt number (starts at 1 for the initial worker, increments on each
 # Fix Brief: Task N - <name> (Attempt <attempt+1>)
 
 ## What Failed
-<specific failed assertions and checks from the validator report>
+<describe the observed symptoms -- error messages, unexpected behavior, test failures. Do NOT copy assertion text from the contract. Describe what went wrong, not what the contract expected.>
 
 ## Validator Output
-<relevant error messages, test failures, review findings>
+<relevant error messages, build/test output, review findings -- symptoms only>
 
 ## Commit to Fix
 <SHA of the commit that failed validation>

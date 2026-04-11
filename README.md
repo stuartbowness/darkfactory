@@ -109,13 +109,13 @@ These skills are referenced by `/mission` but are **not bundled** in this repo. 
 | `/tdd` | [layercodedev/skills](https://github.com/layercodedev/skills/tree/main/tdd) | Build phase: test-driven development for workers |
 | `/review` | Your global Claude skills (required) | Scrutiny validator: code review |
 | `/simplify` | Built-in Claude Code (required) | Scrutiny validator: complexity check |
-| `/security-review` | Your global Claude skills (required) | Scrutiny validator: security audit |
+| `/security-review` | Your global Claude skills (conditional) | Scrutiny validator: security audit (runs when diff touches auth/secrets/input handling) |
 | `/test-app` | Your project's Claude skills (optional) | User-test validator: browser tests |
 | `/demo-video` | Your project's Claude skills (optional) | Demo recording for frontend tasks |
 | `/opsx:propose` | Installed by `openspec init` | Spec phase: create artifacts |
 | `/opsx:archive` | Installed by `openspec init` | Post-merge: archive the change |
 
-`/review`, `/simplify`, and `/security-review` are mandatory -- the scrutiny validator always runs them. `/test-app` and `/demo-video` are optional and project-specific.
+`/review` and `/simplify` are mandatory -- the scrutiny validator always runs them. `/security-review` is conditional (runs when the diff touches auth, secrets, or input handling). `/test-app` and `/demo-video` are optional and project-specific.
 
 ## Setup
 
