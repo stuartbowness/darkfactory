@@ -79,10 +79,12 @@ Missing: grill-me -- install manually:
 
 **To update pinned skills:** Pull upstream changes into the layercodedev/skills fork, review them, then update the commit SHA in this skill file.
 
-**Optional (enhance validation but not required):**
-- `/review` -- code review
-- `/simplify` -- complexity check (built-in to Claude Code)
-- `/security-review` -- security audit
+**Required for scrutiny validation (must be in ~/.claude/skills/ or built-in):**
+- `/review` -- code review (install to ~/.claude/skills/ from your dotfiles)
+- `/simplify` -- complexity check (built-in to Claude Code, no install needed)
+- `/security-review` -- security audit (install to ~/.claude/skills/ from your dotfiles)
+
+**Optional (project-specific, enhance validation but not required):**
 - `/test-app` -- browser tests
 - `/demo-video` -- frontend demo recording
 
@@ -153,8 +155,9 @@ Supporting skills:
   [x] /write-a-prd
   [x] /prd-to-plan
   [x] /tdd
-  [ ] /review (optional -- project-specific)
-  [ ] /simplify (built-in to Claude Code)
+  [x] /review (required)
+  [x] /simplify (built-in to Claude Code)
+  [x] /security-review (required)
   ...
 
 CLI tools:

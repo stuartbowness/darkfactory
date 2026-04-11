@@ -107,15 +107,15 @@ These skills are referenced by `/mission` but are **not bundled** in this repo. 
 | `/write-a-prd` | [layercodedev/skills](https://github.com/layercodedev/skills/tree/main/write-a-prd) | Spec phase: structured PRD from grill conversation |
 | `/prd-to-plan` | [layercodedev/skills](https://github.com/layercodedev/skills/tree/main/prd-to-plan) | Spec phase: vertical slice pattern |
 | `/tdd` | [layercodedev/skills](https://github.com/layercodedev/skills/tree/main/tdd) | Build phase: test-driven development for workers |
-| `/review` | Your project's Claude skills | Scrutiny validator: code review |
-| `/simplify` | Built-in (ships with Claude Code) | Scrutiny validator: complexity check |
-| `/security-review` | Your global Claude skills | Scrutiny validator: security audit |
-| `/test-app` | Your project's Claude skills | User-test validator: browser tests |
-| `/demo-video` | Your project's Claude skills | Demo recording for frontend tasks |
+| `/review` | Your global Claude skills (required) | Scrutiny validator: code review |
+| `/simplify` | Built-in Claude Code (required) | Scrutiny validator: complexity check |
+| `/security-review` | Your global Claude skills (required) | Scrutiny validator: security audit |
+| `/test-app` | Your project's Claude skills (optional) | User-test validator: browser tests |
+| `/demo-video` | Your project's Claude skills (optional) | Demo recording for frontend tasks |
 | `/opsx:propose` | Installed by `openspec init` | Spec phase: create artifacts |
 | `/opsx:archive` | Installed by `openspec init` | Post-merge: archive the change |
 
-Skills marked "Your project's Claude skills" are project-specific. If your project doesn't have them, the validator will skip those checks. The mission will still run -- these are best-effort enhancements, not hard blockers.
+`/review`, `/simplify`, and `/security-review` are mandatory -- the scrutiny validator always runs them. `/test-app` and `/demo-video` are optional and project-specific.
 
 ## Setup
 
