@@ -52,7 +52,6 @@ If any are missing, report only the missing ones:
 Missing supporting skills. Install them:
 
   git clone https://github.com/layercodedev/skills.git ~/.darkfactory-skills
-  cd ~/.darkfactory-skills && git checkout 651eab033bdf8f7fd535c274f8cbe839075aba5e
   ln -sf ~/.darkfactory-skills/grill-me ~/.claude/skills/grill-me
   ln -sf ~/.darkfactory-skills/ubiquitous-language ~/.claude/skills/ubiquitous-language
   ln -sf ~/.darkfactory-skills/write-a-prd ~/.claude/skills/write-a-prd
