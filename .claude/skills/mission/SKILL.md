@@ -62,12 +62,16 @@ For each unchecked task in tasks.md (skip `- [~]` tasks):
 3. Dispatch worker (engine from config.yaml)
 4. Read handoff from mission/handoffs/task-N.md
 5. Spawn scrutiny validator (commit SHA + contract assertions)
-6. If fail -> write to issues/, spawn fix worker, re-validate all. Circuit breaker at 3.
+6. If fail -> write to issues/, spawn fix worker, re-validate. Circuit breaker at 3.
 7. Spawn user-test validator (commit SHA + contract assertions)
 8. If fail -> same fix/re-validate loop
-9. Run dual adversarial review (reviewer A + reviewer B in parallel), synthesize, fix loop if FAIL
-10. If frontend task -> spawn demo video
-11. Mark task done in tasks.md, update progress.md
+9. If frontend task -> spawn demo video
+10. Mark task done in tasks.md, update progress.md
+
+After all tasks complete:
+11. Create draft PR
+12. Run dual adversarial review (Codex + Claude) against full diff
+13. Present both reports to human alongside PR link
 
 ## Rules
 - One worker at a time (serial execution)
@@ -224,7 +228,7 @@ Ask: "Ready to start the build? You can request changes or approve."
 
 ## Phase 8: Build Loop
 
-For each unchecked task (`- [ ]`) in tasks.md, run Steps 1-8. Process tasks in order, one at a time (serial execution). Skip tasks marked `- [~]` (skipped) and `- [x]` (complete).
+For each unchecked task (`- [ ]`) in tasks.md, run Steps 1-7. Process tasks in order, one at a time (serial execution). Skip tasks marked `- [~]` (skipped) and `- [x]` (complete).
 
 ### Step 1: Assemble Brief
 
@@ -457,7 +461,7 @@ Track the attempt number (starts at 1 for the initial worker, increments on each
 
 4. **Dispatch fix worker** using the same engine and method as Step 2, but with the fix brief.
 
-5. **After fix completes:** Go back to **Step 4** (re-run scrutiny validation with the new commit SHA). All validators must re-run after every fix (scrutiny, user-test, both adversarial reviewers), not just the one that failed.
+5. **After fix completes:** Go back to **Step 4** (re-run scrutiny validation with the new commit SHA). Both per-task validators must re-run after every fix (scrutiny and user-test), not just the one that failed.
 
 ### Step 6: User-Test Validation
 
@@ -527,116 +531,11 @@ IMPORTANT: The overall result is FAIL if ANY contract assertion fails (SKIP does
 
 Read the validator's report from `mission/validations/task-N-usertest.md`.
 
-- **PASS**: Log to progress.md: `<timestamp> -- Task N: user-test validation PASSED.` Proceed to Step 6a.
-- **FAIL**: Enter the fix loop (Step 5a) with the user-test failure details. After the fix, re-run **all** validators (Step 4, then Step 6, then Step 6a).
-- **SKIP** (all assertions skipped): Log to progress.md: `<timestamp> -- Task N: user-test validation SKIPPED (all assertions infrastructure-only).` Proceed to Step 6a.
+- **PASS**: Log to progress.md: `<timestamp> -- Task N: user-test validation PASSED.` Proceed to Step 6a (demo video).
+- **FAIL**: Enter the fix loop (Step 5a) with the user-test failure details. After the fix, re-run **both** validators (Step 4, then Step 6).
+- **SKIP** (all assertions skipped): Log to progress.md: `<timestamp> -- Task N: user-test validation SKIPPED (all assertions infrastructure-only).` Proceed to Step 6a (demo video).
 
-### Step 6a: Dual Adversarial Review
-
-Run two independent adversarial reviewers in parallel. They receive the commit SHA and the **full contract** (all assertions across all tasks, not just the current task's). They look for flaws, inconsistencies, cross-file compatibility issues, and anything the previous validators missed.
-
-Read the engine assignments from `config.yaml`:
-- `adversarial_reviewer_a` (default: codex) -- dispatched via Monitor since it is an external process
-- `adversarial_reviewer_b` (default: claude) -- dispatched via Agent tool since it runs within the session
-
-#### Adversarial Reviewer Prompt (used for both A and B)
-
-```
-You are an adversarial reviewer for the Darkfactory mission system. Your job is to find flaws, inconsistencies, cross-file compatibility issues, and anything the previous validators (scrutiny + user-test) may have missed.
-
-## Commit to Review
-SHA: <commit-sha>
-
-## Full Validation Contract (all tasks)
-<paste the ENTIRE contract.md>
-
-## Instructions
-
-1. Run `git show <commit-sha>` to read the full diff.
-2. Look for:
-   - Logic errors or edge cases not covered by tests
-   - Cross-file inconsistencies (types, interfaces, naming)
-   - Contract assertions that technically pass but have subtle flaws
-   - Security issues, race conditions, or data integrity problems
-   - Missing error handling or graceful degradation
-   - Anything that would break when integrated with other tasks' code
-3. For each finding, classify as PASS (no issue) or FAIL (real problem that must be fixed).
-4. Be adversarial: assume the code is wrong until proven right.
-
-## Output Format
-
-Write your report to: <absolute path to mission/validations/task-N-adversarial-{a|b}.md>
-
-```markdown
-# Adversarial Review {A|B}: Task N
-
-## Result: PASS | FAIL
-
-## Findings
-| # | Category | Severity | Finding | Verdict |
-|---|----------|----------|---------|---------|
-| 1 | <category> | HIGH/MEDIUM/LOW | <description> | PASS/FAIL |
-| 2 | ... | ... | ... | ... |
-
-## Failed Findings (if any)
-<detailed explanation of each FAIL finding with evidence and fix guidance>
-
-## Summary
-<overall assessment>
-```
-
-IMPORTANT: The overall result is FAIL if ANY finding has a FAIL verdict. Be strict and adversarial.
-```
-
-#### Dispatch Both Reviewers in Parallel
-
-**Reviewer A** (if engine is `codex`): Use Monitor with the same pattern as worker dispatch, but passing the adversarial reviewer prompt. Write report to `mission/validations/task-N-adversarial-a.md`.
-
-**Reviewer B** (if engine is `claude`): Use Agent tool with the adversarial reviewer prompt. Write report to `mission/validations/task-N-adversarial-b.md`.
-
-Both run at the same time. Wait for both to complete before proceeding.
-
-#### Synthesize Results
-
-After both reports are written, the orchestrator reads both and creates a synthesis report at `mission/validations/task-N-adversarial-synthesis.md`:
-
-```markdown
-# Adversarial Review Synthesis: Task N
-
-## Result: PASS | FAIL
-
-## Shared Findings (both reviewers agree)
-| # | Finding | Reviewer A | Reviewer B | Verdict |
-|---|---------|-----------|-----------|---------|
-| 1 | <finding> | PASS/FAIL | PASS/FAIL | PASS/FAIL |
-
-## Disagreements (reviewers differ)
-| # | Finding | Reviewer A | Reviewer B | Orchestrator Verdict | Rationale |
-|---|---------|-----------|-----------|---------------------|-----------|
-| 1 | <finding> | PASS | FAIL | <orchestrator decides> | <why> |
-
-## Unique Findings
-| # | Source | Finding | Verdict |
-|---|--------|---------|---------|
-| 1 | Reviewer A only | <finding> | PASS/FAIL |
-| 2 | Reviewer B only | <finding> | PASS/FAIL |
-
-## Action Items (if FAIL)
-<prioritized list of issues that must be fixed>
-```
-
-**Synthesis rules:**
-- Deduplicate shared findings (same issue reported by both).
-- Flag disagreements and let the orchestrator make the final call based on evidence.
-- Include unique findings from each reviewer.
-- Overall result is FAIL if ANY finding in the synthesis has a FAIL verdict.
-
-#### Handle Adversarial Review Result
-
-- **PASS**: Log to progress.md: `<timestamp> -- Task N: adversarial review PASSED (both reviewers).` Proceed to Step 6b.
-- **FAIL**: Enter the fix loop (Step 5a) with the synthesis findings. After the fix, re-run **all** validators (Step 4, then Step 6, then Step 6a).
-
-### Step 6b: Demo Video (Frontend Only)
+### Step 6a: Demo Video (Frontend Only)
 
 The orchestrator decides whether this task has a frontend component by checking the diff. If the task touches UI files (components, pages, styles, templates), it has a frontend component.
 
@@ -650,7 +549,7 @@ Spawn a Claude subagent to run `/demo-video`. The subagent should save the recor
 
 **If no frontend component:** Skip this step. Proceed to Step 7.
 
-### Step 7: Track Progress (updated numbering: was Step 7, steps above were renumbered)
+### Step 7: Track Progress
 
 1. Mark the task complete in `tasks.md`: change `- [ ]` to `- [x]` for this task.
 
@@ -661,7 +560,6 @@ Spawn a Claude subagent to run `/demo-video`. The subagent should save the recor
   - Commit: <SHA>
   - Scrutiny: PASS
   - User-test: PASS | SKIP
-  - Adversarial review: PASS
   - Demo: RECORDED | SKIPPED | FAILED
   - Fix attempts: <number, 0 if first try passed>
 ```
@@ -692,10 +590,10 @@ Create a **draft** pull request using `gh pr create --draft`. Never create a rea
 | 2 | <name> | <short SHA> | Done |
 
 ### Validation Results
-| Task | Scrutiny | User-Test | Adversarial | Demo | Fix Attempts |
-|------|----------|-----------|-------------|------|-------------|
-| 1 | PASS | PASS | PASS | N/A | 0 |
-| 2 | PASS | PASS | PASS | RECORDED | 1 |
+| Task | Scrutiny | User-Test | Demo | Fix Attempts |
+|------|----------|-----------|------|-------------|
+| 1 | PASS | PASS | N/A | 0 |
+| 2 | PASS | PASS | RECORDED | 1 |
 
 ### Issues Encountered
 <list any issues from mission/issues/, or "None">
@@ -708,11 +606,89 @@ Create a **draft** pull request using `gh pr create --draft`. Never create a rea
 - Duration: <start to end>
 ```
 
-### Finalize
+### Dual Adversarial Review
 
-1. Log the draft PR URL to progress.md: `<timestamp> -- Draft PR created: <URL>`
-2. Update plan status to COMPLETE.
-3. Tell the user: "Mission complete. Draft PR is at <URL>. Review it and promote to ready-for-review when satisfied. Run /opsx:archive after merge."
+After the draft PR is created, run a final adversarial review against the full diff of all mission commits. This is a human-facing report, not an automated gate.
+
+Run two independent reviewers in parallel:
+- **Reviewer A** (engine from `adversarial_reviewer_a` in config.yaml, default: codex) -- dispatched via Monitor
+- **Reviewer B** (engine from `adversarial_reviewer_b` in config.yaml, default: claude) -- dispatched via Agent tool
+
+Both receive the full diff (`git diff <base-branch>...HEAD`) and the full contract.md.
+
+#### Adversarial Reviewer Prompt (used for both A and B)
+
+```
+You are an adversarial reviewer. Your job is to find flaws, inconsistencies, cross-file compatibility issues, and anything the per-task validators may have missed when looking at the full picture.
+
+## Full Diff
+Run `git diff <base-branch>...HEAD` to see all changes from this mission.
+
+## Full Validation Contract
+<paste the ENTIRE contract.md>
+
+## Instructions
+
+1. Read the full diff.
+2. Look for:
+   - Logic errors or edge cases not covered by tests
+   - Cross-file inconsistencies (types, interfaces, naming)
+   - Contract assertions that technically pass but have subtle flaws
+   - Security issues, race conditions, or data integrity problems
+   - Missing error handling or graceful degradation
+   - Integration issues between different tasks' code
+3. For each finding, classify severity as HIGH, MEDIUM, or LOW.
+4. Be adversarial: assume the code is wrong until proven right.
+
+## Output Format
+
+Write your report to: <absolute path to mission/validations/adversarial-{a|b}.md>
+
+```markdown
+# Adversarial Review {A|B}
+
+## Findings
+| # | Category | Severity | Finding |
+|---|----------|----------|---------|
+| 1 | <category> | HIGH/MEDIUM/LOW | <description> |
+| 2 | ... | ... | ... |
+
+## Details
+<detailed explanation of each finding with evidence and suggested fix>
+
+## Summary
+<overall assessment>
+```
+```
+
+Dispatch both in parallel. Wait for both to complete.
+
+### Present to Human
+
+Log to progress.md: `<timestamp> -- Draft PR created: <URL>. Adversarial reviews complete.`
+
+Present the results to the user:
+
+```
+Mission complete.
+
+Draft PR: <URL>
+
+Adversarial Review A (Codex):
+<summary of findings -- count by severity>
+
+Adversarial Review B (Claude):
+<summary of findings -- count by severity>
+
+Full reports at:
+- mission/validations/adversarial-a.md
+- mission/validations/adversarial-b.md
+
+Review the PR and the adversarial findings. You decide what to address.
+After merge, run /opsx:archive to archive the change.
+```
+
+Update plan status to COMPLETE.
 
 ---
 
@@ -739,9 +715,9 @@ Running `/mission-status` (via the mission-status skill) in a separate session s
 
 ## Rules (Always Enforced)
 
-1. **Serial execution.** One worker at a time. Never dispatch two workers in parallel. (Exception: adversarial reviewers A and B run in parallel since they are independent read-only reviewers.)
+1. **Serial execution.** One worker at a time. Never dispatch two workers in parallel. (Exception: the two adversarial reviewers in Phase 9 run in parallel since they are independent read-only reviewers.)
 2. **Adversarial separation.** Workers never see `contract.md`. Validators never see `proposal.md` or `design.md`.
-3. **All validators re-run after every fix.** Even if only one failed, all validators (scrutiny, user-test, both adversarial reviewers) re-run to catch regressions.
+3. **Both per-task validators re-run after every fix.** Even if only one failed, both scrutiny and user-test re-run to catch regressions. Adversarial review runs once at the end, not per task.
 4. **Circuit breaker at 3.** After 3 failed attempts on the same task, stop and ask the human. Retry allows one more attempt but does NOT reset the counter.
 5. **File-backed state.** All decisions and status go to disk. The mission must be resumable from files alone.
 6. **Single commit per task.** One task, one worker, one commit, one validation cycle.
