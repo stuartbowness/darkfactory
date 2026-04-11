@@ -85,7 +85,6 @@ Missing: grill-me -- install manually:
 - `/security-review` -- security audit
 - `/test-app` -- browser tests
 - `/demo-video` -- frontend demo recording
-- `/pr` -- draft PR creation
 
 Check if these exist in `~/.claude/skills/` or in the target project's `.claude/skills/`. Report which are found and which are missing. Don't try to install these -- they're project-specific.
 
