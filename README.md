@@ -12,9 +12,9 @@ A mission has three stages:
 
 1. **You and the orchestrator plan together.** The orchestrator grills you on what you want, establishes shared terminology, creates a proposal/design/tasks via OpenSpec, writes a validation contract, and presents everything for your approval.
 
-2. **The orchestrator builds and validates autonomously.** For each task, it dispatches a worker (Codex or Claude, configurable), then runs three layers of validation: scrutiny (build/test/lint/code review), user-testing (API and browser tests), and dual adversarial review (Codex + Claude). If anything fails, a fix worker addresses the issues and all validators re-run. This repeats until the task passes or a circuit breaker asks for your input.
+2. **The orchestrator builds and validates autonomously.** For each task, it dispatches a worker (Codex or Claude, configurable), then runs two layers of validation: scrutiny (test presence gate, build/test/lint, code review, code standards, simplify, security review) and user-testing (API and browser tests). If anything fails, a fix worker addresses the issues and both validators re-run. This repeats until the task passes or a circuit breaker asks for your input.
 
-3. **You review and merge.** The orchestrator creates a draft PR with a mission summary. You review it, promote to ready, and merge.
+3. **You review and merge.** The orchestrator creates a draft PR, then runs a dual adversarial review (Codex + Claude in parallel) against the full diff. Both reports are presented to you alongside the PR link. You decide what to address, promote the PR to ready, and merge.
 
 ## Architecture
 
@@ -34,17 +34,19 @@ A mission has three stages:
      /grill-me (align)          For each task:
      /ubiquitous-language           |
      /write-a-prd (PRD)        1. Assemble brief
-     /opsx:propose
-     Write contract            2. Dispatch worker -----> Codex (or Claude)
-     Create mission dir        3. Scrutiny validator --> Claude subagent
-              |                4. User-test validator -> Claude subagent
-     Human approves plan       5. Adversarial review --> Codex + Claude
-              |                6. Demo video (frontend)
-              +--------->      7. Mark complete
-                                    |
-                               All tasks done
+     /opsx:propose             2. Dispatch worker -----> Codex (or Claude)
+     Write contract            3. Scrutiny validator --> Claude subagent
+     Create mission dir        4. User-test validator -> Claude subagent
+              |                5. Demo video (frontend)
+     Human approves plan       6. Mark complete
+              |                         |
+              +--------->      All tasks done
                                     |
                            Draft PR via gh CLI
+                                    |
+                           Adversarial review --> Codex + Claude
+                                    |
+                           Reports presented to human
 ```
 
 ### Three roles
@@ -53,11 +55,11 @@ A mission has three stages:
 
 **Workers** -- implement one task each. Default engine: Codex (GPT-5.4). Get a self-contained brief with the task description, project context, and procedures. Commit in a single commit. Write a structured handoff report. Never see the validation contract.
 
-**Validators** -- check each task against the contract. Two types run sequentially:
-- **Scrutiny validator** (Claude) -- build, test, lint, code review, simplify, security review, contract assertions
+**Validators** -- check each task against the contract. Two types run sequentially per task:
+- **Scrutiny validator** (Claude) -- test presence gate, build, tests, lint, code review, code standards, simplify, security review (conditional), contract assertions
 - **User-test validator** (Claude) -- hits the API with HTTP tests and/or drives a browser with agent-browser
 
-Plus a **dual adversarial review** where both Codex and Claude independently review the code. The orchestrator synthesizes their findings. Different models catch different things.
+After all tasks complete, a **dual adversarial review** runs once against the full diff. Both Codex and Claude independently review the code and their reports are presented to the human. No automated fix loop -- the human decides what to address.
 
 ### Adversarial separation
 
@@ -65,7 +67,7 @@ Workers never see the contract. Validators never see the proposal or design. Thi
 
 ### Fix loop
 
-When validation fails, the orchestrator writes a fix brief (what failed, validator output, commit SHA) and dispatches a fix worker. After the fix, ALL validators re-run. Circuit breaker after 3 attempts -- asks the human to retry, skip, or abort.
+When validation fails, the orchestrator writes a fix brief describing symptoms (not contract assertions -- adversarial separation is maintained) and dispatches a fix worker. After the fix, both per-task validators (scrutiny + user-test) re-run. Circuit breaker after 3 attempts -- asks the human to retry, skip, or abort.
 
 ### File-backed state
 
