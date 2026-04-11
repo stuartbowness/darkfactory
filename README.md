@@ -131,54 +131,41 @@ These skills are referenced by `/mission` but are **not bundled** in this repo. 
 
 ### Install
 
-From any directory (including the project you want to set up), run:
+### First-time install
+
+Clone the darkfactory repo and copy the skills globally:
+
+```bash
+git clone https://github.com/layercodedev/darkfactory.git ~/.darkfactory
+cp -r ~/.darkfactory/.claude/skills/mission ~/.claude/skills/
+cp -r ~/.darkfactory/.claude/skills/mission-resume ~/.claude/skills/
+cp -r ~/.darkfactory/.claude/skills/mission-status ~/.claude/skills/
+cp -r ~/.darkfactory/.claude/skills/darkfactory-init ~/.claude/skills/
+```
+
+Restart Claude Code, then from any project run:
 
 ```
 /darkfactory-init
 ```
 
-This will:
-1. Install `/mission`, `/mission-resume`, `/mission-status` to `~/.claude/skills/` (pulled from GitHub if not in the local repo)
-2. Check for and install supporting skills (`grill-me`, `ubiquitous-language`, `write-a-prd`, `prd-to-plan`, `tdd`) from [layercodedev/skills](https://github.com/layercodedev/skills) (pinned fork of mattpocock/skills)
+It checks what's installed and tells you exactly what's missing. It will:
+1. Check core and supporting skills are installed globally
+2. Tell you the exact commands to install anything missing
 3. Initialize OpenSpec in the current project if needed
-4. Verify CLI dependencies (codex, gh, openspec) are installed and authenticated
-5. Report what's ready and what needs manual action
+4. Verify CLI dependencies (codex, gh, openspec)
+5. Report what's ready
 
-After install, restart your Claude Code session so the new skills register.
+### Updating
 
-### Manual install
+Pull the latest and re-copy:
 
-If you prefer to set up manually:
-
-1. Copy skills globally:
 ```bash
+cd ~/.darkfactory && git pull
 cp -r .claude/skills/mission ~/.claude/skills/
 cp -r .claude/skills/mission-resume ~/.claude/skills/
 cp -r .claude/skills/mission-status ~/.claude/skills/
-```
-
-2. Install supporting skills from [layercodedev/skills](https://github.com/layercodedev/skills) (pinned fork of mattpocock/skills):
-```bash
-git clone https://github.com/layercodedev/skills.git /tmp/layercode-skills
-cd /tmp/layercode-skills && git checkout 651eab033bdf8f7fd535c274f8cbe839075aba5e
-cp -r /tmp/layercode-skills/grill-me ~/.claude/skills/
-cp -r /tmp/layercode-skills/ubiquitous-language ~/.claude/skills/
-cp -r /tmp/layercode-skills/write-a-prd ~/.claude/skills/
-cp -r /tmp/layercode-skills/prd-to-plan ~/.claude/skills/
-cp -r /tmp/layercode-skills/tdd ~/.claude/skills/
-```
-
-3. Initialize OpenSpec in your project:
-```bash
-cd /path/to/your/project
-openspec init --tools claude,codex
-```
-
-4. Verify dependencies:
-```bash
-codex login          # Ensure Codex is authenticated
-gh auth status       # Ensure GitHub CLI is authenticated
-openspec --version   # Ensure OpenSpec is installed
+cp -r .claude/skills/darkfactory-init ~/.claude/skills/
 ```
 
 ### Configuration
