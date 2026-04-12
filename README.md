@@ -19,48 +19,51 @@ A mission has three stages:
 ## Architecture
 
 ```
-                          You
-                           │
-                    /mission skill
-                           │
-                     Orchestrator
-                           │
-                           ▼
-              ┌─────────────────────┐
-              │     Spec phase      │
-              │                     │
-              │  Grill → artifacts  │
-              │  Coverage audit     │
-              │  Contract           │
-              │                     │
-              │  ◄── you review     │
-              │      each step      │
-              └─────────┬───────────┘
-                        ▼
-              ┌─────────────────────┐
-              │    Build phase      │
-              │                     │
-              │  Per task:          │
-              │    worker → commit  │
-              │    scrutiny check   │
-              │    user-test check  │
-              │    fix loop if fail │
-              │                     │
-              │  Autonomous until   │
-              │  circuit breaker    │
-              └─────────┬───────────┘
-                        ▼
-              ┌─────────────────────┐
-              │    Completion       │
-              │                     │
-              │  Final gates        │
-              │  Spec delta check   │
-              │  Draft PR           │
-              │  Adversarial review │
-              │                     │
-              │  ◄── you review     │
-              │      and merge      │
-              └─────────────────────┘
+                                You
+                                 │
+                          /mission skill
+                                 │
+                           Orchestrator
+                                 │
+                                 ▼
+    ┌────────────────────────────────────────────────────┐
+    │  Spec phase                                        │
+    │                                                    │
+    │  Grill you for alignment, establish shared         │
+    │  language, write a PRD, then generate and          │
+    │  review each artifact: proposal, specs,            │
+    │  design, tasks. Run a coverage audit that          │
+    │  classifies any deviations from the spec.          │
+    │  Write a validation contract.                      │
+    │                                                    │
+    │  ◄── you review and approve each step              │
+    └──────────────────────────┬─────────────────────────┘
+                               ▼
+    ┌────────────────────────────────────────────────────┐
+    │  Build phase                                       │
+    │                                                    │
+    │  For each task: dispatch a worker (Codex or        │
+    │  Claude), then run scrutiny validation (build,     │
+    │  test, lint, code review, contract assertions,     │
+    │  behavioral conformance) and user-test             │
+    │  validation (HTTP and browser checks). On          │
+    │  failure, a fix worker addresses the issues        │
+    │  and both validators re-run.                       │
+    │                                                    │
+    │  Autonomous until circuit breaker (3 attempts)     │
+    └──────────────────────────┬─────────────────────────┘
+                               ▼
+    ┌────────────────────────────────────────────────────┐
+    │  Completion                                        │
+    │                                                    │
+    │  Re-run build, test, lint, and format gates        │
+    │  on the full repo. Verify every covered item       │
+    │  from the spec audit is actually in the code.      │
+    │  Create a draft PR. Run dual adversarial           │
+    │  review (Codex + Claude in parallel).              │
+    │                                                    │
+    │  ◄── you review findings and merge                 │
+    └────────────────────────────────────────────────────┘
 ```
 
 ### Three roles
