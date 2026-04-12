@@ -249,10 +249,12 @@ Before writing the contract, verify that every PRD requirement is covered by at 
 | 2 | <requirement> | Add task / Defer / Skip | <pending> |
 
 ## Deviations Requiring Approval
-| # | PRD Requirement | Classification | What spec says | What we're doing instead | Impact | Human Decision |
-|---|----------------|---------------|----------------|-------------------------|--------|----------------|
-| 4 | <requirement> | Substitution | <original> | <deviation> | <consequence> | <pending> |
+| # | PRD Requirement | Classification | What spec says | What we're doing instead | Prerequisites met? | Impact | Human Decision |
+|---|----------------|---------------|----------------|-------------------------|-------------------|--------|----------------|
+| 4 | <requirement> | Substitution | <original> | <deviation> | All covered / GAP: <missing> | <consequence> | <pending> |
 ```
+
+The "Prerequisites met?" column applies to Substitutions only. For Interpretations and Removals, write "--".
 
 4. **Flag gaps and classify deviations.** For each requirement that is not directly covered:
 
@@ -267,6 +269,30 @@ Before writing the contract, verify that every PRD requirement is covered by at 
    - **Substitution** -- replacing the specified approach with a different one (e.g., Podman instead of bwrap). Requires explicit human approval with the specific trade-off stated: "The spec says X. We are doing Y instead because Z. This means [concrete consequence]."
    - **Removal** -- not implementing a specified feature (e.g., no thin-tier fallback). Requires explicit human approval with the impact stated: "Users who need X will not be able to use the tool for that purpose."
 
+   #### Prerequisite check for substitutions
+
+   For every Substitution deviation, ask: **"Does the deviated approach require implementation work that the mapped task will not cover?"**
+
+   Break down the deviated approach into its prerequisites. If any prerequisite is not covered by the mapped task or another existing task, add it to the `## Gaps` table and route it through the normal gap remediation flow (Add task / Defer / Skip). The deviation cannot be approved until all its prerequisites are resolved. Resolution options:
+   - **Add a task** to cover the missing prerequisite (goes through the gap flow, triggers spec/task re-review)
+   - **Expand the mapped task** to include the prerequisite (update tasks.md, re-present for review)
+   - **Reclassify as Removal** if the prerequisite is too large or out of scope (this forces the human to acknowledge the requirement is being dropped, not substituted)
+
+   Example of this check catching a gap: PRD says "detect SIGINT during promotion and prompt for resume or cleanup." Deviation says "auto-cleanup instead of interactive prompt" (Substitution, mapped to the cleanup task). The deviated approach (auto-cleanup on next run) requires signal handling to detect interruption and mark state as dirty. The cleanup task only handles stale state detection -- it does not implement signal handling. **This is a gap.** Either add a signal handling task, expand the cleanup task to include signal handling, or reclassify as Removal ("we are not implementing interrupted promotion detection").
+
+   Present the prerequisite analysis for each Substitution alongside the deviation in the review step:
+
+   ```
+   Deviation #54: Interrupted promotion recovery
+   Classification: Substitution
+   Original: SIGINT detection + resume/cleanup prompt
+   Deviated: Auto-cleanup on next run (no interactive prompt)
+   Prerequisites of deviated approach:
+     ✓ Stale state detection (covered by Task 3.3)
+     ✗ Signal handling to mark state as dirty on interruption (NOT covered by any task)
+   → GAP: Add signal handling to Task 3.3, or add a new task, or reclassify as Removal
+   ```
+
    Mark approved deviations as **APPROVED-DEVIATION** in the coverage table (not COVERED). This status persists through the contract and is re-surfaced during the spec delta check (Phase 9).
 
    **Present substitutions and removals in a dedicated review step.** After presenting the main coverage table, present all substitution and removal deviations together in a single batch. The human approves or rejects each individually within that step. Do not mix them with the COVERED items review. Interpretations may be batch-approved with the main table.
@@ -277,7 +303,7 @@ Before writing the contract, verify that every PRD requirement is covered by at 
 
 7. **If tasks change** (new tasks added to cover gaps), re-present the updated tasks.md for review. The human must approve the final task list before proceeding.
 
-8. **Persist the coverage audit to disk.** Write the coverage table to `openspec/changes/<change-name>/coverage-audit.md`. This file is needed for mission resume (so a resumed session can see what was already mapped without re-running the audit) and for contract writing (Phase 5 cross-references it).
+8. **Persist the coverage audit to disk.** Write the coverage table to `openspec/changes/<change-name>/coverage-audit.md`. This file is needed for mission resume (so a resumed session can see what was already mapped without re-running the audit) and for contract writing (Phase 5 cross-references it). For each Substitution deviation, include the prerequisite analysis (which prerequisites were checked, which were covered, which were gaps, and how they were resolved). This ensures a resumed session knows why a substitution was approved safe.
 
 9. **Record the coverage audit** in the plan. Update the Spec Coverage Audit section with the PRD issue URL, gap count, and resolutions.
 
