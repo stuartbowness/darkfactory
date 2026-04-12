@@ -10,49 +10,149 @@ Darkfactory turns a goal into working, validated code -- autonomously. You descr
 
 A mission has three stages:
 
-1. **You and the orchestrator plan together.** The orchestrator grills you on what you want, establishes shared terminology, then creates OpenSpec artifacts sequentially (proposal, specs, design, tasks) -- reviewing each with you before proceeding. It runs a spec coverage audit against the PRD to catch missed requirements, writes a PRD-traced contract (you review), and confirms launch.
+1. **You and the orchestrator plan together.** The orchestrator grills you on what you want, establishes shared terminology, then creates OpenSpec artifacts sequentially (proposal, specs, design, tasks) -- reviewing each with you before proceeding. It runs a spec coverage audit against the PRD to catch missed requirements, classifying any deviations from the spec (substitutions and removals require your explicit approval). It writes a PRD-traced contract (you review) and confirms launch.
 
-2. **The orchestrator builds and validates autonomously.** For each task, it dispatches a worker (Codex or Claude, configurable), then runs two layers of validation: scrutiny (test presence gate, build/test/lint, code review, code standards, simplify, security review) and user-testing (API and browser tests). If anything fails, a fix worker addresses the issues and both validators re-run. This repeats until the task passes or a circuit breaker asks for your input.
+2. **The orchestrator builds and validates autonomously.** For each task, it dispatches a worker (Codex or Claude, configurable), then runs two layers of validation: scrutiny (test presence gate, build/test/lint, code review, code standards, simplify, security review, behavioral conformance) and user-testing (API and browser tests). If anything fails, a fix worker addresses the issues and both validators re-run. This repeats until the task passes or a circuit breaker asks for your input.
 
-3. **You review and merge.** The orchestrator creates a draft PR, then runs a dual adversarial review (Codex + Claude in parallel) against the full diff. Both reports are presented to you alongside the PR link. You decide what to address, promote the PR to ready, and merge.
+3. **You review and merge.** After all tasks complete, the orchestrator runs final gates (whole-repo build/test/lint/format) and a spec delta check (verifying the built code matches what the coverage audit promised). It then creates a draft PR and runs a dual adversarial review (Codex + Claude in parallel) against the full diff. Both reports are presented to you alongside the PR link. You decide what to address, promote the PR to ready, and merge.
 
 ## Architecture
 
 ```
-                          You
-                           |
-                    /mission skill
-                           |
-                     Orchestrator
-                  (Claude Code session
-                    in plan mode)
-                           |
-              +------------+------------+
-              |                         |
-         Spec Phase                Build Phase
-              |                         |
-     /grill-me (align)          For each task:
-     /ubiquitous-language           |
-     /write-a-prd (PRD)        1. Assemble brief
-     Generate & review:        2. Dispatch worker -----> Codex (or Claude)
-       proposal (review)       3. Scrutiny validator --> Claude subagent
-       specs (review)          4. User-test validator -> Claude subagent
-       design (review)         5. Demo video (frontend)
-       arch review (optional)  6. Mark complete
-       tasks (review)
-     Spec coverage audit
-     Write contract (review)
-     Create mission dir
-              |
-     Human confirms launch
-              |                         |
-              +--------->      All tasks done
-                                    |
-                           Draft PR via gh CLI
-                                    |
-                           Adversarial review --> Codex + Claude
-                                    |
-                           Reports presented to human
+                            You
+                             │
+                      /mission skill
+                             │
+                       Orchestrator
+                    (Claude, plan mode)
+                             │
+                             ▼
+
+    ══════════════════════════════════════════════
+     Spec phase
+    ══════════════════════════════════════════════
+
+                             │
+                             ▼
+                 /grill-me alignment interview
+                             │
+                             ▼
+                   /ubiquitous-language
+                             │
+                             ▼
+                       /write-a-prd
+                             │
+                             ▼
+                    Proposal ◄── you review
+                             │
+                             ▼
+                      Specs  ◄── you review
+                             │
+                             ▼
+                     Design  ◄── you review
+                             │
+                             ▼
+                      Tasks  ◄── you review
+                             │
+                             ▼
+                   Coverage audit
+                   ├─ covered
+                   ├─ gap → add / defer / skip
+                   └─ deviation → classify:
+                        interpretation  (batch approve)
+                        substitution  ◄── you approve
+                        removal       ◄── you approve
+                             │
+                             ▼
+                    Contract ◄── you review
+                  (deviated items marked)
+                             │
+                             ▼
+                      Launch ◄── you confirm
+                             │
+                             ▼
+
+    ══════════════════════════════════════════════
+     Build phase — autonomous, per task
+    ══════════════════════════════════════════════
+
+                             │
+                             ▼
+               ┌──────────────────────────┐
+               │                          │
+               │    Brief → worker        │
+               │    (Codex or Claude)     │
+               │             │            │
+               │             ▼            │
+               │    Scrutiny validator    │
+               │      1. test presence    │
+               │      2. build            │
+               │      3. tests            │
+               │      4. lint             │
+               │      5. code review      │
+               │      6. code standards   │
+               │      7. simplify         │
+               │      8. security review  │
+               │      9. assertions       │
+               │     10. behavioral       │
+               │         conformance      │
+               │         (run it, don't   │
+               │          just read it)   │
+               │             │            │
+               │             ▼            │
+               │    User-test validator   │
+               │    (HTTP / browser)      │
+               │             │            │
+               │             ▼            │
+               │    On fail:              │
+               │      fix worker          │
+               │      re-validate both    │
+               │      breaker at 3        │
+               │         ◄── you decide   │
+               │             │            │
+               │             ▼            │
+               │    Mark complete         │
+               │                          │
+               │   Repeat for each task   │
+               └──────────────────────────┘
+                             │
+                             ▼
+
+    ══════════════════════════════════════════════
+     Completion
+    ══════════════════════════════════════════════
+
+                             │
+                             ▼
+                       Final gates
+                 (build / test / lint / fmt
+                  on full repo — catches
+                  late-task regressions)
+                             │
+                             ▼
+                     Fail → fix task
+                             │
+                             ▼
+                    Spec delta check
+                 (verify every covered item
+                  is actually in the code)
+                             │
+                             ▼
+                Discrepancy ◄── you triage
+                  add fix task /
+                  reclassify as deviation /
+                  accept gap
+                             │
+                             ▼
+                    Draft PR (gh CLI)
+                             │
+                             ▼
+                  Adversarial review
+                  ├─ Codex reviewer  ─┐
+                  └─ Claude reviewer ─┘
+                             │
+                             ▼
+                     Reports ◄── you decide
 ```
 
 ### Three roles
@@ -62,10 +162,10 @@ A mission has three stages:
 **Workers** -- implement one task each. Default engine: Codex (GPT-5.4). Get a self-contained brief with the task description, project context, and procedures. Commit in a single commit. Write a structured handoff report. Never see the contract.
 
 **Validators** -- check each task against the contract. Two types run sequentially per task:
-- **Scrutiny validator** (Claude) -- test presence gate, build, tests, lint, code review, code standards, simplify, security review (conditional), contract assertions
+- **Scrutiny validator** (Claude) -- test presence gate, build, tests, lint, code review, code standards, simplify, security review (conditional), contract assertions, behavioral conformance (attempts to verify observable behavior by execution, falls back to inspection)
 - **User-test validator** (Claude) -- hits the API with HTTP tests and/or drives a browser with agent-browser
 
-After all tasks complete, a **dual adversarial review** runs once against the full diff. Both Codex and Claude independently review the code and their reports are presented to the human. No automated fix loop -- the human decides what to address.
+After all tasks complete, **final gates** re-run whole-repo build, test, lint, and format checks (catching regressions from late tasks), then a **spec delta check** verifies every COVERED item in the coverage audit is actually present in the built code. Finally, a **dual adversarial review** runs once against the full diff. Both Codex and Claude independently review the code and their reports are presented to the human. No automated fix loop -- the human decides what to address.
 
 ### Adversarial separation
 
@@ -256,6 +356,7 @@ The full build history is in `archive/` (ignored by Claude via `.claudeignore`):
 
 - [Factory Missions talk](docs/reference_factory_talk.md) -- the multi-agent architecture that inspired this
 - [Matt Pocock skills talk](docs/reference_pocock_talk.md) -- design alignment, ubiquitous language, TDD patterns
+- [Provenance](docs/provenance.md) -- how Darkfactory relates to both sources (what's faithful, what's different, what's new)
 - [Design decisions](docs/design-decisions.md) -- every architectural choice with rationale
 - [Ubiquitous language](UBIQUITOUS_LANGUAGE.md) -- shared terminology (25 terms)
 
