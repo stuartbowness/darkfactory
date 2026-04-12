@@ -32,6 +32,7 @@ openspec/changes/<change-name>/mission/
 - Specs: openspec/changes/<change-name>/specs/<capability>/spec.md (one per capability)
 - Design: openspec/changes/<change-name>/design.md
 - Tasks: openspec/changes/<change-name>/tasks.md (includes mandatory closing tasks)
+- Coverage Audit: openspec/changes/<change-name>/coverage-audit.md
 - Contract: openspec/changes/<change-name>/contract.md
 
 ## Spec Coverage Audit
@@ -123,7 +124,7 @@ Run `/ubiquitous-language` to create or update `UBIQUITOUS_LANGUAGE.md`.
 
 Run `/write-a-prd` to turn the grill conversation into a structured product requirements document. The PRD captures: problem statement, solution, user stories, implementation decisions, testing decisions, and out-of-scope items.
 
-The PRD is filed as a GitHub issue. This issue becomes the source of truth that `/opsx:propose` reads when creating the OpenSpec artifacts. The PRD ensures nothing from the grill conversation is lost or misinterpreted during the transition to technical artifacts.
+The PRD is filed as a GitHub issue. This issue becomes the source of truth for creating OpenSpec artifacts in Phase 4. The PRD ensures nothing from the grill conversation is lost or misinterpreted during the transition to technical artifacts.
 
 ---
 
@@ -135,8 +136,10 @@ The `spec-driven` schema generates four artifacts in dependency order: `proposal
 
 1. `openspec new change "<name>"` -- create the change directory
 2. `openspec status --change "<name>" --json` -- get artifact order and dependencies
-3. `openspec instructions <artifact-id> --change "<name>" --json` -- get instructions for each artifact
-4. Create each artifact file following the instructions and template
+3. For each artifact in order:
+   a. `openspec instructions <artifact-id> --change "<name>" --json` -- get instructions for this artifact
+   b. Create the artifact file following the instructions and template
+   c. `openspec status --change "<name>" --json` -- re-run status to refresh the artifact list (newly unblocked artifacts and per-capability spec IDs appear only after their dependencies are written)
 
 ### Review Pattern (used at every review point in planning)
 
@@ -163,9 +166,9 @@ If approved, proceed to Phase 4.3.
 
 ### Phase 4.3: Generate and Review Design
 
-Generate `design.md` (how -- architecture decisions, alternatives considered, risks).
+Generate `design.md` (how -- architecture decisions, alternatives considered, risks). Reference the proposal for motivation and specs for requirements.
 
-Design is optional per the OpenSpec schema. If the change is simple enough that no architectural decisions are needed, recommend skipping it and let the human decide. Reference the proposal for motivation and specs for requirements.
+Design is required for every mission. Even simple changes benefit from a short design document that records what was considered and why the chosen approach was picked. The build loop and worker briefs depend on design.md existing -- skipping it would break downstream phases.
 
 #### Module Depth
 
@@ -259,7 +262,9 @@ Before writing the contract, verify that every PRD requirement is covered by at 
 
 6. **If tasks change** (new tasks added to cover gaps), re-present the updated tasks.md for review. The human must approve the final task list before proceeding.
 
-7. **Record the coverage audit** in the plan. Update the Spec Coverage Audit section with the PRD issue URL, gap count, and resolutions.
+7. **Persist the coverage audit to disk.** Write the coverage table to `openspec/changes/<change-name>/coverage-audit.md`. This file is needed for mission resume (so a resumed session can see what was already mapped without re-running the audit) and for contract writing (Phase 5 cross-references it).
+
+8. **Record the coverage audit** in the plan. Update the Spec Coverage Audit section with the PRD issue URL, gap count, and resolutions.
 
 ---
 
@@ -274,7 +279,7 @@ Create `contract.md` in the change directory (`openspec/changes/<change-name>/co
 3. Do NOT reference implementation details (function names, variable names, internal data structures).
 4. Be specific and unambiguous. A validator reading only the contract and the diff should be able to check every assertion without guessing.
 5. Workers never see this file. This is the adversarial separation that makes validation meaningful.
-6. **Write the minimum set of assertions needed to verify the task is complete and correct.** Each assertion should trace to a specific PRD requirement. Do not add assertions for edge cases, nice-to-haves, or defensive behaviors unless the PRD explicitly requires them. If an assertion would not cause you to reject the task when it fails, do not include it.
+6. **Write the minimum set of assertions needed to verify the task is complete and correct.** Each assertion should trace to a specific PRD requirement, including error behaviors specified in the PRD or specs. Do not add assertions for edge cases, nice-to-haves, or defensive behaviors unless the PRD explicitly requires them. If an assertion would not cause you to reject the task when it fails, do not include it.
 
 ### Cross-Referencing the PRD
 

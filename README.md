@@ -85,6 +85,7 @@ openspec/changes/<change-name>/
   specs/<capability>/spec.md  # Formal WHEN/THEN requirements (one per capability)
   design.md                # How (architecture decisions)
   tasks.md                 # Task checklist (includes mandatory closing tasks)
+  coverage-audit.md        # PRD requirement-to-task mapping
   contract.md              # Validation assertions (traced to PRD requirements)
   mission/
     config.yaml            # Engine settings per role
