@@ -37,6 +37,7 @@ openspec/changes/<change-name>/mission/
 
 ## Spec Coverage Audit
 - PRD issue: <GitHub issue URL from Phase 3>
+- PRD issue number: <N>
 - Coverage table: <pending | complete>
 - Gaps found: <count or "none">
 - Gaps resolved: <added N tasks | deferred N | skipped N>
@@ -54,7 +55,6 @@ openspec/changes/<change-name>/mission/
 - /ubiquitous-language -- shared language (planning)
 - /write-a-prd -- structured PRD from grill conversation (planning)
 - openspec CLI -- create artifacts sequentially: proposal, specs, design, tasks (planning)
-- /improve-codebase-architecture -- architecture review for existing codebases (planning, optional)
 - /review -- code review (scrutiny validation)
 - /simplify -- simplify pass (scrutiny validation)
 - /security-review -- security check (scrutiny validation, sensitive tasks only)
@@ -126,6 +126,8 @@ Run `/write-a-prd` to turn the grill conversation into a structured product requ
 
 The PRD is filed as a GitHub issue. This issue becomes the source of truth for creating OpenSpec artifacts in Phase 4. The PRD ensures nothing from the grill conversation is lost or misinterpreted during the transition to technical artifacts.
 
+After the issue is created, record both the issue URL and the issue number in the plan (under Spec Coverage Audit). The issue number is needed in Phase 9 to link the draft PR back to the issue.
+
 ---
 
 ## Phase 4: Create and Review OpenSpec Artifacts
@@ -181,21 +183,11 @@ For each module, describe:
 
 If a module has a large interface relative to its implementation, ask whether it should be split differently or whether some of its interface belongs in a higher-level module. A good test: can a worker implement this module in a single task and a validator test it at the boundary? If not, the module may be too shallow or too broad.
 
-Present it to the human with a recommendation. If approved, proceed to Phase 4.3a (existing codebases) or Phase 4.4 (greenfield).
+#### Existing Codebases
 
-### Phase 4.3a: Architecture Review (Optional)
+When the mission modifies an existing codebase (not greenfield), the design must evaluate the current code structure against the planned architecture. For each module the design touches, read the existing code and assess whether it aligns with the target design. If existing modules are shallow, tightly coupled, or conflict with the planned architecture, the design should call this out explicitly and recommend refactoring as part of the implementation. These refactoring decisions flow naturally into task ordering in Phase 4.4 -- refactoring tasks go before the feature tasks that depend on them.
 
-**Only for missions that modify an existing codebase. Skip for greenfield projects.**
-
-Run `/improve-codebase-architecture` to review the existing codebase in light of the approved design. This identifies:
-- Existing modules that need refactoring before the new work can land cleanly
-- Shallow abstractions that should be deepened
-- Tightly-coupled components that should be separated
-- Architectural patterns that conflict with the planned design
-
-The orchestrator recommends whether to run this step based on the mission scope. Present findings to the human. Any refactoring work becomes tasks that go before feature tasks in Phase 4.4.
-
-If skipped or approved, proceed to Phase 4.4.
+Present it to the human with a recommendation. If approved, proceed to Phase 4.4.
 
 ### Phase 4.4: Generate and Review Tasks
 
@@ -219,7 +211,7 @@ Every mission's tasks.md MUST include these closing tasks after all feature task
 
 3. **CI configuration task (optional).** Add or update CI/CD pipeline configuration. The orchestrator recommends whether to include this based on the change scope. The human decides during this review.
 
-If the architecture review (Phase 4.3a) surfaced refactoring work, those tasks go before the feature tasks in tasks.md.
+If the design (Phase 4.3) identified refactoring needed for existing code, those tasks go before the feature tasks in tasks.md.
 
 Present the full task list (including closing tasks) to the human with a recommendation. If approved, proceed to Phase 4a.
 
@@ -750,6 +742,8 @@ Create a **draft** pull request using `gh pr create --draft`. Never create a rea
 #### PR Body Template
 
 ```markdown
+Closes #<PRD issue number from plan>
+
 ## Mission: <change-name>
 
 ### Tasks
@@ -774,6 +768,8 @@ Create a **draft** pull request using `gh pr create --draft`. Never create a rea
 - Circuit breakers triggered: <count>
 - Duration: <start to end>
 ```
+
+The `Closes #<N>` directive links the PR to the PRD issue. GitHub will auto-close the issue when the PR is merged. Since the PR is created as a draft, the issue stays open until the developer promotes and merges the PR.
 
 ### Dual Adversarial Review
 

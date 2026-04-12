@@ -117,7 +117,6 @@ These skills are referenced by `/mission` but are **not bundled** in this repo. 
 | `/ubiquitous-language` | [layercodedev/skills](https://github.com/layercodedev/skills/tree/main/ubiquitous-language) | Spec phase: shared glossary |
 | `/write-a-prd` | [layercodedev/skills](https://github.com/layercodedev/skills/tree/main/write-a-prd) | Spec phase: structured PRD from grill conversation |
 | `/tdd` | [layercodedev/skills](https://github.com/layercodedev/skills/tree/main/tdd) | Build phase: test-driven development for workers |
-| `/improve-codebase-architecture` | Built-in Claude Code (optional) | Spec phase: architecture review for existing codebases |
 | `/review` | Built-in Claude Code (required) | Scrutiny validator: code review |
 | `/simplify` | Built-in Claude Code (required) | Scrutiny validator: complexity check |
 | `/security-review` | Your global Claude skills (conditional) | Scrutiny validator: security audit (runs when diff touches auth/secrets/input handling) |
@@ -199,11 +198,10 @@ The orchestrator will:
 3. Create a shared language glossary (`/ubiquitous-language`)
 4. Write a structured PRD (`/write-a-prd`)
 5. Create OpenSpec artifacts one at a time, each reviewed by you: proposal, specs, design, tasks
-6. Optionally run an architecture review for existing codebases (`/improve-codebase-architecture`)
-7. Run a spec coverage audit (maps every PRD requirement to a task, flags gaps)
-8. Write a PRD-traced contract (you review)
-9. Create the mission directory
-10. Confirm launch
+6. Run a spec coverage audit (maps every PRD requirement to a task, flags gaps)
+7. Write a PRD-traced contract (you review)
+8. Create the mission directory
+9. Confirm launch
 
 After you approve, it runs the build loop autonomously.
 
