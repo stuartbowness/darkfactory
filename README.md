@@ -10,7 +10,7 @@ Darkfactory turns a goal into working, validated code -- autonomously. You descr
 
 A mission has three stages:
 
-1. **You and the orchestrator plan together.** The orchestrator grills you on what you want, establishes shared terminology, creates a proposal/design/tasks via OpenSpec, writes a contract, and presents everything for your approval.
+1. **You and the orchestrator plan together.** The orchestrator grills you on what you want, establishes shared terminology, then creates OpenSpec artifacts sequentially (proposal, specs, design, tasks) -- reviewing each with you before proceeding. It runs a spec coverage audit against the PRD to catch missed requirements, writes a PRD-traced contract (you review), and confirms launch.
 
 2. **The orchestrator builds and validates autonomously.** For each task, it dispatches a worker (Codex or Claude, configurable), then runs two layers of validation: scrutiny (test presence gate, build/test/lint, code review, code standards, simplify, security review) and user-testing (API and browser tests). If anything fails, a fix worker addresses the issues and both validators re-run. This repeats until the task passes or a circuit breaker asks for your input.
 
@@ -34,11 +34,17 @@ A mission has three stages:
      /grill-me (align)          For each task:
      /ubiquitous-language           |
      /write-a-prd (PRD)        1. Assemble brief
-     /opsx:propose             2. Dispatch worker -----> Codex (or Claude)
-     Write contract            3. Scrutiny validator --> Claude subagent
-     Create mission dir        4. User-test validator -> Claude subagent
-              |                5. Demo video (frontend)
-     Human approves plan       6. Mark complete
+     Generate & review:        2. Dispatch worker -----> Codex (or Claude)
+       proposal (review)       3. Scrutiny validator --> Claude subagent
+       specs (review)          4. User-test validator -> Claude subagent
+       design (review)         5. Demo video (frontend)
+       arch review (optional)  6. Mark complete
+       tasks (review)
+     Spec coverage audit
+     Write contract (review)
+     Create mission dir
+              |
+     Human confirms launch
               |                         |
               +--------->      All tasks done
                                     |
@@ -76,9 +82,11 @@ All mission state lives on disk:
 ```
 openspec/changes/<change-name>/
   proposal.md              # What and why
+  specs/<capability>/spec.md  # Formal WHEN/THEN requirements (one per capability)
   design.md                # How (architecture decisions)
-  tasks.md                 # Task checklist
-  contract.md              # Validation assertions
+  tasks.md                 # Task checklist (includes mandatory closing tasks)
+  coverage-audit.md        # PRD requirement-to-task mapping
+  contract.md              # Validation assertions (traced to PRD requirements)
   mission/
     config.yaml            # Engine settings per role
     progress.md            # Orchestrator's running log
@@ -109,12 +117,13 @@ These skills are referenced by `/mission` but are **not bundled** in this repo. 
 | `/ubiquitous-language` | [layercodedev/skills](https://github.com/layercodedev/skills/tree/main/ubiquitous-language) | Spec phase: shared glossary |
 | `/write-a-prd` | [layercodedev/skills](https://github.com/layercodedev/skills/tree/main/write-a-prd) | Spec phase: structured PRD from grill conversation |
 | `/tdd` | [layercodedev/skills](https://github.com/layercodedev/skills/tree/main/tdd) | Build phase: test-driven development for workers |
+| `/improve-codebase-architecture` | Built-in Claude Code (optional) | Spec phase: architecture review for existing codebases |
 | `/review` | Built-in Claude Code (required) | Scrutiny validator: code review |
 | `/simplify` | Built-in Claude Code (required) | Scrutiny validator: complexity check |
 | `/security-review` | Your global Claude skills (conditional) | Scrutiny validator: security audit (runs when diff touches auth/secrets/input handling) |
 | `/test-app` | Your project's Claude skills (optional) | User-test validator: browser tests |
 | `/demo-video` | Your project's Claude skills (optional) | Demo recording for frontend tasks |
-| `/opsx:propose` | Installed by `openspec init` | Spec phase: create artifacts |
+| `openspec` CLI | Installed by `npm install -g openspec` | Spec phase: create artifacts sequentially |
 | `/opsx:archive` | Installed by `openspec init` | Post-merge: archive the change |
 
 `/review` and `/simplify` are mandatory -- the scrutiny validator always runs them. `/security-review` is conditional (runs when the diff touches auth, secrets, or input handling). `/test-app` and `/demo-video` are optional and project-specific.
@@ -189,10 +198,12 @@ The orchestrator will:
 2. Grill you until aligned (`/grill-me`)
 3. Create a shared language glossary (`/ubiquitous-language`)
 4. Write a structured PRD (`/write-a-prd`)
-5. Create OpenSpec artifacts from the PRD (`/opsx:propose`)
-6. Write a contract
-7. Create the mission directory
-8. Present the plan for your approval
+5. Create OpenSpec artifacts one at a time, each reviewed by you: proposal, specs, design, tasks
+6. Optionally run an architecture review for existing codebases (`/improve-codebase-architecture`)
+7. Run a spec coverage audit (maps every PRD requirement to a task, flags gaps)
+8. Write a PRD-traced contract (you review)
+9. Create the mission directory
+10. Confirm launch
 
 After you approve, it runs the build loop autonomously.
 

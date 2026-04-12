@@ -29,9 +29,17 @@ openspec/changes/<change-name>/mission/
 
 ## OpenSpec Artifacts
 - Proposal: openspec/changes/<change-name>/proposal.md
+- Specs: openspec/changes/<change-name>/specs/<capability>/spec.md (one per capability)
 - Design: openspec/changes/<change-name>/design.md
-- Tasks: openspec/changes/<change-name>/tasks.md
+- Tasks: openspec/changes/<change-name>/tasks.md (includes mandatory closing tasks)
+- Coverage Audit: openspec/changes/<change-name>/coverage-audit.md
 - Contract: openspec/changes/<change-name>/contract.md
+
+## Spec Coverage Audit
+- PRD issue: <GitHub issue URL from Phase 3>
+- Coverage table: <pending | complete>
+- Gaps found: <count or "none">
+- Gaps resolved: <added N tasks | deferred N | skipped N>
 
 ## Engine Config
 - Workers: <engine from config.yaml, default codex>
@@ -45,7 +53,8 @@ openspec/changes/<change-name>/mission/
 - /grill-me -- alignment interview (planning)
 - /ubiquitous-language -- shared language (planning)
 - /write-a-prd -- structured PRD from grill conversation (planning)
-- /opsx:propose -- create proposal, design, tasks from PRD (planning)
+- openspec CLI -- create artifacts sequentially: proposal, specs, design, tasks (planning)
+- /improve-codebase-architecture -- architecture review for existing codebases (planning, optional)
 - /review -- code review (scrutiny validation)
 - /simplify -- simplify pass (scrutiny validation)
 - /security-review -- security check (scrutiny validation, sensitive tasks only)
@@ -115,26 +124,149 @@ Run `/ubiquitous-language` to create or update `UBIQUITOUS_LANGUAGE.md`.
 
 Run `/write-a-prd` to turn the grill conversation into a structured product requirements document. The PRD captures: problem statement, solution, user stories, implementation decisions, testing decisions, and out-of-scope items.
 
-The PRD is filed as a GitHub issue. This issue becomes the source of truth that `/opsx:propose` reads when creating the OpenSpec artifacts. The PRD ensures nothing from the grill conversation is lost or misinterpreted during the transition to technical artifacts.
+The PRD is filed as a GitHub issue. This issue becomes the source of truth for creating OpenSpec artifacts in Phase 4. The PRD ensures nothing from the grill conversation is lost or misinterpreted during the transition to technical artifacts.
 
 ---
 
-## Phase 4: Create OpenSpec Artifacts
+## Phase 4: Create and Review OpenSpec Artifacts
 
-Run `/opsx:propose` to create the OpenSpec change with:
-- `proposal.md` -- what and why
-- `design.md` -- how (architecture decisions)
-- `tasks.md` -- ordered checklist of tasks
+The `spec-driven` schema generates four artifacts in dependency order: `proposal -> specs -> design -> tasks`. Generate each artifact one at a time, present it to the human for review, and get approval before generating the next.
 
-### Task Quality Standard
+**Do NOT run `/opsx:propose` as a single pass.** Instead, orchestrate artifact creation using the openspec CLI commands directly:
 
-Each task in tasks.md must be a **vertical slice**: a thin end-to-end path through all layers (schema, API, UI, tests) that delivers narrow but complete functionality.
+1. `openspec new change "<name>"` -- create the change directory
+2. `openspec status --change "<name>" --json` -- get artifact order and dependencies
+3. For each artifact in order:
+   a. `openspec instructions <artifact-id> --change "<name>" --json` -- get instructions for this artifact
+   b. Create the artifact file following the instructions and template
+   c. `openspec status --change "<name>" --json` -- re-run status to refresh the artifact list (newly unblocked artifacts and per-capability spec IDs appear only after their dependencies are written)
+
+### Review Pattern (used at every review point in planning)
+
+Every artifact review follows this pattern:
+1. **AI presents** -- show the artifact content to the human in the chat
+2. **AI recommends** -- state whether it looks good, flag any concerns, suggest specific changes if needed
+3. **Human decides** -- approve, request changes, or defer to the AI recommendation
+
+The human can always say "looks good" or "go with your recommendation" to keep momentum. If changes are requested, revise and re-present.
+
+### Phase 4.1: Generate and Review Proposal
+
+Generate `proposal.md` (what and why). This establishes the capabilities that will become spec files.
+
+Present it to the human with a recommendation. If approved, proceed to Phase 4.2.
+
+### Phase 4.2: Generate and Review Specs
+
+Generate `specs/<capability>/spec.md` files (one per capability listed in the proposal). Each spec contains formal WHEN/THEN requirements using SHALL/MUST language.
+
+Present all spec files to the human with a recommendation. Specs are the formal requirements that flow into tasks and the contract. Missing or vague specs are the primary cause of missed requirements in the final build.
+
+If approved, proceed to Phase 4.3.
+
+### Phase 4.3: Generate and Review Design
+
+Generate `design.md` (how -- architecture decisions, alternatives considered, risks). Reference the proposal for motivation and specs for requirements.
+
+Design is required for every mission. Even simple changes benefit from a short design document that records what was considered and why the chosen approach was picked. The build loop and worker briefs depend on design.md existing -- skipping it would break downstream phases.
+
+#### Module Depth
+
+For each major component or module in the design, consider its depth. A deep module has a small interface hiding significant implementation. A shallow module has a large interface with thin logic behind it. Prefer deep modules -- they are more testable at the boundary, easier for workers to implement in a single task, and easier for subsequent workers to use correctly.
+
+For each module, describe:
+- **Interface** -- what callers see (public API, CLI flags, function signatures)
+- **What it hides** -- the complexity behind the interface that callers don't need to know about
+- **Why this boundary** -- what makes this the right place to draw the line
+
+If a module has a large interface relative to its implementation, ask whether it should be split differently or whether some of its interface belongs in a higher-level module. A good test: can a worker implement this module in a single task and a validator test it at the boundary? If not, the module may be too shallow or too broad.
+
+Present it to the human with a recommendation. If approved, proceed to Phase 4.3a (existing codebases) or Phase 4.4 (greenfield).
+
+### Phase 4.3a: Architecture Review (Optional)
+
+**Only for missions that modify an existing codebase. Skip for greenfield projects.**
+
+Run `/improve-codebase-architecture` to review the existing codebase in light of the approved design. This identifies:
+- Existing modules that need refactoring before the new work can land cleanly
+- Shallow abstractions that should be deepened
+- Tightly-coupled components that should be separated
+- Architectural patterns that conflict with the planned design
+
+The orchestrator recommends whether to run this step based on the mission scope. Present findings to the human. Any refactoring work becomes tasks that go before feature tasks in Phase 4.4.
+
+If skipped or approved, proceed to Phase 4.4.
+
+### Phase 4.4: Generate and Review Tasks
+
+Generate `tasks.md` (ordered checklist of implementation tasks).
+
+#### Task Quality Standard
+
+Each task must be a **vertical slice**: a thin end-to-end path through all layers (schema, API, UI, tests) that delivers narrow but complete functionality.
 
 **One task = one worker = one commit = one validation cycle.**
 
 A task is good if you can demo it and verify it independently after it lands.
 
-After creation, update the plan with the actual artifact paths.
+#### Mandatory Closing Tasks
+
+Every mission's tasks.md MUST include these closing tasks after all feature tasks:
+
+1. **Cleanup task (mandatory).** Remove unused dependencies, dead code, leftover scaffolding, temporary artifacts, and any backwards-compatibility shims. Workers sometimes leave debris that per-task validation does not catch. This task cleans up the codebase before documentation.
+
+2. **Documentation task (mandatory).** Write or update documentation for what was built. The orchestrator recommends the documentation scope based on what the feature tasks produce -- this varies by mission type. Not every mission needs install instructions, architecture diagrams, or API docs. Use terms from `UBIQUITOUS_LANGUAGE.md` consistently. If unsure what documentation is needed, ask the human during this review.
+
+3. **CI configuration task (optional).** Add or update CI/CD pipeline configuration. The orchestrator recommends whether to include this based on the change scope. The human decides during this review.
+
+If the architecture review (Phase 4.3a) surfaced refactoring work, those tasks go before the feature tasks in tasks.md.
+
+Present the full task list (including closing tasks) to the human with a recommendation. If approved, proceed to Phase 4a.
+
+After all artifacts are reviewed and approved, update the plan with the actual artifact paths.
+
+---
+
+## Phase 4a: Spec Coverage Audit
+
+Before writing the contract, verify that every PRD requirement is covered by at least one task. This phase catches requirements that were present in the PRD but lost during the transition to specs and tasks.
+
+### Steps
+
+1. **Read the PRD** from the GitHub issue created in Phase 3.
+2. **Read tasks.md** and all spec files from `specs/`.
+3. **Build a coverage table** mapping every PRD requirement to the task(s) that implement it:
+
+```markdown
+# Spec Coverage Audit
+
+## Coverage Table
+| # | PRD Requirement | Spec Requirement | Task(s) | Status |
+|---|----------------|-----------------|---------|--------|
+| 1 | <requirement from PRD> | <WHEN/THEN from spec, or "no spec"> | Task N | COVERED |
+| 2 | <requirement from PRD> | <WHEN/THEN from spec, or "no spec"> | -- | GAP |
+| 3 | <requirement from PRD> | <WHEN/THEN from spec, or "no spec"> | Task M | COVERED |
+
+## Gaps
+| # | PRD Requirement | AI Recommendation | Human Decision |
+|---|----------------|-------------------|----------------|
+| 2 | <requirement> | Add task / Defer / Skip | <pending> |
+```
+
+4. **Flag gaps.** For each uncovered requirement, the AI recommends one of:
+   - **Add** -- create a new task (and spec requirement if missing) to cover it
+   - **Defer** -- out of scope for this mission, track for later
+   - **Skip** -- intentionally not implementing (document why)
+
+5. **Present the coverage table and gap recommendations** to the human. Follow the standard review pattern: AI presents, AI recommends, human decides.
+
+6. **If specs change** (new spec requirements added to cover gaps), re-present the affected spec files for human review before proceeding. The human must approve any new or modified specs.
+
+7. **If tasks change** (new tasks added to cover gaps), re-present the updated tasks.md for review. The human must approve the final task list before proceeding.
+
+8. **Persist the coverage audit to disk.** Write the coverage table to `openspec/changes/<change-name>/coverage-audit.md`. This file is needed for mission resume (so a resumed session can see what was already mapped without re-running the audit) and for contract writing (Phase 5 cross-references it).
+
+9. **Record the coverage audit** in the plan. Update the Spec Coverage Audit section with the PRD issue URL, gap count, and resolutions.
 
 ---
 
@@ -147,9 +279,19 @@ Create `contract.md` in the change directory (`openspec/changes/<change-name>/co
 1. Group assertions by task, matching the task list in tasks.md.
 2. Every assertion must describe **observable behavior** verifiable from outside the code (HTTP response, CLI output, file on disk, UI state, build passing, etc.).
 3. Do NOT reference implementation details (function names, variable names, internal data structures).
-4. Cover the **happy path AND error cases** for each task.
-5. Be specific and unambiguous. A validator reading only the contract and the diff should be able to check every assertion without guessing.
-6. Workers never see this file. This is the adversarial separation that makes validation meaningful.
+4. Be specific and unambiguous. A validator reading only the contract and the diff should be able to check every assertion without guessing.
+5. Workers never see this file. This is the adversarial separation that makes validation meaningful.
+6. **Write the minimum set of assertions needed to verify the task is complete and correct.** Each assertion should trace to a specific PRD requirement, including error behaviors specified in the PRD or specs. Do not add assertions for edge cases, nice-to-haves, or defensive behaviors unless the PRD explicitly requires them. If an assertion would not cause you to reject the task when it fails, do not include it.
+
+### Cross-Referencing the PRD
+
+For each task, use the coverage audit from Phase 4a to find which PRD requirements map to it. Write assertions that capture the specific details from those requirements -- not generic behavioral checks, but assertions that would fail if the specific requirement were not implemented.
+
+**Process for each task:**
+1. Look up the PRD requirements mapped to this task in the coverage table.
+2. Read the corresponding spec requirements (WHEN/THEN scenarios) for precise behavioral expectations.
+3. Write assertions that verify those specific behaviors with specific values, endpoints, messages, or states from the PRD and specs.
+4. If a PRD requirement mentions specific constraints (limits, formats, error messages, status codes), those constraints must appear in the assertions verbatim.
 
 ### Contract Template
 
@@ -157,16 +299,28 @@ Create `contract.md` in the change directory (`openspec/changes/<change-name>/co
 # Contract
 
 ## Task 1: <name>
-- [ ] <assertion describing observable behavior>
-- [ ] <assertion describing observable behavior>
-- [ ] <error case assertion>
+<!-- PRD Requirements: #1, #3 -->
+- [ ] <assertion capturing specific PRD/spec requirement detail>
+- [ ] <assertion capturing specific PRD/spec requirement detail>
 
 ## Task 2: <name>
-- [ ] <assertion>
-- [ ] <assertion>
+<!-- PRD Requirements: #2 -->
+- [ ] <assertion capturing specific PRD/spec requirement detail>
+- [ ] <assertion capturing specific PRD/spec requirement detail>
 ```
 
-Update the plan with the contract path after creation.
+### Contract Review
+
+After writing the contract, present it to the human following the standard review pattern: AI presents, AI recommends, human decides.
+
+For each task section, highlight:
+- Which PRD requirements the assertions trace to
+- Whether the assertion count feels right (too many suggests over-specification; too few suggests gaps)
+- Any PRD requirements that were hard to express as observable assertions
+
+If the human requests changes, revise and re-present.
+
+Update the plan with the contract path after approval.
 
 ---
 
@@ -212,17 +366,19 @@ Create the four subdirectories: `briefs/`, `handoffs/`, `validations/`, `issues/
 
 ---
 
-## Phase 7: Present for Approval
+## Phase 7: Launch Confirmation
 
-Show the user:
-1. **Task breakdown** -- the full task list from tasks.md with descriptions
-2. **Contract assertion counts** -- how many assertions per task, total count
-3. **Engine config** -- which engine runs each role
+Since every artifact has been individually reviewed and approved during Phases 4, 4a, and 5, this phase is a lightweight launch confirmation -- not a full review.
 
-Ask: "Ready to start the build? You can request changes or approve."
+Show the user a summary dashboard:
+1. **Mission overview** -- change name, total tasks (feature + closing), total contract assertions
+2. **Coverage audit result** -- number of PRD requirements covered, any deferred/skipped items
+3. **Engine config** -- which engine runs each role (from config.yaml)
 
-- If changes requested: loop back to whichever phase needs adjustment.
-- If approved: append `<timestamp> -- Plan approved. <N> tasks, <M> assertions in contract.` to progress.md. Update plan status to BUILDING.
+Ask: "Everything has been reviewed. Ready to start the build?"
+
+- If yes: append `<timestamp> -- Plan approved. <N> tasks, <M> assertions in contract.` to progress.md. Update plan status to BUILDING. Proceed to Phase 8.
+- If the human wants to revisit something: loop back to the specific phase they name. Do not re-review everything.
 
 ---
 
