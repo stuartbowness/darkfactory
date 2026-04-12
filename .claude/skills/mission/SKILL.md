@@ -238,17 +238,35 @@ Before writing the contract, verify that every PRD requirement is covered by at 
 | 1 | <requirement from PRD> | <WHEN/THEN from spec, or "no spec"> | Task N | COVERED |
 | 2 | <requirement from PRD> | <WHEN/THEN from spec, or "no spec"> | -- | GAP |
 | 3 | <requirement from PRD> | <WHEN/THEN from spec, or "no spec"> | Task M | COVERED |
+| 4 | <requirement from PRD> | <WHEN/THEN from spec, or "no spec"> | Task K | APPROVED-DEVIATION |
 
 ## Gaps
 | # | PRD Requirement | AI Recommendation | Human Decision |
 |---|----------------|-------------------|----------------|
 | 2 | <requirement> | Add task / Defer / Skip | <pending> |
+
+## Deviations Requiring Approval
+| # | PRD Requirement | Classification | What spec says | What we're doing instead | Impact | Human Decision |
+|---|----------------|---------------|----------------|-------------------------|--------|----------------|
+| 4 | <requirement> | Substitution | <original> | <deviation> | <consequence> | <pending> |
 ```
 
-4. **Flag gaps.** For each uncovered requirement, the AI recommends one of:
+4. **Flag gaps and classify deviations.** For each requirement that is not directly covered:
+
+   **If GAP (not implemented, no plan to implement differently):**
    - **Add** -- create a new task (and spec requirement if missing) to cover it
    - **Defer** -- out of scope for this mission, track for later
    - **Skip** -- intentionally not implementing (document why)
+
+   **If DEVIATION (implementing differently than the spec says):**
+   Classify the deviation into one of three categories:
+   - **Interpretation** -- the spec is ambiguous and this is a reasonable reading (e.g., "cap at B" could mean cap-down or cap-up). Requires AI explanation. Approved in batch with other COVERED items.
+   - **Substitution** -- replacing the specified approach with a different one (e.g., Podman instead of bwrap). Requires explicit human approval with the specific trade-off stated: "The spec says X. We are doing Y instead because Z. This means [concrete consequence]."
+   - **Removal** -- not implementing a specified feature (e.g., no thin-tier fallback). Requires explicit human approval with the impact stated: "Users who need X will not be able to use the tool for that purpose."
+
+   Mark approved deviations as **APPROVED-DEVIATION** in the coverage table (not COVERED). This status persists through the contract and is re-surfaced during the spec delta check (Phase 9).
+
+   **Present substitutions and removals in a dedicated review step.** After presenting the main coverage table, present all substitution and removal deviations together in a single batch. The human approves or rejects each individually within that step. Do not mix them with the COVERED items review. Interpretations may be batch-approved with the main table.
 
 5. **Present the coverage table and gap recommendations** to the human. Follow the standard review pattern: AI presents, AI recommends, human decides.
 
@@ -296,10 +314,12 @@ For each task, use the coverage audit from Phase 4a to find which PRD requiremen
 - [ ] <assertion capturing specific PRD/spec requirement detail>
 
 ## Task 2: <name>
-<!-- PRD Requirements: #2 -->
+<!-- PRD Requirements: #2, #4 (DEVIATED) -->
 - [ ] <assertion capturing specific PRD/spec requirement detail>
-- [ ] <assertion capturing specific PRD/spec requirement detail>
+- [ ] <assertion capturing the deviated behavior as actually implemented>
 ```
+
+When a PRD requirement traces to an APPROVED-DEVIATION item in the coverage audit, mark it with `(DEVIATED)` in the PRD Requirements comment. The assertion itself describes the actual implemented behavior (the deviation), not the original spec requirement. This gives the human visibility during contract review into which assertions exist because of an approved deviation.
 
 ### Contract Review
 
@@ -517,6 +537,18 @@ Run these checks in order. For each, report PASS or FAIL with evidence.
 
 9. **Contract assertions:** For each assertion in the contract, check it against the diff and test results. Mark each assertion PASS or FAIL with a one-line explanation.
 
+10. **Behavioral conformance:** For each assertion that describes observable behavior (CLI output, exit codes, file content, API response, shell behavior), write and execute a minimal test script that verifies the behavior by actually running the code. Do not rely solely on reading the code -- run it. Examples:
+    - CLI flag assertion: run the binary with the flag, check output
+    - Exit code assertion: run the command, check `$?`
+    - Shell alias assertion: source the alias, run `type <name>`, check the definition
+    - API response assertion: curl the endpoint, check the response body
+    
+    If an assertion cannot be tested via execution (e.g., internal architecture, code organization, build configuration), mark it as "verified by inspection" with an explanation of why execution was not possible.
+    
+    If a behavioral test is inconclusive (e.g., the test script errors out, the environment lacks a dependency), mark it as "verified by inspection (execution inconclusive: <reason>)" and fall back to code reading. Do not let an inconclusive execution check block the validation.
+    
+    Report each assertion's verification method (execution or inspection) in the contract assertions table.
+
 ## Output Format
 
 Write your report to: <absolute path to mission/validations/task-N-scrutiny.md>
@@ -539,12 +571,13 @@ Use this format:
 | Code standards | PASS/FAIL | ... |
 | Code simplify | PASS/FAIL | ... |
 | Security review | PASS/FAIL/N/A | ... |
+| Behavioral conformance | PASS/FAIL/N/A | ... |
 
 ## Contract Assertions
-| # | Assertion | Result | Evidence |
-|---|-----------|--------|----------|
-| 1 | <assertion text> | PASS/FAIL | <one-line evidence> |
-| 2 | ... | ... | ... |
+| # | Assertion | Result | Method | Evidence |
+|---|-----------|--------|--------|----------|
+| 1 | <assertion text> | PASS/FAIL | execution/inspection | <one-line evidence> |
+| 2 | ... | ... | ... | ... |
 
 ## Failed Assertions (if any)
 <detailed explanation of each failure>
@@ -734,6 +767,85 @@ Spawn a Claude subagent to run `/demo-video`. The subagent should save the recor
 ---
 
 ## Phase 9: Mission Completion
+
+### Final Gates
+
+Before creating the PR, re-run whole-repo quality checks to catch regressions introduced by tasks that ran after the cleanup task (e.g., documentation or CI tasks can introduce lint warnings or formatting issues).
+
+Run the project's build, test, lint, and format commands against the full repository:
+- Build: does it compile/build cleanly?
+- Tests: do all tests pass?
+- Lint: zero warnings (e.g., `cargo clippy -- -D warnings`, `eslint .`)
+- Format: zero diffs (e.g., `cargo fmt --check`, `prettier --check .`)
+
+**If all gates pass:** Log to progress.md: `<timestamp> -- Final gates PASSED.` Proceed to the spec delta check.
+
+**If any gate fails:** Spawn a fix task targeting only the gate failures. This fix task:
+- Gets a brief describing the specific failures (error messages, warnings, format diffs)
+- Goes through scrutiny validation only (skip user-test -- this is a hygiene fix)
+- Follows the standard circuit breaker (3 attempts). If the circuit breaker triggers, ask the human.
+- After the fix passes, re-run all four gates to confirm no new regressions
+
+### Spec Delta Check
+
+After final gates pass, verify that the built codebase actually contains what the coverage audit promised. This catches items marked COVERED during planning that were lost or incompletely implemented during the build.
+
+Spawn a Claude subagent with this prompt:
+
+```
+You are a spec delta checker for the Darkfactory mission system. Your job is to verify that the built codebase matches the coverage audit from planning.
+
+## Coverage Audit
+<paste the full coverage-audit.md content>
+
+## Instructions
+
+For each item in the coverage table:
+
+**If COVERED:** Verify the feature is actually present in the codebase. Read the relevant code, check that the described behavior exists. You are not running the code -- just confirming the implementation is present and plausible.
+
+**If APPROVED-DEVIATION:** List the deviation and its classification (Interpretation/Substitution/Removal). Do not re-litigate -- just confirm the deviated behavior (not the original spec) is implemented.
+
+**If GAP (deferred/skipped):** Note it as intentionally excluded. No check needed.
+
+## Output Format
+
+Write your report to: <absolute path to mission/validations/spec-delta.md>
+
+```markdown
+# Spec Delta Check
+
+## Result: CLEAN | DISCREPANCIES FOUND
+
+## Coverage Verification
+| # | PRD Requirement | Audit Status | Verified | Notes |
+|---|----------------|-------------|----------|-------|
+| 1 | <requirement> | COVERED | YES/NO | <evidence or discrepancy> |
+| 2 | <requirement> | APPROVED-DEVIATION (Substitution) | YES | <confirms deviated behavior present> |
+| 3 | <requirement> | GAP (deferred) | SKIPPED | intentionally excluded |
+
+## Discrepancies (if any)
+| # | PRD Requirement | Expected | Found | Severity |
+|---|----------------|----------|-------|----------|
+| N | <requirement> | <what audit promised> | <what's actually in code> | HIGH/MEDIUM/LOW |
+
+## APPROVED-DEVIATION Summary
+| # | PRD Requirement | Classification | Deviated Behavior |
+|---|----------------|---------------|-------------------|
+| 2 | <requirement> | Substitution | <what was implemented instead> |
+```
+```
+
+Read the delta check report from `mission/validations/spec-delta.md`.
+
+**If CLEAN (no discrepancies):** Log to progress.md: `<timestamp> -- Spec delta check CLEAN. <N> items verified, <M> approved deviations listed.` Proceed to create the draft PR.
+
+**If DISCREPANCIES FOUND:** Present each discrepancy to the human with three options:
+- **Add fix task** -- create a new task to implement the missing item. The task goes through the normal build loop (brief, worker, scrutiny validation, user-test validation). After completion, re-run final gates and the spec delta check.
+- **Reclassify as APPROVED-DEVIATION** -- the item was covered in planning but the implementation intentionally diverged. The human provides a reason and classification (Interpretation/Substitution/Removal). Update the coverage audit on disk.
+- **Accept gap** -- acknowledge the gap and proceed. Log it in progress.md as an accepted gap.
+
+Log the human's decision for each discrepancy to progress.md.
 
 ### Create Draft PR
 
