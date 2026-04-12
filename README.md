@@ -19,140 +19,48 @@ A mission has three stages:
 ## Architecture
 
 ```
-                            You
-                             │
-                      /mission skill
-                             │
-                       Orchestrator
-                    (Claude, plan mode)
-                             │
-                             ▼
-
-    ══════════════════════════════════════════════
-     Spec phase
-    ══════════════════════════════════════════════
-
-                             │
-                             ▼
-                 /grill-me alignment interview
-                             │
-                             ▼
-                   /ubiquitous-language
-                             │
-                             ▼
-                       /write-a-prd
-                             │
-                             ▼
-                    Proposal ◄── you review
-                             │
-                             ▼
-                      Specs  ◄── you review
-                             │
-                             ▼
-                     Design  ◄── you review
-                             │
-                             ▼
-                      Tasks  ◄── you review
-                             │
-                             ▼
-                   Coverage audit
-                   ├─ covered
-                   ├─ gap → add / defer / skip
-                   └─ deviation → classify:
-                        interpretation  (batch approve)
-                        substitution  ◄── you approve
-                        removal       ◄── you approve
-                             │
-                             ▼
-                    Contract ◄── you review
-                  (deviated items marked)
-                             │
-                             ▼
-                      Launch ◄── you confirm
-                             │
-                             ▼
-
-    ══════════════════════════════════════════════
-     Build phase — autonomous, per task
-    ══════════════════════════════════════════════
-
-                             │
-                             ▼
-               ┌──────────────────────────┐
-               │                          │
-               │    Brief → worker        │
-               │    (Codex or Claude)     │
-               │             │            │
-               │             ▼            │
-               │    Scrutiny validator    │
-               │      1. test presence    │
-               │      2. build            │
-               │      3. tests            │
-               │      4. lint             │
-               │      5. code review      │
-               │      6. code standards   │
-               │      7. simplify         │
-               │      8. security review  │
-               │      9. assertions       │
-               │     10. behavioral       │
-               │         conformance      │
-               │         (run it, don't   │
-               │          just read it)   │
-               │             │            │
-               │             ▼            │
-               │    User-test validator   │
-               │    (HTTP / browser)      │
-               │             │            │
-               │             ▼            │
-               │    On fail:              │
-               │      fix worker          │
-               │      re-validate both    │
-               │      breaker at 3        │
-               │         ◄── you decide   │
-               │             │            │
-               │             ▼            │
-               │    Mark complete         │
-               │                          │
-               │   Repeat for each task   │
-               └──────────────────────────┘
-                             │
-                             ▼
-
-    ══════════════════════════════════════════════
-     Completion
-    ══════════════════════════════════════════════
-
-                             │
-                             ▼
-                       Final gates
-                 (build / test / lint / fmt
-                  on full repo — catches
-                  late-task regressions)
-                             │
-                             ▼
-                     Fail → fix task
-                             │
-                             ▼
-                    Spec delta check
-                 (verify every covered item
-                  is actually in the code)
-                             │
-                             ▼
-                Discrepancy ◄── you triage
-                  add fix task /
-                  reclassify as deviation /
-                  accept gap
-                             │
-                             ▼
-                    Draft PR (gh CLI)
-                             │
-                             ▼
-                  Adversarial review
-                  ├─ Codex reviewer  ─┐
-                  └─ Claude reviewer ─┘
-                             │
-                             ▼
-                     Reports ◄── you decide
+                          You
+                           │
+                    /mission skill
+                           │
+                     Orchestrator
+                           │
+                           ▼
+              ┌─────────────────────┐
+              │     Spec phase      │
+              │                     │
+              │  Grill → artifacts  │
+              │  Coverage audit     │
+              │  Contract           │
+              │                     │
+              │  ◄── you review     │
+              │      each step      │
+              └─────────┬───────────┘
+                        ▼
+              ┌─────────────────────┐
+              │    Build phase      │
+              │                     │
+              │  Per task:          │
+              │    worker → commit  │
+              │    scrutiny check   │
+              │    user-test check  │
+              │    fix loop if fail │
+              │                     │
+              │  Autonomous until   │
+              │  circuit breaker    │
+              └─────────┬───────────┘
+                        ▼
+              ┌─────────────────────┐
+              │    Completion       │
+              │                     │
+              │  Final gates        │
+              │  Spec delta check   │
+              │  Draft PR           │
+              │  Adversarial review │
+              │                     │
+              │  ◄── you review     │
+              │      and merge      │
+              └─────────────────────┘
 ```
 
 ### Three roles
