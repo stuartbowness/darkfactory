@@ -89,6 +89,9 @@ After all tasks complete:
 - On any failure, re-run both per-task validators after fix (scrutiny, user-test)
 - Write all decisions to progress.md
 
+## Codebase Deltas
+<Accumulated after each task passes validation. Used to populate "What Previous Tasks Built" in subsequent briefs. Generated from git diff, never from handoff reports.>
+
 ## Current Task: <N or "none">
 ## Current Step: <step name or "none">
 ```
@@ -305,18 +308,25 @@ For each task, use the coverage audit from Phase 4a to find which PRD requiremen
 
 ### Contract Template
 
+Each assertion must include a **verification method** tag indicating how a validator should check it:
+- `[execution]` -- verifiable by running a command, HTTP request, or test script (strongest)
+- `[output]` -- verifiable by checking command output, file contents, or API response
+- `[inspection]` -- verifiable only by reading code (weakest)
+
+Cap `[inspection]` assertions at **20% of total per task**. If more than 20% require inspection, rewrite them as `[execution]` or `[output]` where possible. If an assertion genuinely cannot be made executable, it is acceptable -- but flag it during contract review.
+
 ```markdown
 # Contract
 
 ## Task 1: <name>
 <!-- PRD Requirements: #1, #3 -->
-- [ ] <assertion capturing specific PRD/spec requirement detail>
-- [ ] <assertion capturing specific PRD/spec requirement detail>
+- [ ] [execution] <assertion capturing specific PRD/spec requirement detail>
+- [ ] [output] <assertion capturing specific PRD/spec requirement detail>
 
 ## Task 2: <name>
 <!-- PRD Requirements: #2, #4 (DEVIATED) -->
-- [ ] <assertion capturing specific PRD/spec requirement detail>
-- [ ] <assertion capturing the deviated behavior as actually implemented>
+- [ ] [execution] <assertion capturing specific PRD/spec requirement detail>
+- [ ] [inspection] <assertion capturing the deviated behavior as actually implemented>
 ```
 
 When a PRD requirement traces to an APPROVED-DEVIATION item in the coverage audit, mark it with `(DEVIATED)` in the PRD Requirements comment. The assertion itself describes the actual implemented behavior (the deviation), not the original spec requirement. This gives the human visibility during contract review into which assertions exist because of an approved deviation.
@@ -331,6 +341,20 @@ For each task section, highlight:
 - Any PRD requirements that were hard to express as observable assertions
 
 If the human requests changes, revise and re-present.
+
+### Contract Testability Pre-flight
+
+After the human approves the contract, run a quick testability audit before proceeding. For each assertion, verify:
+
+1. **Executable assertions** (`[execution]`) -- confirm the assertion describes a concrete action and expected result that a validator could script (e.g., "POST /api/users with {email: 'a@b.com'} returns 201"). If the assertion is too vague to script, flag it.
+2. **Output assertions** (`[output]`) -- confirm the assertion names a specific file, value, or output to check. If it says "appropriate error message" instead of a specific message, flag it.
+3. **Inspection assertions** (`[inspection]`) -- check whether the assertion could be rewritten as `[execution]` or `[output]`. If yes, rewrite it. If genuinely not possible (e.g., "no direct database access outside the repository layer"), keep it.
+
+If any assertions are flagged as ambiguous:
+- Rewrite them to be specific and re-present only the changed assertions to the human for quick approval
+- Do not re-review the entire contract
+
+Log the testability breakdown to progress.md: `<timestamp> -- Contract testability pre-flight: <N> execution, <M> output, <P> inspection (<Q>% inspection).`
 
 Update the plan with the contract path after approval.
 
@@ -418,6 +442,30 @@ Write a brief to `mission/briefs/task-N.md`.
 
 ## Key Terms (from UBIQUITOUS_LANGUAGE.md)
 <any domain terms the worker needs to understand>
+
+## What Previous Tasks Built
+<For task 1, this section is empty: "This is the first task. No prior code has been committed for this mission."
+
+For task 2+, include a codebase delta summary generated from `git diff` after each previous task passed validation. List ONLY observable facts about the code -- never include worker reasoning, handoff content, or concerns.
+
+For each completed task, include:
+- Files created or modified (paths only)
+- Public function/endpoint signatures added (name, params, return type)
+- Key type definitions or interfaces introduced
+- Patterns used (e.g., "repository pattern via src/repositories/userRepo.ts")
+
+Example:
+### Task 1: User service
+- Created: src/services/users.ts, src/models/user.ts, src/repositories/userRepo.ts
+- Endpoints: POST /api/users (body: {email: string, name: string}) → 201 {id, email, name}
+- Types: User {id: string, email: string, name: string, createdAt: Date}
+- Pattern: repository pattern via src/repositories/userRepo.ts
+
+### Task 2: Auth middleware
+- Created: src/middleware/requireAuth.ts, src/services/auth.ts
+- Exports: requireAuth (Express middleware, attaches req.user: User)
+- Endpoints: POST /api/auth/login (body: {email, password}) → 200 {token: string}
+>
 
 ## Procedures
 - Use `/tdd` to implement this task
@@ -624,7 +672,17 @@ Track the attempt number (starts at 1 for the initial worker, increments on each
    - **Skip:** Mark the task as `- [~]` in tasks.md. Log to progress.md: `<timestamp> -- Task N: SKIPPED by human after <attempt> failed attempts.` Continue to the next unchecked task. The build loop ignores `- [~]` tasks (they are neither unchecked nor complete).
    - **Abort:** Update plan status to PAUSED. Stop the build loop. Report to the human.
 
-3. **Write fix brief** to `mission/briefs/task-N-fix-v<attempt+1>.md`:
+3. **Diagnostic triage.** Spawn a lightweight Claude subagent to diagnose the failure. The subagent receives:
+   - The validator report (from `mission/validations/task-N-scrutiny.md` or `task-N-usertest.md` -- whichever triggered this fix loop entry)
+   - The worker's diff (`git show <commit-sha>`)
+
+   The subagent does NOT receive `contract.md`, `proposal.md`, or `design.md`. It describes what the code does wrong, not what the contract expected.
+
+   Subagent prompt: "You are diagnosing a validation failure. Read the validator report and the code diff. For each failure, identify the probable root cause: which file and line, what the code does, and why that causes the observed symptom. Be specific -- name files, lines, variables, and values. Describe what the code does wrong, not what it should do. Write your triage to: `<path to mission/issues/task-N-v<attempt>-triage.md>`"
+
+   The triage output is included in the fix brief (Step 4 below) as an additional "Diagnostic Triage" section. If the triage subagent fails or times out, skip it and proceed with the fix brief without it -- triage is helpful but not blocking.
+
+4. **Write fix brief** to `mission/briefs/task-N-fix-v<attempt+1>.md`:
 
 #### Fix Brief Template
 
@@ -633,6 +691,9 @@ Track the attempt number (starts at 1 for the initial worker, increments on each
 
 ## What Failed
 <describe the observed symptoms -- error messages, unexpected behavior, test failures. Do NOT copy assertion text from the contract. Describe what went wrong, not what the contract expected.>
+
+## Diagnostic Triage
+<paste the triage subagent's output from mission/issues/task-N-v<attempt>-triage.md. If triage was skipped or failed, write "Triage unavailable -- diagnose from the validator output below.">
 
 ## Validator Output
 <relevant error messages, build/test output, review findings -- symptoms only>
@@ -656,9 +717,9 @@ Track the attempt number (starts at 1 for the initial worker, increments on each
 
 **The fix brief NEVER contains contract.md content.** Same adversarial separation as the original brief.
 
-4. **Dispatch fix worker** using the same engine and method as Step 2, but with the fix brief.
+5. **Dispatch fix worker** using the same engine and method as Step 2, but with the fix brief.
 
-5. **After fix completes:** Go back to **Step 4** (re-run scrutiny validation with the new commit SHA). Both per-task validators must re-run after every fix (scrutiny and user-test), not just the one that failed.
+6. **After fix completes:** Go back to **Step 4** (re-run scrutiny validation with the new commit SHA). Both per-task validators must re-run after every fix (scrutiny and user-test), not just the one that failed.
 
 ### Step 6: User-Test Validation
 
@@ -750,7 +811,11 @@ Spawn a Claude subagent to run `/demo-video`. The subagent should save the recor
 
 1. Mark the task complete in `tasks.md`: change `- [ ]` to `- [x]` for this task.
 
-2. Append to `progress.md`:
+2. **Generate codebase delta for subsequent briefs.** Run `git diff <pre-task-sha>..HEAD` (where pre-task-sha is the commit before this task's first commit, recorded when the worker was dispatched) to extract what this task added. Summarize into a codebase delta entry containing: files created/modified (paths), public function/endpoint signatures, key types, and patterns used. Store this delta in the plan under a `## Codebase Deltas` section. The next task's brief (Step 1) reads accumulated deltas from the plan and writes them into the "What Previous Tasks Built" section.
+
+   **Guard rail:** Generate the delta from `git diff` output only. Never read handoff reports to build this summary. The delta contains facts about what exists in the code, not why or how the worker built it.
+
+3. Append to `progress.md`:
 
 ```markdown
 - <timestamp> -- Task N complete.
@@ -761,11 +826,11 @@ Spawn a Claude subagent to run `/demo-video`. The subagent should save the recor
   - Fix attempts: <number, 0 if first try passed>
 ```
 
-3. Update the plan: set Current Task to the next unchecked task, or "none" if all done.
+4. Update the plan: set Current Task to the next unchecked task, or "none" if all done.
 
-4. **If more tasks remain:** Go back to Step 1 for the next task.
+5. **If more tasks remain:** Go back to Step 1 for the next task.
 
-5. **If all tasks are done:** Proceed to Phase 9.
+6. **If all tasks are done:** Proceed to Phase 9.
 
 ---
 
