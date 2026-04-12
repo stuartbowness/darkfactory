@@ -447,8 +447,8 @@ BRIEF_PATH="<absolute path to mission/briefs/task-N.md>"
 HANDOFF_PATH="<absolute path to mission/handoffs/task-N.md>"
 BRIEF_CONTENT=$(cat "$BRIEF_PATH")
 
-# Clean stale temp files from previous workers to avoid filling /tmp
-find /tmp -maxdepth 1 -user "$(whoami)" -type f -mmin +30 -delete 2>/dev/null
+# Clean stale temp files and directories from previous workers to avoid filling /tmp
+find /tmp -maxdepth 1 -user "$(whoami)" -mmin +30 -not -name "claude-*" \( -type f -delete -o -type d -exec rm -rf {} + \) 2>/dev/null
 
 # Start Codex in background
 codex exec \
