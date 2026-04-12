@@ -10,7 +10,7 @@ Darkfactory turns a goal into working, validated code -- autonomously. You descr
 
 A mission has three stages:
 
-1. **You and the orchestrator plan together.** The orchestrator grills you on what you want, establishes shared terminology, then creates OpenSpec artifacts sequentially (proposal, specs, design, tasks) -- reviewing each with you before proceeding. It runs a spec coverage audit against the PRD to catch missed requirements, classifying any deviations from the spec (substitutions and removals require your explicit approval). It writes a PRD-traced contract (you review) and confirms launch.
+1. **You and the orchestrator plan together.** The orchestrator grills you on what you want, establishes shared terminology, then creates OpenSpec artifacts sequentially (proposal, specs, design, tasks) -- reviewing each with you before proceeding. It runs a spec coverage audit against the PRD to catch missed requirements, classifying any deviations from the spec (substitutions and removals require your explicit approval). It writes a PRD-traced contract where every assertion is tagged with a verification method (execution, output, or inspection) and runs a testability pre-flight to catch vague assertions before they waste fix cycles. You review and confirm launch.
 
 2. **The orchestrator builds and validates autonomously.** For each task, it dispatches a worker (Codex or Claude, configurable), then runs two layers of validation: scrutiny (test presence gate, build/test/lint, code review, code standards, simplify, security review, behavioral conformance) and user-testing (API and browser tests). If anything fails, a fix worker addresses the issues and both validators re-run. This repeats until the task passes or a circuit breaker asks for your input.
 
@@ -70,7 +70,7 @@ A mission has three stages:
 
 **Orchestrator** -- the main Claude Code session. Plans the work, dispatches workers one at a time, reads results, decides what to do next. Runs in plan mode so its operating manual survives context compaction.
 
-**Workers** -- implement one task each. Default engine: Codex (GPT-5.4). Get a self-contained brief with the task description, project context, and procedures. Commit in a single commit. Write a structured handoff report. Never see the contract.
+**Workers** -- implement one task each. Default engine: Codex (GPT-5.4). Get a self-contained brief with the task description, project context, procedures, and a codebase delta showing what previous tasks built (file paths, function signatures, types -- facts only, never reasoning from other workers). Commit in a single commit. Write a structured handoff report. Never see the contract.
 
 **Validators** -- check each task against the contract. Two types run sequentially per task:
 - **Scrutiny validator** (Claude) -- test presence gate, build, tests, lint, code review, code standards, simplify, security review (conditional), contract assertions, behavioral conformance (attempts to verify observable behavior by execution, falls back to inspection)
@@ -84,7 +84,7 @@ Workers never see the contract. Validators never see the proposal or design. Thi
 
 ### Fix loop
 
-When validation fails, the orchestrator writes a fix brief describing symptoms (not contract assertions -- adversarial separation is maintained) and dispatches a fix worker. After the fix, both per-task validators (scrutiny + user-test) re-run. Circuit breaker after 3 attempts -- asks the human to retry, skip, or abort.
+When validation fails, a diagnostic triage agent reads the validator report and the diff to identify probable root causes (file, line, what the code does wrong). The orchestrator then writes a fix brief containing the symptoms and triage (not contract assertions -- adversarial separation is maintained) and dispatches a fix worker. After the fix, both per-task validators (scrutiny + user-test) re-run. Circuit breaker after 3 attempts -- asks the human to retry, skip, or abort.
 
 ### File-backed state
 
@@ -97,7 +97,7 @@ openspec/changes/<change-name>/
   design.md                # How (architecture decisions)
   tasks.md                 # Task checklist (includes mandatory closing tasks)
   coverage-audit.md        # PRD requirement-to-task mapping
-  contract.md              # Validation assertions (traced to PRD requirements)
+  contract.md              # Validation assertions (traced to PRD, tagged by verification method)
   mission/
     config.yaml            # Engine settings per role
     progress.md            # Orchestrator's running log
