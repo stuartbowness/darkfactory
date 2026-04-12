@@ -249,10 +249,12 @@ Before writing the contract, verify that every PRD requirement is covered by at 
 | 2 | <requirement> | Add task / Defer / Skip | <pending> |
 
 ## Deviations Requiring Approval
-| # | PRD Requirement | Classification | What spec says | What we're doing instead | Impact | Human Decision |
-|---|----------------|---------------|----------------|-------------------------|--------|----------------|
-| 4 | <requirement> | Substitution | <original> | <deviation> | <consequence> | <pending> |
+| # | PRD Requirement | Classification | What spec says | What we're doing instead | Prerequisites met? | Impact | Human Decision |
+|---|----------------|---------------|----------------|-------------------------|-------------------|--------|----------------|
+| 4 | <requirement> | Substitution | <original> | <deviation> | All covered / GAP: <missing> | <consequence> | <pending> |
 ```
+
+The "Prerequisites met?" column applies to Substitutions only. For Interpretations and Removals, write "--".
 
 4. **Flag gaps and classify deviations.** For each requirement that is not directly covered:
 
@@ -266,6 +268,30 @@ Before writing the contract, verify that every PRD requirement is covered by at 
    - **Interpretation** -- the spec is ambiguous and this is a reasonable reading (e.g., "cap at B" could mean cap-down or cap-up). Requires AI explanation. Approved in batch with other COVERED items.
    - **Substitution** -- replacing the specified approach with a different one (e.g., Podman instead of bwrap). Requires explicit human approval with the specific trade-off stated: "The spec says X. We are doing Y instead because Z. This means [concrete consequence]."
    - **Removal** -- not implementing a specified feature (e.g., no thin-tier fallback). Requires explicit human approval with the impact stated: "Users who need X will not be able to use the tool for that purpose."
+
+   #### Prerequisite check for substitutions
+
+   For every Substitution deviation, ask: **"Does the deviated approach require implementation work that the mapped task will not cover?"**
+
+   Break down the deviated approach into its prerequisites. If any prerequisite is not covered by the mapped task or another existing task, add it to the `## Gaps` table and route it through the normal gap remediation flow (Add task / Defer / Skip). The deviation cannot be approved until all its prerequisites are resolved. Resolution options:
+   - **Add a task** to cover the missing prerequisite (goes through the gap flow, triggers spec/task re-review)
+   - **Expand the mapped task** to include the prerequisite (update tasks.md, re-present for review)
+   - **Reclassify as Removal** if the prerequisite is too large or out of scope (this forces the human to acknowledge the requirement is being dropped, not substituted)
+
+   Example of this check catching a gap: PRD says "detect SIGINT during promotion and prompt for resume or cleanup." Deviation says "auto-cleanup instead of interactive prompt" (Substitution, mapped to the cleanup task). The deviated approach (auto-cleanup on next run) requires signal handling to detect interruption and mark state as dirty. The cleanup task only handles stale state detection -- it does not implement signal handling. **This is a gap.** Either add a signal handling task, expand the cleanup task to include signal handling, or reclassify as Removal ("we are not implementing interrupted promotion detection").
+
+   Present the prerequisite analysis for each Substitution alongside the deviation in the review step:
+
+   ```
+   Deviation #54: Interrupted promotion recovery
+   Classification: Substitution
+   Original: SIGINT detection + resume/cleanup prompt
+   Deviated: Auto-cleanup on next run (no interactive prompt)
+   Prerequisites of deviated approach:
+     ✓ Stale state detection (covered by Task 3.3)
+     ✗ Signal handling to mark state as dirty on interruption (NOT covered by any task)
+   → GAP: Add signal handling to Task 3.3, or add a new task, or reclassify as Removal
+   ```
 
    Mark approved deviations as **APPROVED-DEVIATION** in the coverage table (not COVERED). This status persists through the contract and is re-surfaced during the spec delta check (Phase 9).
 
