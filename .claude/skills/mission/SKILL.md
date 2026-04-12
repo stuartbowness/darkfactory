@@ -663,21 +663,21 @@ Track the attempt number (starts at 1 for the initial worker, increments on each
 <recommendations from validator>
 ```
 
-2. **Diagnostic triage.** Before writing the fix brief, spawn a lightweight Claude subagent to diagnose the failure. The subagent receives:
-   - The validator report (from `mission/validations/task-N-scrutiny.md` or `task-N-usertest.md`)
+2. **Circuit breaker check:** If attempt >= 3, stop the loop. Log to progress.md: `<timestamp> -- Task N: circuit breaker triggered after <attempt> attempts.` Update plan status to PAUSED. Ask the human: "Task N has failed validation 3 times. Options: retry (allows one more attempt, counter continues from current value), skip (mark as skipped with `- [~]`, continue to next task), abort (stop the mission)."
+
+   - **Retry:** Increment the attempt counter by 1 (e.g., attempt 3 becomes attempt 4). Allow one more fix attempt. If it fails again, the circuit breaker triggers again at the new count. Retry does NOT reset the counter.
+   - **Skip:** Mark the task as `- [~]` in tasks.md. Log to progress.md: `<timestamp> -- Task N: SKIPPED by human after <attempt> failed attempts.` Continue to the next unchecked task. The build loop ignores `- [~]` tasks (they are neither unchecked nor complete).
+   - **Abort:** Update plan status to PAUSED. Stop the build loop. Report to the human.
+
+3. **Diagnostic triage.** Spawn a lightweight Claude subagent to diagnose the failure. The subagent receives:
+   - The validator report (from `mission/validations/task-N-scrutiny.md` or `task-N-usertest.md` -- whichever triggered this fix loop entry)
    - The worker's diff (`git show <commit-sha>`)
 
    The subagent does NOT receive `contract.md`, `proposal.md`, or `design.md`. It describes what the code does wrong, not what the contract expected.
 
    Subagent prompt: "You are diagnosing a validation failure. Read the validator report and the code diff. For each failure, identify the probable root cause: which file and line, what the code does, and why that causes the observed symptom. Be specific -- name files, lines, variables, and values. Describe what the code does wrong, not what it should do. Write your triage to: `<path to mission/issues/task-N-v<attempt>-triage.md>`"
 
-   The triage output is included in the fix brief (Step 3 below) as an additional "Diagnostic Triage" section. If the triage subagent fails or times out, skip it and proceed with the fix brief without it -- triage is helpful but not blocking.
-
-3. **Circuit breaker check:** If attempt >= 3, stop the loop. Log to progress.md: `<timestamp> -- Task N: circuit breaker triggered after <attempt> attempts.` Update plan status to PAUSED. Ask the human: "Task N has failed validation 3 times. Options: retry (allows one more attempt, counter continues from current value), skip (mark as skipped with `- [~]`, continue to next task), abort (stop the mission)."
-
-   - **Retry:** Increment the attempt counter by 1 (e.g., attempt 3 becomes attempt 4). Allow one more fix attempt. If it fails again, the circuit breaker triggers again at the new count. Retry does NOT reset the counter.
-   - **Skip:** Mark the task as `- [~]` in tasks.md. Log to progress.md: `<timestamp> -- Task N: SKIPPED by human after <attempt> failed attempts.` Continue to the next unchecked task. The build loop ignores `- [~]` tasks (they are neither unchecked nor complete).
-   - **Abort:** Update plan status to PAUSED. Stop the build loop. Report to the human.
+   The triage output is included in the fix brief (Step 4 below) as an additional "Diagnostic Triage" section. If the triage subagent fails or times out, skip it and proceed with the fix brief without it -- triage is helpful but not blocking.
 
 4. **Write fix brief** to `mission/briefs/task-N-fix-v<attempt+1>.md`:
 
@@ -808,7 +808,7 @@ Spawn a Claude subagent to run `/demo-video`. The subagent should save the recor
 
 1. Mark the task complete in `tasks.md`: change `- [ ]` to `- [x]` for this task.
 
-2. **Generate codebase delta for subsequent briefs.** Run `git diff --stat HEAD~1` and `git show HEAD` to extract what this task added. Summarize into a codebase delta entry containing: files created/modified (paths), public function/endpoint signatures, key types, and patterns used. Store this delta in the plan under a `## Codebase Deltas` section. The next task's brief (Step 1) reads accumulated deltas from the plan and writes them into the "What Previous Tasks Built" section.
+2. **Generate codebase delta for subsequent briefs.** Run `git diff <pre-task-sha>..HEAD` (where pre-task-sha is the commit before this task's first commit, recorded when the worker was dispatched) to extract what this task added. Summarize into a codebase delta entry containing: files created/modified (paths), public function/endpoint signatures, key types, and patterns used. Store this delta in the plan under a `## Codebase Deltas` section. The next task's brief (Step 1) reads accumulated deltas from the plan and writes them into the "What Previous Tasks Built" section.
 
    **Guard rail:** Generate the delta from `git diff` output only. Never read handoff reports to build this summary. The delta contains facts about what exists in the code, not why or how the worker built it.
 
