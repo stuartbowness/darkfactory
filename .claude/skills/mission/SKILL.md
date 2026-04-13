@@ -7,11 +7,47 @@ description: Start an autonomous Darkfactory mission. Grills the user for alignm
 
 Start an autonomous multi-agent mission for a single OpenSpec change. The orchestrator (this session) plans the work, dispatches workers one at a time, and validates each result against a contract the workers never see.
 
-**Flow:** `idea -> spec -> build -> verify -> ship -> merge`
+**Flow:** `align -> spec -> contract -> build -> validate -> ship`
+
+---
+
+## Rules (Always Enforced)
+
+1. **Serial execution.** One worker at a time. Never dispatch two workers in parallel. (Exception: the two adversarial reviewers in Phase 9 run in parallel since they are independent read-only reviewers.)
+2. **Adversarial separation.** Workers never see `contract.md`. Validators never see `proposal.md` or `design.md`.
+3. **Both per-task validators re-run after every fix.** Even if only one failed, both scrutiny and user-test re-run to catch regressions. Adversarial review runs once at the end, not per task.
+4. **Circuit breaker at 3.** After 3 failed attempts on the same task, stop and ask the human. Retry allows one more attempt but does NOT reset the counter.
+5. **File-backed state.** All decisions and status go to disk. The mission must be resumable from files alone.
+6. **Single commit per task.** One task, one worker, one commit, one validation cycle.
+7. **Draft PRs only.** Never create a ready-for-review PR. The human promotes it.
+8. **Plan is the operating manual.** Keep the plan updated after every phase and step. It must be accurate if context compacts.
+9. **Skipped tasks use `- [~]`.** The build loop treats `- [~]` as neither unchecked nor complete. Skipped tasks are not re-attempted.
+10. **Monitor is for external processes.** Monitor is used for external process dispatch (Codex workers, Codex adversarial reviews). Claude subagent validators use the Agent tool directly since they run within the session and return synchronously.
+
+---
+
+## Phase Index
+
+0. **Enter Plan Mode** -- write the durable operating plan
+1. **Grill for Alignment** -- align on what is being built and why
+2. **Establish Shared Language** -- create/update UBIQUITOUS_LANGUAGE.md
+3. **Write a PRD** -- file requirements as a GitHub issue
+4. **Create and Review OpenSpec Artifacts** -- proposal, specs, design, tasks (human-approved)
+4a. **Spec Coverage Audit** -- verify every PRD requirement maps to a task
+5. **Write Contract** -- validation assertions workers never see
+6. **Create Mission Directory** -- set up mission/ state directory
+7. **Launch Confirmation** -- human confirms, build starts
+8. **Build Loop** -- dispatch workers, validate per task, fix loop with circuit breaker
+9. **Mission Completion** -- final gates, spec delta check, draft PR, dual adversarial review
 
 ---
 
 ## Phase 0: Enter Plan Mode
+
+> **Rules:** 5, 8
+> **Goal:** Write the durable operating plan that survives context compaction.
+> **Inputs:** User's idea (from conversation), UBIQUITOUS_LANGUAGE.md (if exists)
+> **Outputs:** Plan (in plan mode), initial UBIQUITOUS_LANGUAGE.md check
 
 Enter plan mode immediately. Write a durable operating manual as the plan. This plan survives context compaction and is the orchestrator's source of truth.
 
@@ -100,9 +136,18 @@ After all tasks complete:
 
 Check if `UBIQUITOUS_LANGUAGE.md` exists in the repo root. If it does, read it now so all phases use consistent terminology.
 
+**Gate -- proceed when:**
+- [ ] Plan is written and active in plan mode
+- [ ] UBIQUITOUS_LANGUAGE.md checked (read if exists, noted if absent)
+
 ---
 
 ## Phase 1: Grill for Alignment
+
+> **Rules:** --
+> **Goal:** Align on what is being built, why, and what "done" looks like.
+> **Inputs:** User's idea
+> **Outputs:** Key decisions summarized in plan
 
 Run `/grill-me` to interview the user about their idea. The grill session should drive toward shared understanding of what is being built, why, and what "done" looks like.
 
@@ -112,18 +157,35 @@ If the user says "skip":
 
 After the grill completes, summarize the key decisions in the plan.
 
+**Gate -- proceed when:**
+- [ ] Grill complete or explicitly skipped (with warning acknowledged)
+- [ ] Key decisions summarized in plan
+
 ---
 
 ## Phase 2: Establish Shared Language
+
+> **Rules:** 5
+> **Goal:** Establish shared terminology for all subsequent phases.
+> **Inputs:** Grill conversation, existing UBIQUITOUS_LANGUAGE.md (if any)
+> **Outputs:** UBIQUITOUS_LANGUAGE.md (created or updated)
 
 Run `/ubiquitous-language` to create or update `UBIQUITOUS_LANGUAGE.md`.
 
 - If the file already existed and was read in Phase 0, this phase updates it with any new terms from the grill session.
 - If the file did not exist, this phase creates it. Read the file after creation so all subsequent phases use the terms.
 
+**Gate -- proceed when:**
+- [ ] UBIQUITOUS_LANGUAGE.md exists and is loaded into context
+
 ---
 
 ## Phase 3: Write a PRD
+
+> **Rules:** 5
+> **Goal:** Capture requirements as a structured PRD filed as a GitHub issue.
+> **Inputs:** Grill conversation, UBIQUITOUS_LANGUAGE.md
+> **Outputs:** GitHub issue (PRD), issue URL + number recorded in plan
 
 Run `/write-a-prd` to turn the grill conversation into a structured product requirements document. The PRD captures: problem statement, solution, user stories, implementation decisions, testing decisions, and out-of-scope items.
 
@@ -131,9 +193,18 @@ The PRD is filed as a GitHub issue. This issue becomes the source of truth for c
 
 After the issue is created, record both the issue URL and the issue number in the plan (under Spec Coverage Audit). The issue number is needed in Phase 9 to link the draft PR back to the issue.
 
+**Gate -- proceed when:**
+- [ ] PRD filed as GitHub issue
+- [ ] Issue URL and issue number recorded in plan
+
 ---
 
 ## Phase 4: Create and Review OpenSpec Artifacts
+
+> **Rules:** 5
+> **Goal:** Generate and get human approval on all four OpenSpec artifacts.
+> **Inputs:** PRD (GitHub issue), UBIQUITOUS_LANGUAGE.md
+> **Outputs:** proposal.md, specs/, design.md, tasks.md -- all human-approved
 
 The `spec-driven` schema generates four artifacts in dependency order: `proposal -> specs -> design -> tasks`. Generate each artifact one at a time, present it to the human for review, and get approval before generating the next.
 
@@ -220,9 +291,21 @@ Present the full task list (including closing tasks) to the human with a recomme
 
 After all artifacts are reviewed and approved, update the plan with the actual artifact paths.
 
+**Gate -- proceed when:**
+- [ ] proposal.md human-approved
+- [ ] All specs/<capability>/spec.md files human-approved
+- [ ] design.md human-approved
+- [ ] tasks.md (with closing tasks) human-approved
+- [ ] Plan updated with actual artifact paths
+
 ---
 
 ## Phase 4a: Spec Coverage Audit
+
+> **Rules:** 5
+> **Goal:** Verify every PRD requirement maps to at least one task before writing the contract.
+> **Inputs:** PRD (GitHub issue), specs/, tasks.md
+> **Outputs:** coverage-audit.md, updated specs/tasks if gaps found
 
 Before writing the contract, verify that every PRD requirement is covered by at least one task. This phase catches requirements that were present in the PRD but lost during the transition to specs and tasks.
 
@@ -307,9 +390,22 @@ The "Prerequisites met?" column applies to Substitutions only. For Interpretatio
 
 9. **Record the coverage audit** in the plan. Update the Spec Coverage Audit section with the PRD issue URL, gap count, and resolutions.
 
+**Gate -- proceed when:**
+- [ ] Coverage audit complete -- every PRD requirement mapped
+- [ ] All gaps resolved (added, deferred, or skipped)
+- [ ] All deviations classified and approved by human
+- [ ] Changed specs/tasks re-approved by human (if any changed)
+- [ ] coverage-audit.md persisted to disk
+- [ ] Plan updated with audit results
+
 ---
 
 ## Phase 5: Write Contract
+
+> **Rules:** 2, 5
+> **Goal:** Write the validation contract that workers never see.
+> **Inputs:** coverage-audit.md, specs/, tasks.md, PRD (GitHub issue)
+> **Outputs:** contract.md (human-approved, testability pre-flight passed)
 
 Create `contract.md` in the change directory (`openspec/changes/<change-name>/contract.md`).
 
@@ -384,9 +480,20 @@ Log the testability breakdown to progress.md: `<timestamp> -- Contract testabili
 
 Update the plan with the contract path after approval.
 
+**Gate -- proceed when:**
+- [ ] contract.md human-approved
+- [ ] Testability pre-flight passed (inspection assertions <=20%)
+- [ ] Testability breakdown logged to progress.md
+- [ ] Plan updated with contract path
+
 ---
 
 ## Phase 6: Create Mission Directory
+
+> **Rules:** 5
+> **Goal:** Create the mission directory with config and progress tracking files.
+> **Inputs:** Change name, engine preferences
+> **Outputs:** mission/ directory with config.yaml, progress.md, and subdirectories
 
 Create the mission directory at `openspec/changes/<change-name>/mission/` with this structure:
 
@@ -426,9 +533,18 @@ Started: <ISO 8601 timestamp>
 
 Create the four subdirectories: `briefs/`, `handoffs/`, `validations/`, `issues/`.
 
+**Gate -- proceed when:**
+- [ ] mission/ directory exists with config.yaml and progress.md
+- [ ] briefs/, handoffs/, validations/, issues/ subdirectories created
+
 ---
 
 ## Phase 7: Launch Confirmation
+
+> **Rules:** 5
+> **Goal:** Get human confirmation before starting the build.
+> **Inputs:** All approved artifacts, config.yaml
+> **Outputs:** Human approval, progress.md updated, plan status = BUILDING
 
 Since every artifact has been individually reviewed and approved during Phases 4, 4a, and 5, this phase is a lightweight launch confirmation -- not a full review.
 
@@ -442,9 +558,19 @@ Ask: "Everything has been reviewed. Ready to start the build?"
 - If yes: append `<timestamp> -- Plan approved. <N> tasks, <M> assertions in contract.` to progress.md. Update plan status to BUILDING. Proceed to Phase 8.
 - If the human wants to revisit something: loop back to the specific phase they name. Do not re-review everything.
 
+**Gate -- proceed when:**
+- [ ] Human confirms "ready to start the build"
+- [ ] progress.md updated with approval timestamp and task/assertion counts
+- [ ] Plan status = BUILDING
+
 ---
 
 ## Phase 8: Build Loop
+
+> **Rules:** 1, 2, 3, 4, 5, 6, 8, 9, 10
+> **Goal:** Build all tasks with per-task validation.
+> **Inputs:** tasks.md, contract.md, design.md, proposal.md, config.yaml
+> **Outputs:** Committed code per task, validation reports, codebase deltas in plan
 
 For each unchecked task (`- [ ]`) in tasks.md, run Steps 1-7. Process tasks in order, one at a time (serial execution). Skip tasks marked `- [~]` (skipped) and `- [x]` (complete).
 
@@ -858,9 +984,20 @@ Spawn a Claude subagent to run `/demo-video`. The subagent should save the recor
 
 6. **If all tasks are done:** Proceed to Phase 9.
 
+**Gate -- proceed when:**
+- [ ] All tasks in tasks.md are `- [x]` (complete) or `- [~]` (skipped)
+- [ ] No unchecked `- [ ]` tasks remain
+- [ ] Each completed task has passing scrutiny and user-test reports
+- [ ] Plan codebase deltas are current
+
 ---
 
 ## Phase 9: Mission Completion
+
+> **Rules:** 1, 2, 5, 7, 10
+> **Goal:** Final gates, draft PR, and dual adversarial review.
+> **Inputs:** All committed code, contract.md, coverage-audit.md
+> **Outputs:** Draft PR, adversarial review reports, plan status = COMPLETE
 
 ### Final Gates
 
@@ -1061,6 +1198,13 @@ After merge, run /opsx:archive to archive the change.
 
 Update plan status to COMPLETE.
 
+**Gate -- mission is COMPLETE when:**
+- [ ] Final gates passed (build, test, lint, format)
+- [ ] Spec delta check clean (no unresolved discrepancies)
+- [ ] Draft PR created
+- [ ] Both adversarial reviews complete and presented to human
+- [ ] Plan status = COMPLETE
+
 ---
 
 ## Resume Support
@@ -1081,18 +1225,3 @@ This skill does not implement resume directly -- that is handled by the `/missio
 ## Status Checking
 
 Running `/mission-status` (via the mission-status skill) in a separate session should show the current state by reading `progress.md`, `tasks.md`, and `config.yaml`. This skill does not implement status -- that is handled by the `/mission-status` skill.
-
----
-
-## Rules (Always Enforced)
-
-1. **Serial execution.** One worker at a time. Never dispatch two workers in parallel. (Exception: the two adversarial reviewers in Phase 9 run in parallel since they are independent read-only reviewers.)
-2. **Adversarial separation.** Workers never see `contract.md`. Validators never see `proposal.md` or `design.md`.
-3. **Both per-task validators re-run after every fix.** Even if only one failed, both scrutiny and user-test re-run to catch regressions. Adversarial review runs once at the end, not per task.
-4. **Circuit breaker at 3.** After 3 failed attempts on the same task, stop and ask the human. Retry allows one more attempt but does NOT reset the counter.
-5. **File-backed state.** All decisions and status go to disk. The mission must be resumable from files alone.
-6. **Single commit per task.** One task, one worker, one commit, one validation cycle.
-7. **Draft PRs only.** Never create a ready-for-review PR. The human promotes it.
-8. **Plan is the operating manual.** Keep the plan updated after every phase and step. It must be accurate if context compacts.
-9. **Skipped tasks use `- [~]`.** The build loop treats `- [~]` as neither unchecked nor complete. Skipped tasks are not re-attempted.
-10. **Monitor is for external processes.** Monitor is used for external process dispatch (Codex workers, Codex adversarial reviews). Claude subagent validators use the Agent tool directly since they run within the session and return synchronously.
