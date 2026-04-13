@@ -9,7 +9,7 @@ A lightweight multi-agent mission system built entirely from Claude Code primiti
 ## Phase Flow
 
 ```
-idea -> spec -> build -> verify -> ship -> merge
+align -> spec -> contract -> build -> validate -> ship
 ```
 
 Inner loop per task: `spec -> build -> verify -> ship` with repetition on validation failure.
