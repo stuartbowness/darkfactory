@@ -61,7 +61,7 @@ Running `/mission-status` (via the mission-status skill) in a separate session s
 > **Rules:** 5, 8
 > **Goal:** Write the durable operating plan that survives context compaction.
 > **Inputs:** User's idea (from conversation), UBIQUITOUS_LANGUAGE.md (if exists)
-> **Outputs:** Plan (in plan mode), initial UBIQUITOUS_LANGUAGE.md check
+> **Outputs:** Plan (in plan mode), UBIQUITOUS_LANGUAGE.md confirmed read or noted absent
 
 Enter plan mode immediately. Write a durable operating manual as the plan. This plan survives context compaction and is the orchestrator's source of truth.
 
@@ -160,8 +160,8 @@ Check if `UBIQUITOUS_LANGUAGE.md` exists in the repo root. If it does, read it n
 
 > **Rules:** --
 > **Goal:** Align on what is being built, why, and what "done" looks like.
-> **Inputs:** User's idea
-> **Outputs:** Key decisions summarized in plan
+> **Inputs:** User's idea (from conversation)
+> **Outputs:** Grill conversation (in context, used by Phases 2 and 3), key decisions summarized in plan
 
 Run `/grill-me` to interview the user about their idea. The grill session should drive toward shared understanding of what is being built, why, and what "done" looks like.
 
@@ -181,7 +181,7 @@ After the grill completes, summarize the key decisions in the plan.
 
 > **Rules:** 5
 > **Goal:** Establish shared terminology for all subsequent phases.
-> **Inputs:** Grill conversation, existing UBIQUITOUS_LANGUAGE.md (if any)
+> **Inputs:** Grill conversation (from Phase 1, in context), UBIQUITOUS_LANGUAGE.md (if exists from Phase 0 check)
 > **Outputs:** UBIQUITOUS_LANGUAGE.md (created or updated)
 
 Run `/ubiquitous-language` to create or update `UBIQUITOUS_LANGUAGE.md`.
@@ -198,10 +198,10 @@ Run `/ubiquitous-language` to create or update `UBIQUITOUS_LANGUAGE.md`.
 
 > **Rules:** 5
 > **Goal:** Capture requirements as a structured PRD filed as a GitHub issue.
-> **Inputs:** Grill conversation, UBIQUITOUS_LANGUAGE.md
+> **Inputs:** Grill conversation (from Phase 1, in context), UBIQUITOUS_LANGUAGE.md
 > **Outputs:** GitHub issue (PRD), issue URL + number recorded in plan
 
-Run `/write-a-prd` to turn the grill conversation into a structured product requirements document. The PRD captures: problem statement, solution, user stories, implementation decisions, testing decisions, and out-of-scope items.
+Run `/write-a-prd` to turn the grill conversation into a structured product requirements document. Use terms from `UBIQUITOUS_LANGUAGE.md` consistently throughout the PRD. The PRD captures: problem statement, solution, user stories, implementation decisions, testing decisions, and out-of-scope items.
 
 The PRD is filed as a GitHub issue. This issue becomes the source of truth for creating OpenSpec artifacts in Phase 4. The PRD ensures nothing from the grill conversation is lost or misinterpreted during the transition to technical artifacts.
 
@@ -217,8 +217,10 @@ After the issue is created, record both the issue URL and the issue number in th
 
 > **Rules:** 5
 > **Goal:** Generate and get human approval on all four OpenSpec artifacts.
-> **Inputs:** PRD (GitHub issue), UBIQUITOUS_LANGUAGE.md
+> **Inputs:** PRD (read from GitHub issue URL in plan), UBIQUITOUS_LANGUAGE.md
 > **Outputs:** proposal.md, specs/, design.md, tasks.md -- all human-approved
+
+Read the PRD from the GitHub issue URL recorded in the plan. This is the source of truth for all artifact generation. Use terms from `UBIQUITOUS_LANGUAGE.md` consistently in all artifacts.
 
 The `spec-driven` schema generates four artifacts in dependency order: `proposal -> specs -> design -> tasks`. Generate each artifact one at a time, present it to the human for review, and get approval before generating the next.
 
@@ -318,7 +320,7 @@ After all artifacts are reviewed and approved, update the plan with the actual a
 
 > **Rules:** 5
 > **Goal:** Verify every PRD requirement maps to at least one task before writing the contract.
-> **Inputs:** PRD (GitHub issue), specs/, tasks.md
+> **Inputs:** PRD (read from GitHub issue URL in plan), specs/, tasks.md
 > **Outputs:** coverage-audit.md, updated specs/tasks if gaps found
 
 Before writing the contract, verify that every PRD requirement is covered by at least one task. This phase catches requirements that were present in the PRD but lost during the transition to specs and tasks.
@@ -418,7 +420,7 @@ The "Prerequisites met?" column applies to Substitutions only. For Interpretatio
 
 > **Rules:** 2, 5
 > **Goal:** Write the validation contract that workers never see.
-> **Inputs:** coverage-audit.md, specs/, tasks.md, PRD (GitHub issue)
+> **Inputs:** coverage-audit.md, specs/, tasks.md, PRD (read from GitHub issue URL in plan)
 > **Outputs:** contract.md (human-approved, testability pre-flight passed)
 
 Create `contract.md` in the change directory (`openspec/changes/<change-name>/contract.md`).
@@ -506,8 +508,10 @@ Update the plan with the contract path after approval.
 
 > **Rules:** 5
 > **Goal:** Create the mission directory with config and progress tracking files.
-> **Inputs:** Change name, engine preferences
+> **Inputs:** Change name (from plan), engine preferences (from plan's Engine Config section, or defaults below)
 > **Outputs:** mission/ directory with config.yaml, progress.md, and subdirectories
+
+Read the engine preferences from the plan's Engine Config section. If not set by the human, use the defaults shown below.
 
 Create the mission directory at `openspec/changes/<change-name>/mission/` with this structure:
 
@@ -557,7 +561,7 @@ Create the four subdirectories: `briefs/`, `handoffs/`, `validations/`, `issues/
 
 > **Rules:** 5
 > **Goal:** Get human confirmation before starting the build.
-> **Inputs:** All approved artifacts, config.yaml
+> **Inputs:** tasks.md, contract.md, coverage-audit.md, config.yaml
 > **Outputs:** Human approval, progress.md updated, plan status = BUILDING
 
 Since every artifact has been individually reviewed and approved during Phases 4, 4a, and 5, this phase is a lightweight launch confirmation -- not a full review.
@@ -583,8 +587,8 @@ Ask: "Everything has been reviewed. Ready to start the build?"
 
 > **Rules:** 1, 2, 3, 4, 5, 6, 8, 9, 10
 > **Goal:** Build all tasks with per-task validation.
-> **Inputs:** tasks.md, contract.md, design.md, proposal.md, config.yaml
-> **Outputs:** Committed code per task, validation reports, codebase deltas in plan
+> **Inputs:** tasks.md, contract.md, design.md, proposal.md, config.yaml, UBIQUITOUS_LANGUAGE.md
+> **Outputs:** Committed code per task, validation reports in mission/validations/. Codebase deltas are internal (populate subsequent task briefs within this phase).
 
 For each unchecked task (`- [ ]`) in tasks.md, run Steps 1-7. Process tasks in order, one at a time (serial execution). Skip tasks marked `- [~]` (skipped) and `- [x]` (complete).
 
@@ -1010,7 +1014,7 @@ Spawn a Claude subagent to run `/demo-video`. The subagent should save the recor
 
 > **Rules:** 1, 2, 5, 7, 10
 > **Goal:** Final gates, draft PR, and dual adversarial review.
-> **Inputs:** All committed code, contract.md, coverage-audit.md
+> **Inputs:** All committed code (from Phase 8), contract.md, coverage-audit.md, PRD issue number (from plan, for PR linking)
 > **Outputs:** Draft PR, adversarial review reports, plan status = COMPLETE
 
 ### Final Gates
