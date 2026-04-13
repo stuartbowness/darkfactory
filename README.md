@@ -296,12 +296,9 @@ The workflow scales naturally to match the size of the work. A small bug fix pro
 
 ## How it was built
 
-Darkfactory was built using its own process. The first version of the skills was hand-written during an interview session (using `/grill-me`) that produced the design decisions and shared vocabulary. Then Darkfactory built its own second version: Claude workers independently wrote all three mission skills from the specs, a Codex code review found 7 issues, and a fix worker addressed them. The second version is what ships.
+The first version was hand-written during a `/grill-me` session that produced the design decisions and shared vocabulary. The second version was built by Darkfactory itself -- Claude workers generated the skills from the specs, and a Codex code review caught issues that a fix worker addressed. Everything since then has been iterative improvement, and the system is still actively evolving.
 
-The full build history is in `archive/` (ignored by Claude via `.claudeignore`):
-- `archive/build-specs/` -- the 6 OpenSpec changes that designed Darkfactory
-- `archive/v1-skills/` -- the original hand-written skills
-- `archive/self-build/` -- the v2 mission artifacts (briefs, handoffs, validation reports, code reviews)
+The original self-build artifacts are in `archive/` (ignored by Claude via `.claudeignore`).
 
 ## Key references
 
