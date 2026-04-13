@@ -1,20 +1,66 @@
 # Darkfactory
 
-A lightweight multi-agent mission system built entirely from Claude Code primitives. No custom IDE, no app, no framework. Just skills, subagents, plan mode, and markdown files.
+Darkfactory lets you describe what you want to build, and then multiple AI agents plan the work, write the code, check each other's work, and deliver a draft pull request. It runs inside [Claude Code](https://docs.anthropic.com/en/docs/claude-code).
+
+No custom IDE or framework required. Darkfactory is built from Claude Code's own features:
+- **Skills** -- reusable prompt templates you invoke with slash commands (e.g. `/mission`)
+- **Subagents** -- separate AI workers that each get their own conversation
+- **Plan mode** -- persistent instructions that survive long sessions
+- **Markdown files** -- all state lives on disk, not in memory
 
 Inspired by [Factory's Missions architecture](https://www.factory.ai/) and [Matt Pocock's AI development skills](https://github.com/mattpocock/skills).
 
 ## What it does
 
-Darkfactory turns a goal into working, validated code -- autonomously. You describe what you want to build, the system plans it, dispatches workers to implement it, validates the results against a contract, and delivers a draft PR.
+A mission is the core unit of work. It takes you from a goal ("build user authentication") to a validated draft PR, through three stages.
 
-A mission has three stages:
+### Stage 1: You and the orchestrator plan together
 
-1. **You and the orchestrator plan together.** The orchestrator grills you on what you want, establishes shared terminology, then creates OpenSpec artifacts sequentially (proposal, specs, design, tasks) -- reviewing each with you before proceeding. It runs a spec coverage audit against the PRD to catch missed requirements, classifying any deviations from the spec (substitutions and removals require your explicit approval). For each substitution, a prerequisite check verifies the deviated approach is fully covered by existing tasks -- if the deviation drops a prerequisite, it's flagged as a gap. It writes a PRD-traced contract where every assertion is tagged with a verification method (execution, output, or inspection) and runs a testability pre-flight to catch vague assertions before they waste fix cycles. You review and confirm launch.
+The orchestrator is the main Claude Code session that runs your mission. It starts by interviewing you about what you want to build, asking pointed questions until it understands your goals, constraints, and edge cases. It then creates a shared glossary of terms so that you, the orchestrator, and all workers use the same vocabulary.
 
-2. **The orchestrator builds and validates autonomously.** For each task, it dispatches a worker (Codex or Claude, configurable), then runs two layers of validation: scrutiny (test presence gate, build/test/lint, code review, code standards, simplify, security review, behavioral conformance) and user-testing (API and browser tests). If anything fails, a fix worker addresses the issues and both validators re-run. This repeats until the task passes or a circuit breaker asks for your input.
+From that conversation, it writes a PRD (Product Requirements Document) -- a structured description of the problem, the solution, user stories, and testing approach. The PRD is filed as a GitHub issue and becomes the source of truth for everything that follows. At the end of the mission, the draft PR links back to this issue.
 
-3. **You review and merge.** After all tasks complete, the orchestrator runs final gates (whole-repo build/test/lint/format) and a spec delta check (verifying the built code matches what the coverage audit promised). It then creates a draft PR and runs a dual adversarial review (Codex + Claude in parallel) against the full diff. Both reports are presented to you alongside the PR link. You decide what to address, promote the PR to ready, and merge.
+Next, it creates a series of planning documents using [OpenSpec](https://github.com/Fission-AI/OpenSpec) (an open-source tool for structured change proposals). These documents are created one at a time, and you review each before the orchestrator moves on:
+
+- **Proposal** -- what you're building and why
+- **Specs** -- detailed requirements written as WHEN/THEN rules (e.g. "WHEN a user submits the login form with wrong credentials, THEN show an error message")
+- **Design** -- architecture decisions and technical approach
+- **Tasks** -- an ordered checklist of implementation work
+
+After the tasks are defined, the orchestrator runs a **coverage audit**. This maps every requirement from the PRD to one or more tasks. If anything is missing, it flags it. If a requirement was intentionally changed or dropped, you approve that decision explicitly. For substitutions, the orchestrator also checks that the replacement approach is fully covered by existing tasks -- if the substitution drops something important, it's flagged as a gap. Nothing falls through the cracks by accident.
+
+Finally, it writes a **contract** -- a checklist of things the finished code should do, written so they can be tested from the outside (by running the code, not by reading the source). For example: "the login endpoint returns a 401 when given wrong credentials." Each item traces back to a PRD requirement and is tagged with how it should be verified (by executing the code, checking its output, or inspecting the source). Before moving on, the orchestrator runs a testability check to catch any vague or untestable items early. You review the contract, confirm which AI models handle each role (see [Configuration](#configuration)), and approve launch.
+
+### Stage 2: The orchestrator builds and validates autonomously
+
+For each task, the orchestrator sends a worker (Codex or Claude, your choice) a brief describing what to build. The worker writes the code, commits its changes, and writes a handoff report. Workers never see the contract -- this is intentional, and explained in [information walls](#information-walls) below.
+
+After each worker finishes, two validators check the work:
+
+1. **Scrutiny validator** -- a thorough quality check that runs 10 steps:
+   - Do tests exist? (auto-fails the task if not)
+   - Does the project build, do the tests pass, does the linter pass?
+   - Code review and code standards check
+   - Complexity check -- is the code more complex than it needs to be?
+   - Security review (only when the changes touch auth, secrets, or input handling)
+   - Contract check -- does the code do what the contract says it should?
+   - Execution check -- actually runs the code to confirm it works, rather than just reading the source
+
+2. **User-test validator** -- tests the feature the way a user would. It decides whether to hit an API with HTTP requests, drive a browser, or both, based on what the task changed.
+
+If either validator finds problems, the orchestrator sends a fix worker a description of what went wrong. It only describes the symptoms -- it never reveals the contract, so the fix worker has to solve the real problem, not just game the checklist. After the fix, both validators re-run from scratch.
+
+This loop repeats until the task passes or hits the **circuit breaker**. After 3 total attempts (1 initial build + 2 fix rounds), the orchestrator pauses and asks you: retry, skip this task, or abort the mission.
+
+### Stage 3: You review and merge
+
+After all tasks are complete, the orchestrator runs three final checks:
+
+1. **Full-repo build check** -- builds, tests, lints, and formats the entire repository (not just the changed files). This catches cases where a late task accidentally broke something an earlier task built.
+2. **Requirements check** -- compares the built code against the coverage audit. Did you actually build everything you said you would? If something is missing, you decide whether to add a fix task, reclassify it as intentionally skipped, or accept the gap.
+3. **Independent code review** -- two separate reviewers (Codex and Claude, running at the same time) each review all the changes against the full contract. Their reports are presented to you alongside the draft PR link. This is not an automated gate -- you read both reports and decide what to address.
+
+You review the findings, promote the PR from draft to ready, and merge.
 
 ## Architecture
 
@@ -68,27 +114,31 @@ A mission has three stages:
 
 ### Three roles
 
-**Orchestrator** -- the main Claude Code session. Plans the work, dispatches workers one at a time, reads results, decides what to do next. Runs in plan mode so its operating manual survives context compaction.
+The system has three roles, each handled by a separate AI agent:
 
-**Workers** -- implement one task each. Default engine: Codex (GPT-5.4). Get a self-contained brief with the task description, project context, procedures, and a codebase delta showing what previous tasks built (file paths, function signatures, types -- facts only, never reasoning from other workers). Commit in a single commit. Write a structured handoff report. Never see the contract.
+**Orchestrator** -- the main Claude Code session you interact with. It plans the work, sends out one worker at a time, reads their results, runs validators, and decides what to do next. It uses Claude Code's "plan mode," which keeps its instructions alive even when the conversation gets long enough that older messages are dropped to save space.
 
-**Validators** -- check each task against the contract. Two types run sequentially per task:
-- **Scrutiny validator** (Claude) -- test presence gate, build, tests, lint, code review, code standards, simplify, security review (conditional), contract assertions, behavioral conformance (attempts to verify observable behavior by execution, falls back to inspection)
-- **User-test validator** (Claude) -- hits the API with HTTP tests and/or drives a browser with agent-browser
+**Workers** -- each worker builds a single task. By default, workers are powered by Codex (OpenAI's coding agent), but you can use Claude instead. A worker gets a brief with everything it needs: what to build, how the project is structured, coding rules to follow, which files to look at, and a summary of what previous tasks already built (file paths, function names, and types -- facts only, never reasoning from other workers). It makes its changes in a single commit and writes a report describing what it did. Workers never see the contract -- they only know what the brief tells them.
 
-After all tasks complete, **final gates** re-run whole-repo build, test, lint, and format checks (catching regressions from late tasks), then a **spec delta check** verifies every COVERED item in the coverage audit is actually present in the built code. Finally, a **dual adversarial review** runs once against the full diff. Both Codex and Claude independently review the code and their reports are presented to the human. No automated fix loop -- the human decides what to address.
+**Validators** -- after each worker finishes, validators check the work against the contract. Two validators run back-to-back for every task: the scrutiny validator (a thorough quality check) and the user-test validator (which tests the feature the way a real user would). Validators never see the proposal or design documents -- they only see the code and the contract.
 
-### Adversarial separation
+### Information walls
 
-Workers never see the contract. Validators never see the proposal or design. This is by design -- it prevents the validator from rubber-stamping code that "looks like it should work" and forces it to check what actually works.
+Workers never see the contract. Validators never see the design. Why?
+
+If a validator could see the design intent, it might look at the code and think "this looks like what the design described" without actually checking whether the code works. By keeping workers and validators blind to each other's information, the system forces validation to be based on what the code *does*, not what someone *intended* it to do.
+
+The same principle applies when fixing problems. When a validator finds something wrong, the orchestrator tells the fix worker what the symptoms are -- but never reveals the contract. The fix worker has to solve the real problem, not just make a checklist item pass.
 
 ### Fix loop
 
-When validation fails, a diagnostic triage agent reads the validator report and the diff to identify probable root causes (file, line, what the code does wrong). The orchestrator then writes a fix brief containing the symptoms and triage (not contract assertions -- adversarial separation is maintained) and dispatches a fix worker. After the fix, both per-task validators (scrutiny + user-test) re-run. Circuit breaker after 3 attempts -- asks the human to retry, skip, or abort.
+When either validator fails a task, a diagnostic triage agent first reads the failure report and the code changes to pinpoint the likely root cause (which file, which line, what went wrong). The orchestrator then sends a fix worker the symptoms and triage findings -- but never the contract, so the information wall is maintained. After the fix, both validators re-run from scratch. If it fails again, another fix round runs.
+
+The **circuit breaker** stops this from going forever. After 3 total attempts (the first build plus 2 fix rounds), the orchestrator pauses and asks you: retry (the counter keeps going -- it doesn't reset), skip this task, or abort the mission.
 
 ### File-backed state
 
-All mission state lives on disk:
+All mission state lives in files on disk, not in memory. This has two practical benefits: if your Claude Code session crashes or you close the terminal, you can resume the mission from where it left off. And you can open a second terminal to check progress while a mission is running.
 
 ```
 openspec/changes/<change-name>/
@@ -97,7 +147,7 @@ openspec/changes/<change-name>/
   design.md                # How (architecture decisions)
   tasks.md                 # Task checklist (includes mandatory closing tasks)
   coverage-audit.md        # PRD requirement-to-task mapping
-  contract.md              # Validation assertions (traced to PRD, tagged by verification method)
+  contract.md              # What the code should do (traced to PRD, tagged by verification method)
   mission/
     config.yaml            # Engine settings per role
     progress.md            # Orchestrator's running log
@@ -107,36 +157,36 @@ openspec/changes/<change-name>/
     issues/                # Failure details per attempt
 ```
 
-This means missions survive session death (resume from file state) and can be monitored from a separate terminal.
-
 ## Skills
+
+Darkfactory is controlled through skills -- reusable prompt templates you invoke with a slash command in Claude Code.
 
 | Skill | Purpose |
 |-------|---------|
-| `/mission` | Start an autonomous mission. Grills you, plans, dispatches workers, validates, creates draft PR. |
-| `/mission-resume` | Resume an interrupted mission from file state. Detects where it left off. |
-| `/mission-status` | Read-only progress check. Run from another session while a mission runs. |
-| `/darkfactory-init` | Check project setup. Reports what's installed and what's missing. |
+| `/mission` | Start an autonomous mission from scratch. Walks you through planning, dispatches workers, validates, and delivers a draft PR. |
+| `/mission-resume` | Resume a mission that was interrupted (session crash, closed terminal). Detects exactly where it left off -- including tasks that were partially validated or committed but not yet checked -- and continues through to the draft PR and code review. |
+| `/mission-status` | Read-only progress check. Open a second terminal while a mission runs to see which tasks are done, in progress, or queued. |
+| `/darkfactory-init` | Check your project setup. Reports what's installed, what's missing, and gives you the exact commands to fix it. |
 
 ### Required external skills
 
-These skills are referenced by `/mission` but are **not bundled** in this repo. You need to install them separately.
+The skills above are bundled in this repo. But `/mission` also calls other skills during execution. Some are built into Claude Code, some need to be installed separately. The table below shows each skill, where it comes from, and when it's used.
 
-| Skill | Source | Used by |
+| Skill | Source | When it's used |
 |-------|--------|---------|
-| `/grill-me` | [layercodedev/skills](https://github.com/layercodedev/skills/tree/main/grill-me) | Spec phase: alignment interview |
-| `/ubiquitous-language` | [layercodedev/skills](https://github.com/layercodedev/skills/tree/main/ubiquitous-language) | Spec phase: shared glossary |
-| `/write-a-prd` | [layercodedev/skills](https://github.com/layercodedev/skills/tree/main/write-a-prd) | Spec phase: structured PRD from grill conversation |
-| `/tdd` | [layercodedev/skills](https://github.com/layercodedev/skills/tree/main/tdd) | Build phase: test-driven development for workers |
-| `/review` | Built-in Claude Code (required) | Scrutiny validator: code review |
-| `/simplify` | Built-in Claude Code (required) | Scrutiny validator: complexity check |
-| `/security-review` | Your global Claude skills (conditional) | Scrutiny validator: security audit (runs when diff touches auth/secrets/input handling) |
-| `/test-app` | Your project's Claude skills (optional) | User-test validator: browser tests |
-| `/demo-video` | Your project's Claude skills (optional) | Demo recording for frontend tasks |
-| `openspec` CLI | Installed by `npm install -g openspec` | Spec phase: create artifacts sequentially |
-| `/opsx:archive` | Installed by `openspec init` | Post-merge: archive the change |
+| `/grill-me` | [layercodedev/skills](https://github.com/layercodedev/skills/tree/main/grill-me) | Planning phase: the alignment interview that figures out what you actually want |
+| `/ubiquitous-language` | [layercodedev/skills](https://github.com/layercodedev/skills/tree/main/ubiquitous-language) | Planning phase: creates a shared glossary so everyone uses the same terms |
+| `/write-a-prd` | [layercodedev/skills](https://github.com/layercodedev/skills/tree/main/write-a-prd) | Planning phase: turns the interview into a structured PRD |
+| `/tdd` | [layercodedev/skills](https://github.com/layercodedev/skills/tree/main/tdd) | Build phase: workers use test-driven development |
+| `/review` | Built-in Claude Code (required) | Scrutiny validator: code review step |
+| `/simplify` | Built-in Claude Code (required) | Scrutiny validator: complexity check step |
+| `/security-review` | Your global Claude skills (conditional) | Scrutiny validator: security audit, only runs when the diff touches auth, secrets, or input handling |
+| `/test-app` | Your project's Claude skills (optional) | User-test validator: browser-based testing |
+| `/demo-video` | Your project's Claude skills (optional) | Records a demo of frontend changes after validation passes |
+| `openspec` CLI | Installed by `npm install -g openspec` | Planning phase: creates the structured artifacts (proposal, specs, design, tasks) |
+| `/opsx:archive` | Installed by `openspec init` | Post-merge: moves the change's planning files into the OpenSpec archive directory |
 
-`/review` and `/simplify` are mandatory -- the scrutiny validator always runs them. `/security-review` is conditional (runs when the diff touches auth, secrets, or input handling). `/test-app` and `/demo-video` are optional and project-specific.
+`/review` and `/simplify` are mandatory -- the scrutiny validator always runs them. `/security-review` only runs when relevant. `/test-app` and `/demo-video` are optional and project-specific -- you write these yourself for your project if you want browser testing or demo recordings.
 
 ## Setup
 
@@ -145,12 +195,12 @@ These skills are referenced by `/mission` but are **not bundled** in this repo. 
 - [Claude Code](https://docs.anthropic.com/en/docs/claude-code) installed and authenticated
 - [OpenSpec CLI](https://github.com/Fission-AI/OpenSpec) installed (`npm install -g openspec`)
 - [Codex CLI](https://github.com/openai/codex) installed (`npm install -g @openai/codex`) and authenticated (`codex login`)
-- [GitHub CLI](https://cli.github.com/) installed and authenticated (`gh auth login`) -- used for draft PR creation
-- Git repository initialized
+- [GitHub CLI](https://cli.github.com/) installed and authenticated (`gh auth login`) -- used for filing the PRD as a GitHub issue and creating draft PRs
+- A git repository to work in
 
 ### First-time install
 
-Clone the darkfactory repo and symlink the skills globally:
+Clone Darkfactory and symlink its skills into your global Claude Code skills directory:
 
 ```bash
 git clone https://github.com/layercodedev/darkfactory.git ~/.darkfactory
@@ -160,22 +210,19 @@ ln -sf ~/.darkfactory/.claude/skills/mission-status ~/.claude/skills/mission-sta
 ln -sf ~/.darkfactory/.claude/skills/darkfactory-init ~/.claude/skills/darkfactory-init
 ```
 
+Symlinks mean the skills always point to your local clone, so updating is just a `git pull` (see below).
+
 Restart Claude Code, then from any project run:
 
 ```
 /darkfactory-init
 ```
 
-It checks what's installed and tells you exactly what's missing. It will:
-1. Check core and supporting skills are installed globally
-2. Tell you the exact commands to install anything missing
-3. Initialize OpenSpec in the current project if needed
-4. Verify CLI dependencies (codex, gh, openspec)
-5. Report what's ready
+This checks your entire setup and tells you exactly what's missing. It verifies core skills, supporting skills, CLI tools (codex, gh, openspec), and initializes OpenSpec in the current project if needed.
 
 ### Updating
 
-Since skills are symlinked, just pull:
+Since skills are symlinked to your clone, pulling updates everything:
 
 ```bash
 cd ~/.darkfactory && git pull
@@ -183,7 +230,7 @@ cd ~/.darkfactory && git pull
 
 ### Configuration
 
-Each mission creates its own `config.yaml` with engine defaults. You can change these before approving the plan:
+Each mission creates a `config.yaml` that controls which AI engine handles each role. You can change these before approving the plan:
 
 ```yaml
 engines:
@@ -195,6 +242,8 @@ engines:
   demo_video: claude
 ```
 
+The default uses Codex for workers and one of the two independent code reviewers, and Claude for everything else. You can set any role to either engine.
+
 ## Usage
 
 ### Start a mission
@@ -203,18 +252,7 @@ engines:
 /mission Build a user authentication system with email/password login, session management, and a profile page
 ```
 
-The orchestrator will:
-1. Enter plan mode (durable operating manual)
-2. Grill you until aligned (`/grill-me`)
-3. Create a shared language glossary (`/ubiquitous-language`)
-4. Write a structured PRD (`/write-a-prd`)
-5. Create OpenSpec artifacts one at a time, each reviewed by you: proposal, specs, design, tasks
-6. Run a spec coverage audit (maps every PRD requirement to a task, flags gaps)
-7. Write a PRD-traced contract (you review)
-8. Create the mission directory
-9. Confirm launch
-
-After you approve, it runs the build loop autonomously.
+The orchestrator walks you through the planning phase interactively -- interviewing you, creating documents, and asking for your approval at each step. Once you approve the plan and confirm launch, it runs the build loop autonomously. You don't need to do anything until it finishes or hits the circuit breaker.
 
 ### Check progress
 
@@ -224,19 +262,21 @@ From another terminal while a mission runs:
 /mission-status
 ```
 
+This shows a progress bar, the status of each task (queued, in progress, done), validation results, and fix attempt counts.
+
 ### Resume after interruption
 
-If your session dies:
+If your session crashes or you close the terminal:
 
 ```
 /mission-resume
 ```
 
-(This is a separate skill, not a flag on `/mission`.)
+This is a separate skill, not a flag on `/mission`. It reads the files on disk, figures out exactly where the mission was interrupted -- including tasks where the code was committed but validation never ran -- and continues from that point. Once all tasks are done, it creates a draft PR and runs the independent code review.
 
 ### When it's done
 
-The orchestrator creates a draft PR. Review it, promote to ready, merge, then:
+The orchestrator creates a draft PR and presents you with two independent code review reports. Review the findings, promote the PR from draft to ready, and merge. Then archive the change -- this moves the planning files (proposal, specs, design, contract, etc.) into the OpenSpec archive so they're preserved but out of the way:
 
 ```
 /opsx:archive
@@ -244,32 +284,32 @@ The orchestrator creates a draft PR. Review it, promote to ready, merge, then:
 
 ## When to use a mission
 
-Use `/mission` for everything. The scope adapts naturally -- a small bug fix produces a short grill, one task, and full validation. A large feature produces a long grill, many tasks, and the same validation per task. One workflow regardless of size.
+The workflow scales naturally to match the size of the work. A small bug fix produces a short interview, one task, and full validation. A large feature produces a long interview, many tasks, and the same validation per task. The process is the same regardless of scope.
 
 | Scope | What happens |
 |-------|-------------|
-| Quick bug fix | Short grill, 1 task, full validation, draft PR |
-| Small feature | Medium grill, 1-2 tasks, full validation, draft PR |
-| Multi-task feature | Long grill, many tasks, full validation per task, draft PR |
-| Large refactor | Long grill (40+ questions), many tasks, full validation, draft PR |
+| Quick bug fix | Short interview, 1 task, full validation, draft PR |
+| Small feature | Medium interview, 1-2 tasks, full validation, draft PR |
+| Multi-task feature | Long interview, many tasks, full validation per task, draft PR |
+| Large refactor | Long interview (40+ questions), many tasks, full validation, draft PR |
 | Overnight build | Same as above, run in tmux |
 
 ## How it was built
 
-Darkfactory was built using its own principles. The v1 skills were hand-written during a grill-me session that produced the design decisions and ubiquitous language. Then Darkfactory built itself (v2) -- Claude workers generated all three skills independently from the specs, a Codex adversarial review found 7 issues, and a fix worker addressed them. The v2 fixed version is what ships.
+Darkfactory was built using its own process. The first version of the skills was hand-written during an interview session (using `/grill-me`) that produced the design decisions and shared vocabulary. Then Darkfactory built its own second version: Claude workers independently wrote all three mission skills from the specs, a Codex code review found 7 issues, and a fix worker addressed them. The second version is what ships.
 
 The full build history is in `archive/` (ignored by Claude via `.claudeignore`):
-- `archive/build-specs/` -- the 6 OpenSpec changes that designed darkfactory
+- `archive/build-specs/` -- the 6 OpenSpec changes that designed Darkfactory
 - `archive/v1-skills/` -- the original hand-written skills
-- `archive/self-build/` -- the v2 mission (briefs, handoffs, validation reports, adversarial review)
+- `archive/self-build/` -- the v2 mission artifacts (briefs, handoffs, validation reports, code reviews)
 
 ## Key references
 
-- [Factory Missions talk](docs/reference_factory_talk.md) -- the multi-agent architecture that inspired this
-- [Matt Pocock skills talk](docs/reference_pocock_talk.md) -- design alignment, ubiquitous language, TDD patterns
-- [Provenance](docs/provenance.md) -- how Darkfactory relates to both sources (what's faithful, what's different, what's new)
+- [Factory Missions talk](docs/reference_factory_talk.md) -- the multi-agent architecture that inspired this project
+- [Matt Pocock skills talk](docs/reference_pocock_talk.md) -- design alignment, ubiquitous language, and TDD patterns
+- [Provenance](docs/provenance.md) -- how Darkfactory relates to both sources: what's faithful, what's different, and what's new
 - [Design decisions](docs/design-decisions.md) -- every architectural choice with rationale
-- [Ubiquitous language](UBIQUITOUS_LANGUAGE.md) -- shared terminology (25 terms)
+- [Ubiquitous language](UBIQUITOUS_LANGUAGE.md) -- shared terminology used throughout the codebase (25 terms)
 
 ## License
 
