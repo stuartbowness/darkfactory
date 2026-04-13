@@ -1,14 +1,7 @@
 ---
 name: mission
 description: Start an autonomous Darkfactory mission. Grills the user for alignment, creates OpenSpec artifacts, writes a contract, writes the mission directory, dispatches workers serially, validates each task against the contract, runs fix loops with circuit breakers, and creates a draft PR on completion.
----
-
-# /mission
-
-Start an autonomous multi-agent mission for a single OpenSpec change. The orchestrator (this session) plans the work, dispatches workers one at a time, and validates each result against a contract the workers never see.
-
-**Flow:** `align -> spec -> contract -> build -> validate -> ship`
-
+flow: align -> spec -> contract -> build -> validate -> ship
 ---
 
 ## Rules (Always Enforced)
@@ -39,6 +32,27 @@ Start an autonomous multi-agent mission for a single OpenSpec change. The orches
 7. **Launch Confirmation** -- human confirms, build starts
 8. **Build Loop** -- dispatch workers, validate per task, fix loop with circuit breaker
 9. **Mission Completion** -- final gates, spec delta check, draft PR, dual adversarial review
+
+---
+
+## Resume Support
+
+If `/mission-resume` is invoked (via the mission-resume skill), the orchestrator should:
+
+1. Enter plan mode.
+2. Find the mission directory by scanning `openspec/changes/*/mission/config.yaml`.
+3. Read `progress.md` to determine the last completed task.
+4. Read `tasks.md` to find the next unchecked task.
+5. Rebuild the plan from file state.
+6. Continue from the appropriate step in Phase 8.
+
+This skill does not implement resume directly -- that is handled by the `/mission-resume` skill. But the file-backed state design ensures resume is always possible.
+
+---
+
+## Status Checking
+
+Running `/mission-status` (via the mission-status skill) in a separate session should show the current state by reading `progress.md`, `tasks.md`, and `config.yaml`. This skill does not implement status -- that is handled by the `/mission-status` skill.
 
 ---
 
@@ -1204,24 +1218,3 @@ Update plan status to COMPLETE.
 - [ ] Draft PR created
 - [ ] Both adversarial reviews complete and presented to human
 - [ ] Plan status = COMPLETE
-
----
-
-## Resume Support
-
-If `/mission-resume` is invoked (via the mission-resume skill), the orchestrator should:
-
-1. Enter plan mode.
-2. Find the mission directory by scanning `openspec/changes/*/mission/config.yaml`.
-3. Read `progress.md` to determine the last completed task.
-4. Read `tasks.md` to find the next unchecked task.
-5. Rebuild the plan from file state.
-6. Continue from the appropriate step in Phase 8.
-
-This skill does not implement resume directly -- that is handled by the `/mission-resume` skill. But the file-backed state design ensures resume is always possible.
-
----
-
-## Status Checking
-
-Running `/mission-status` (via the mission-status skill) in a separate session should show the current state by reading `progress.md`, `tasks.md`, and `config.yaml`. This skill does not implement status -- that is handled by the `/mission-status` skill.
