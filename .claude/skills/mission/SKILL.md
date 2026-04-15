@@ -887,9 +887,9 @@ Track the attempt number (starts at 1 for the initial worker, increments on each
 
 **The fix brief NEVER contains contract.md content.** Same adversarial separation as the original brief.
 
-5. **Dispatch fix worker** using the same engine and method as Step 2, but with the fix brief.
+5. **Dispatch fix worker** using the same engine and method as Step 2, but with the fix brief. Handle the result the same way as Step 3: read the handoff at `mission/handoffs/task-N-fix-v<attempt+1>.md`, extract the commit SHA on success, or increment the attempt counter and loop back to step 2 (circuit breaker check) on failure/timeout.
 
-6. **After fix completes:** Go back to **Step 4** (re-run scrutiny validation with the new commit SHA). Both per-task validators must re-run after every fix (scrutiny and user-test), not just the one that failed.
+6. **Re-validate.** Go back to **Step 4** with the new commit SHA. Both per-task validators must re-run after every fix, not just the one that failed.
 
 ### Step 6: User-Test Validation
 
