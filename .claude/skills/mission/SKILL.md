@@ -203,8 +203,6 @@ Run `/ubiquitous-language` to create or update `UBIQUITOUS_LANGUAGE.md`.
 
 Run `/write-a-prd` to turn the grill conversation into a structured product requirements document. Use terms from `UBIQUITOUS_LANGUAGE.md` consistently throughout the PRD. The PRD captures: problem statement, solution, user stories, implementation decisions, testing decisions, and out-of-scope items.
 
-The PRD is filed as a GitHub issue. This issue becomes the source of truth for creating OpenSpec artifacts in Phase 4. The PRD ensures nothing from the grill conversation is lost or misinterpreted during the transition to technical artifacts.
-
 After the issue is created, record both the issue URL and the issue number in the plan (under Spec Coverage Audit). The issue number is needed in Phase 9 to link the draft PR back to the issue.
 
 **Gate -- proceed when:**
@@ -260,7 +258,7 @@ If approved, proceed to Phase 4.3.
 
 Generate `design.md` (how -- architecture decisions, alternatives considered, risks). Reference the proposal for motivation and specs for requirements.
 
-Design is required for every mission. Even simple changes benefit from a short design document that records what was considered and why the chosen approach was picked. The build loop and worker briefs depend on design.md existing -- skipping it would break downstream phases.
+Design is required for every mission. The build loop and worker briefs depend on design.md existing -- skipping it would break downstream phases.
 
 #### Module Depth
 
@@ -323,7 +321,7 @@ After all artifacts are reviewed and approved, update the plan with the actual a
 > **Inputs:** PRD (read from GitHub issue URL in plan), specs/, tasks.md
 > **Outputs:** coverage-audit.md, updated specs/tasks if gaps found
 
-Before writing the contract, verify that every PRD requirement is covered by at least one task. This phase catches requirements that were present in the PRD but lost during the transition to specs and tasks.
+Before writing the contract, verify that every PRD requirement is covered by at least one task.
 
 ### Steps
 
@@ -563,8 +561,6 @@ Create the four subdirectories: `briefs/`, `handoffs/`, `validations/`, `issues/
 > **Goal:** Get human confirmation before starting the build.
 > **Inputs:** tasks.md, contract.md, coverage-audit.md, config.yaml
 > **Outputs:** Human approval, progress.md updated, plan status = BUILDING
-
-Since every artifact has been individually reviewed and approved during Phases 4, 4a, and 5, this phase is a lightweight launch confirmation -- not a full review.
 
 Show the user a summary dashboard:
 1. **Mission overview** -- change name, total tasks (feature + closing), total contract assertions
@@ -1019,7 +1015,7 @@ Spawn a Claude subagent to run `/demo-video`. The subagent should save the recor
 
 ### Final Gates
 
-Before creating the PR, re-run whole-repo quality checks to catch regressions introduced by tasks that ran after the cleanup task (e.g., documentation or CI tasks can introduce lint warnings or formatting issues).
+Re-run whole-repo quality checks.
 
 Run the project's build, test, lint, and format commands against the full repository:
 - Build: does it compile/build cleanly?
@@ -1037,7 +1033,7 @@ Run the project's build, test, lint, and format commands against the full reposi
 
 ### Spec Delta Check
 
-After final gates pass, verify that the built codebase actually contains what the coverage audit promised. This catches items marked COVERED during planning that were lost or incompletely implemented during the build.
+After final gates pass, verify that the built codebase actually contains what the coverage audit promised.
 
 Spawn a Claude subagent with this prompt:
 
@@ -1130,11 +1126,11 @@ Closes #<PRD issue number from plan>
 - Duration: <start to end>
 ```
 
-The `Closes #<N>` directive links the PR to the PRD issue. GitHub will auto-close the issue when the PR is merged. Since the PR is created as a draft, the issue stays open until the developer promotes and merges the PR.
+Since the PR is created as a draft, the issue stays open until the developer promotes and merges the PR.
 
 ### Dual Adversarial Review
 
-After the draft PR is created, run a final adversarial review against the full diff of all mission commits. This is a human-facing report, not an automated gate.
+After the draft PR is created, run a final adversarial review against the full diff of all mission commits.
 
 Run two independent reviewers in parallel:
 - **Reviewer A** (engine from `adversarial_reviewer_a` in config.yaml, default: codex) -- dispatched via Monitor
