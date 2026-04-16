@@ -745,20 +745,28 @@ Run these checks in order. For each, report PASS or FAIL with evidence.
    - Breaking changes: API contract changes, removed exports, changed behavior
    Report findings by severity (critical / warning / nit) with file:line references.
 
-6. **Code standards check:** Review the diff for these specific anti-patterns. Flag any found:
+6. **Module depth review:** For each file the diff touches, assess whether the change made the module shallower. A deep module has a small interface hiding a large implementation (Ousterhout, "A Philosophy of Software Design"). Check for:
+   - **Interface widening:** Did the diff add new public items (functions, types, classes, endpoints, exports) that don't hide at least 3 internal branches, match arms, or await points behind the interface? The test: if removing the new export would force callers to duplicate 3+ branches or non-inlineable control flow, it is deep. If callers could inline it in one line, it is shallow. Exception: facade and adapter modules exist specifically to present a stable interface over an unstable dependency -- thin delegation is their purpose, not a flaw. Similarly, Go packages with many small exported functions, Python `__init__.py` re-exports, and framework-required patterns (Next.js route handlers, Rust trait impls) are idiomatic, not shallow.
+   - **Information leaking:** Does the public interface expose internal representations that callers should not depend on? Examples: returning raw database row types from a service function, exposing wire-format enums in a domain API, leaking internal error variants through public result types. Deep modules hide design decisions behind domain types.
+   - **Premature splitting:** Did the diff introduce multiple new files whose public APIs all serve the same caller-facing concern (same struct/enum, same workflow step) where one module would suffice? The test: if the diff itself created files A, B, and C, and none of them has independent callers outside the group, they should be one module. More files is not better architecture. A module that combines related concerns (e.g., buffering + caching + I/O in a file stream) behind a small interface is deep, not over-scoped -- do not flag it.
+   - **Deep module preserved:** If a file is large but has a small public interface and hides significant implementation, that is correct. Do not flag it. Large files are fine when they are deep modules.
+   
+   Report: for each structural issue found, name the module, describe what interface widened or what internal detail leaked, and recommend a specific fix. If the module structure is clean, report "No structural issues."
+
+7. **Code standards check:** Review the diff for these specific anti-patterns. Flag any found:
    - Backwards-compatibility code: old code paths kept "just in case" (renamed `_` variables, re-exports of removed types, `// removed` comments, deprecated shims). If unused, it should be deleted.
    - Fallback lookups: code that tries one path and falls back to another. There should be exactly one lookup path. If it fails, throw an error.
    - Belt-and-suspenders: redundant validation that duplicates what the framework, DB, or upstream already guarantees (re-checking auth after middleware, null-checking non-null TypeScript values, re-validating input that a validator already checked).
    - Feature flags for dead code: if the old way is being replaced, delete it. Don't gate behind a flag.
    - Defensive handling of impossible states: catch blocks or null checks for conditions that cannot occur given current code paths.
 
-7. **Code simplify:** Run /simplify against the changed files. Report any additional unnecessary complexity beyond the standards check above.
+8. **Code simplify:** Run /simplify against the changed files. Report any additional unnecessary complexity beyond the standards check above.
 
-8. **Security review (if applicable):** If the diff touches authentication, authorization, secrets, user input handling, or network boundaries, run /security-review against the diff. Report findings by severity (Critical, High, Medium). Otherwise note "N/A -- no sensitive paths touched."
+9. **Security review (if applicable):** If the diff touches authentication, authorization, secrets, user input handling, or network boundaries, run /security-review against the diff. Report findings by severity (Critical, High, Medium). Otherwise note "N/A -- no sensitive paths touched."
 
-9. **Contract assertions:** For each assertion in the contract, check it against the diff and test results. Mark each assertion PASS or FAIL with a one-line explanation.
+10. **Contract assertions:** For each assertion in the contract, check it against the diff and test results. Mark each assertion PASS or FAIL with a one-line explanation.
 
-10. **Behavioral conformance:** For each assertion that describes observable behavior (CLI output, exit codes, file content, API response, shell behavior), write and execute a minimal test script that verifies the behavior by actually running the code. Do not rely solely on reading the code -- run it. Examples:
+11. **Behavioral conformance:** For each assertion that describes observable behavior (CLI output, exit codes, file content, API response, shell behavior), write and execute a minimal test script that verifies the behavior by actually running the code. Do not rely solely on reading the code -- run it. Examples:
     - CLI flag assertion: run the binary with the flag, check output
     - Exit code assertion: run the command, check `$?`
     - Shell alias assertion: source the alias, run `type <name>`, check the definition
@@ -789,6 +797,7 @@ Use this format:
 | Tests | PASS/FAIL | ... |
 | Lint | PASS/FAIL | ... |
 | Code review | PASS/FAIL | ... |
+| Module depth | PASS/FAIL | ... |
 | Code standards | PASS/FAIL | ... |
 | Code simplify | PASS/FAIL | ... |
 | Security review | PASS/FAIL/N/A | ... |
