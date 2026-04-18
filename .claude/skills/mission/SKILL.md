@@ -46,79 +46,7 @@ Enter plan mode immediately. Write a durable operating manual as the plan. This 
 
 ### Plan Template
 
-Write this plan, filling in values as they become known:
-
-```markdown
-# Mission: <change-name>
-
-## Status: PLANNING | APPROVED | BUILDING | COMPLETE | PAUSED
-
-## State Directory
-openspec/changes/<change-name>/mission/
-
-## OpenSpec Artifacts
-- Proposal: openspec/changes/<change-name>/proposal.md
-- Specs: openspec/changes/<change-name>/specs/<capability>/spec.md (one per capability)
-- Design: openspec/changes/<change-name>/design.md
-- Tasks: openspec/changes/<change-name>/tasks.md (includes mandatory closing tasks)
-- Coverage Audit: openspec/changes/<change-name>/coverage-audit.md
-- Contract: openspec/changes/<change-name>/contract.md
-
-## Spec Coverage Audit
-- PRD issue: <GitHub issue URL from Phase 3>
-- PRD issue number: <N>
-- Coverage table: <pending | complete>
-- Gaps found: <count or "none">
-- Gaps resolved: <added N tasks | deferred N | skipped N>
-
-## Engine Config
-Defaults defined in Phase 6 config.yaml. 
-
-## Skills to Use
-- /grill-me -- alignment interview (planning)
-- /ubiquitous-language -- shared language (planning)
-- /write-a-prd -- structured PRD from grill conversation (planning)
-- openspec CLI -- create artifacts sequentially: proposal, specs, design, tasks (planning)
-- /review -- code review (scrutiny validation)
-- /simplify -- simplify pass (scrutiny validation)
-- /security-review -- security check (scrutiny validation, sensitive tasks only)
-- /tdd -- test-driven development for workers (build phase)
-- /test-app -- browser tests (user-test validation)
-- /demo-video -- frontend demo recording (post-validation)
-- gh pr create --draft (completion, no skill needed)
-- /opsx:archive -- archive change (post-merge)
-
-## Mission Flow
-For each unchecked task in tasks.md (skip `- [~]` tasks):
-1. Read mission state from progress.md
-2. Write brief to mission/briefs/task-N.md
-3. Dispatch worker (engine from config.yaml)
-4. Read handoff from mission/handoffs/task-N.md
-5. Spawn scrutiny validator (commit SHA + contract assertions)
-6. If fail -> write to issues/, spawn fix worker, re-validate. Circuit breaker at 3.
-7. Spawn user-test validator (commit SHA + contract assertions)
-8. If fail -> same fix/re-validate loop
-9. If frontend task -> spawn demo video
-10. Mark task done in tasks.md, update progress.md
-
-After all tasks complete:
-11. Create draft PR
-12. Run dual adversarial review (Codex + Claude) against full diff
-13. Present both reports to human alongside PR link
-
-## Rules
-- One worker at a time (serial execution)
-- Workers never see contract.md
-- Validators never see proposal.md or design.md
-- On any failure, re-run both per-task validators after fix (scrutiny, user-test)
-- Write all decisions to progress.md
-
-## Codebase Deltas
-<Accumulated after each task passes validation. Used to populate "What Previous Tasks Built" in subsequent briefs. Generated from git diff, never from handoff reports.>
-
-## Current Task: <N or "none">
-## Current Step: <step name or "none">
-```
+Write this plan, filling in values as they become known. Read the plan structure from [templates/plan.md](templates/plan.md).
 
 ### First Action
 
@@ -303,27 +231,7 @@ Before writing the contract, verify that every PRD requirement is covered by at 
 2. **Read tasks.md** and all spec files from `specs/`.
 3. **Build a coverage table** mapping every PRD requirement to the task(s) that implement it:
 
-```markdown
-# Spec Coverage Audit
-
-## Coverage Table
-| # | PRD Requirement | Spec Requirement | Task(s) | Status |
-|---|----------------|-----------------|---------|--------|
-| 1 | <requirement from PRD> | <WHEN/THEN from spec, or "no spec"> | Task N | COVERED |
-| 2 | <requirement from PRD> | <WHEN/THEN from spec, or "no spec"> | -- | GAP |
-| 3 | <requirement from PRD> | <WHEN/THEN from spec, or "no spec"> | Task M | COVERED |
-| 4 | <requirement from PRD> | <WHEN/THEN from spec, or "no spec"> | Task K | APPROVED-DEVIATION |
-
-## Gaps
-| # | PRD Requirement | AI Recommendation | Human Decision |
-|---|----------------|-------------------|----------------|
-| 2 | <requirement> | Add task / Defer / Skip | <pending> |
-
-## Deviations Requiring Approval
-| # | PRD Requirement | Classification | What spec says | What we're doing instead | Prerequisites met? | Impact | Human Decision |
-|---|----------------|---------------|----------------|-------------------------|-------------------|--------|----------------|
-| 4 | <requirement> | Substitution | <original> | <deviation> | All covered / GAP: <missing> | <consequence> | <pending> |
-```
+Use the format in [templates/coverage-audit.md](templates/coverage-audit.md).
 
 The "Prerequisites met?" column applies to Substitutions only. For Interpretations and Removals, write "--".
 
@@ -402,19 +310,7 @@ Each assertion must include a **verification method** tag indicating how a valid
 
 Cap `[inspection]` assertions at **20% of total per task**. If more than 20% require inspection, rewrite them as `[execution]` or `[output]` where possible. If an assertion genuinely cannot be made executable, it is acceptable -- but flag it during contract review.
 
-```markdown
-# Contract
-
-## Task 1: <name>
-<!-- PRD Requirements: #1, #3 -->
-- [ ] [execution] <assertion capturing specific PRD/spec requirement detail>
-- [ ] [output] <assertion capturing specific PRD/spec requirement detail>
-
-## Task 2: <name>
-<!-- PRD Requirements: #2, #4 (DEVIATED) -->
-- [ ] [execution] <assertion capturing specific PRD/spec requirement detail>
-- [ ] [inspection] <assertion capturing the deviated behavior as actually implemented>
-```
+Use the format in [templates/contract.md](templates/contract.md).
 
 When a PRD requirement traces to an APPROVED-DEVIATION item in the coverage audit, mark it with `(DEVIATED)` in the PRD Requirements comment. The assertion itself describes the actual implemented behavior (the deviation), not the original spec requirement. This gives the human visibility during contract review into which assertions exist because of an approved deviation.
 
@@ -545,57 +441,7 @@ Write a brief to `mission/briefs/task-N.md`.
 
 #### Brief Template
 
-```markdown
-# Worker Brief: Task N - <name>
-
-## Your Task
-<task description from tasks.md, expanded with acceptance criteria>
-
-## Project Context
-<relevant excerpt from proposal.md -- what is being built and why>
-
-## Architecture
-<relevant excerpt from design.md -- how this task fits into the system>
-
-## Key Terms (from UBIQUITOUS_LANGUAGE.md)
-<any domain terms the worker needs to understand>
-
-## What Previous Tasks Built
-<For task 1, this section is empty: "This is the first task. No prior code has been committed for this mission."
-
-For task 2+, include a codebase delta summary generated from `git diff` after each previous task passed validation. List ONLY observable facts about the code -- never include worker reasoning, handoff content, or concerns.
-
-For each completed task, include:
-- Files created or modified (paths only)
-- Public function/endpoint signatures added (name, params, return type)
-- Key type definitions or interfaces introduced
-- Patterns used (e.g., "repository pattern via src/repositories/userRepo.ts")
-
-Example:
-### Task 1: User service
-- Created: src/services/users.ts, src/models/user.ts, src/repositories/userRepo.ts
-- Endpoints: POST /api/users (body: {email: string, name: string}) → 201 {id, email, name}
-- Types: User {id: string, email: string, name: string, createdAt: Date}
-- Pattern: repository pattern via src/repositories/userRepo.ts
-
-### Task 2: Auth middleware
-- Created: src/middleware/requireAuth.ts, src/services/auth.ts
-- Exports: requireAuth (Express middleware, attaches req.user: User)
-- Endpoints: POST /api/auth/login (body: {email, password}) → 200 {token: string}
->
-
-## Procedures
-- Use `/tdd` to implement this task
-- Commit all changes (code + tests) in a single commit with message: "[task-N] <description>"
-- Write your handoff report to openspec/changes/<change-name>/mission/handoffs/task-N.md
-
-## Handoff Report Format
-- Task: Task N - <name>
-- Commit SHA: <the full SHA>
-- Approach: <brief explanation of what you did and why>
-- Commands run: <any commands and their exit codes>
-- Concerns: <anything you're uncertain about>
-```
+Read [templates/worker-brief.md](templates/worker-brief.md).
 
 **The brief NEVER contains contract.md content.** 
 
@@ -664,107 +510,7 @@ Spawn a Claude subagent (via the Agent tool) with this prompt:
 
 #### Scrutiny Validator Prompt
 
-```
-You are a scrutiny validator for the Darkfactory mission system. Your job is to verify that a worker's commit meets the validation contract. You have NOT seen the proposal, design, or worker reasoning. You judge only by the code and the contract.
-
-## Commit to Validate
-SHA: <commit-sha>
-
-## Contract Assertions for This Task
-<paste the assertions from contract.md for task N>
-
-## Check Sequence
-
-Run these checks in order. For each, report PASS or FAIL with evidence.
-
-1. **Test presence gate:** Run `git show <commit-sha> --stat` and check if any test files were added or modified. If the diff contains zero test files and zero new test assertions, this is an automatic FAIL. Workers are required to use /tdd -- no new tests means TDD was not followed.
-
-2. **Build:** Run the project's build command. Does it pass?
-
-3. **Tests:** Run the project's test command. Do all tests pass?
-
-4. **Lint:** Run the project's lint command. Are there any violations?
-
-5. **Code review:** Run /review against the diff (this includes reading the full diff). Check specifically for:
-   - Bugs: off-by-one errors, null/undefined access, race conditions, missing error handling at boundaries
-   - Security: injection, auth issues, secrets in code, unsafe input handling
-   - Logic: wrong conditions, missing edge cases, incorrect assumptions
-   - Breaking changes: API contract changes, removed exports, changed behavior
-   Report findings by severity (critical / warning / nit) with file:line references.
-
-6. **Module depth review:** For each file the diff touches, assess whether the change made the module shallower. A deep module has a small interface hiding a large implementation (Ousterhout, "A Philosophy of Software Design"). Check for:
-   - **Interface widening:** Did the diff add new public items (functions, types, classes, endpoints, exports) that don't hide at least 3 internal branches, match arms, or await points behind the interface? The test: if removing the new export would force callers to duplicate 3+ branches or non-inlineable control flow, it is deep. If callers could inline it in one line, it is shallow. Exception: facade and adapter modules exist specifically to present a stable interface over an unstable dependency -- thin delegation is their purpose, not a flaw. Similarly, Go packages with many small exported functions, Python `__init__.py` re-exports, and framework-required patterns (Next.js route handlers, Rust trait impls) are idiomatic, not shallow.
-   - **Information leaking:** Does the public interface expose internal representations that callers should not depend on? Examples: returning raw database row types from a service function, exposing wire-format enums in a domain API, leaking internal error variants through public result types. Deep modules hide design decisions behind domain types.
-   - **Premature splitting:** Did the diff introduce multiple new files whose public APIs all serve the same caller-facing concern (same struct/enum, same workflow step) where one module would suffice? The test: if the diff itself created files A, B, and C, and none of them has independent callers outside the group, they should be one module. More files is not better architecture. A module that combines related concerns (e.g., buffering + caching + I/O in a file stream) behind a small interface is deep, not over-scoped -- do not flag it.
-   - **Deep module preserved:** If a file is large but has a small public interface and hides significant implementation, that is correct. Do not flag it. Large files are fine when they are deep modules.
-   
-   Report: for each structural issue found, name the module, describe what interface widened or what internal detail leaked, and recommend a specific fix. If the module structure is clean, report "No structural issues."
-
-7. **Code standards check:** Review the diff for these specific anti-patterns. Flag any found:
-   - Backwards-compatibility code: old code paths kept "just in case" (renamed `_` variables, re-exports of removed types, `// removed` comments, deprecated shims). If unused, it should be deleted.
-   - Fallback lookups: code that tries one path and falls back to another. There should be exactly one lookup path. If it fails, throw an error.
-   - Belt-and-suspenders: redundant validation that duplicates what the framework, DB, or upstream already guarantees (re-checking auth after middleware, null-checking non-null TypeScript values, re-validating input that a validator already checked).
-   - Feature flags for dead code: if the old way is being replaced, delete it. Don't gate behind a flag.
-   - Defensive handling of impossible states: catch blocks or null checks for conditions that cannot occur given current code paths.
-
-8. **Code simplify:** Run /simplify against the changed files. 
-
-9. **Security review:** If the diff touches auth, secrets, user input, or network boundaries, run /security-review. Otherwise "N/A."
-
-10. **Contract assertions:** For each assertion in the contract, check it against the diff and test results. Mark each assertion PASS or FAIL with a one-line explanation.
-
-11. **Behavioral conformance:** For each assertion that describes observable behavior (CLI output, exit codes, file content, API response, shell behavior), write and execute a minimal test script that verifies the behavior by actually running the code. Do not rely solely on reading the code -- run it. Examples:
-    - CLI flag assertion: run the binary with the flag, check output
-    - Exit code assertion: run the command, check `$?`
-    - Shell alias assertion: source the alias, run `type <name>`, check the definition
-    - API response assertion: curl the endpoint, check the response body
-    
-    If an assertion cannot be tested via execution (e.g., internal architecture, code organization, build configuration), mark it as "verified by inspection" with an explanation of why execution was not possible.
-    
-    If a behavioral test is inconclusive (e.g., the test script errors out, the environment lacks a dependency), mark it as "verified by inspection (execution inconclusive: <reason>)" and fall back to code reading. Do not let an inconclusive execution check block the validation.
-    
-    Report each assertion's verification method (execution or inspection) in the contract assertions table.
-
-## Output Format
-
-Write your report to: <absolute path to mission/validations/task-N-scrutiny.md>
-
-Use this format:
-
-```markdown
-# Scrutiny Validation: Task N
-
-## Result: PASS | FAIL
-
-## Check Results
-| Check | Result | Notes |
-|-------|--------|-------|
-| Test presence | PASS/FAIL | ... |
-| Build | PASS/FAIL | ... |
-| Tests | PASS/FAIL | ... |
-| Lint | PASS/FAIL | ... |
-| Code review | PASS/FAIL | ... |
-| Module depth | PASS/FAIL | ... |
-| Code standards | PASS/FAIL | ... |
-| Code simplify | PASS/FAIL | ... |
-| Security review | PASS/FAIL/N/A | ... |
-| Behavioral conformance | PASS/FAIL/N/A | ... |
-
-## Contract Assertions
-| # | Assertion | Result | Method | Evidence |
-|---|-----------|--------|--------|----------|
-| 1 | <assertion text> | PASS/FAIL | execution/inspection | <one-line evidence> |
-| 2 | ... | ... | ... | ... |
-
-## Failed Assertions (if any)
-<detailed explanation of each failure>
-
-## Recommendations (if FAIL)
-<specific guidance for fixing the failures>
-```
-
-IMPORTANT: The overall result is FAIL if ANY check fails or ANY contract assertion fails. Be strict. A near-miss is still a FAIL.
-```
+Read [prompts/scrutiny-validator.md](prompts/scrutiny-validator.md) and use it as the subagent prompt. Fill in the commit SHA and contract assertions for this task. The prompt runs 11 checks: test presence, build, tests, lint, code review, module depth, code standards, simplify, security (if applicable), contract assertions, behavioral conformance.
 
 Read the validator's report from `mission/validations/task-N-scrutiny.md`.
 
@@ -812,34 +558,7 @@ Track the attempt number (starts at 1 for the initial worker, increments on each
 
 #### Fix Brief Template
 
-```markdown
-# Fix Brief: Task N - <name> (Attempt <attempt+1>)
-
-## What Failed
-<describe the observed symptoms -- error messages, unexpected behavior, test failures. Do NOT copy assertion text from the contract. Describe what went wrong, not what the contract expected.>
-
-## Diagnostic Triage
-<paste the triage subagent's output from mission/issues/task-N-v<attempt>-triage.md. If triage was skipped or failed, write "Triage unavailable -- diagnose from the validator output below.">
-
-## Validator Output
-<relevant error messages, build/test output, review findings -- symptoms only>
-
-## Commit to Fix
-<SHA of the commit that failed validation>
-
-## Procedures
-- Use `/tdd` to fix the issues described above
-- Do not refactor or change anything unrelated
-- Commit as a single commit with message: "[task-N] fix: <description of what was fixed>"
-- Write handoff report to openspec/changes/<change-name>/mission/handoffs/task-N-fix-v<attempt+1>.md
-
-## Handoff Report Format
-- Task: Task N - <name> (Fix attempt <attempt+1>)
-- Commit SHA: <the full SHA>
-- Approach: <what you fixed and why>
-- Commands run: <commands and exit codes>
-- Concerns: <anything uncertain>
-```
+Read [templates/worker-fix-brief.md](templates/worker-fix-brief.md).
 
 **The fix brief NEVER contains contract.md content.** 
 
@@ -853,65 +572,7 @@ Spawn a Claude subagent (via the Agent tool) with this prompt:
 
 #### User-Test Validator Prompt
 
-```
-You are a user-test validator for the Darkfactory mission system. Your job is to verify that a worker's commit delivers the correct user-facing behavior. You have NOT seen the proposal, design, or worker reasoning.
-
-## Commit to Validate
-SHA: <commit-sha>
-
-## Contract Assertions for This Task
-<paste the assertions from contract.md for task N>
-
-## Instructions
-
-1. **Read the diff:** Run `git show <commit-sha>` to understand what changed.
-
-2. **Decide your test strategy** based on what the diff touches:
-   - **Backend only** (API routes, database, server logic, CLI): Write and run HTTP tests against the API endpoints. Use curl or a test script.
-   - **Frontend only** (UI components, pages, styles): Run /test-app to drive a browser and verify UI behavior.
-   - **Both backend and frontend**: Run HTTP tests first, then /test-app for the UI.
-   - **Infrastructure only** (config, build, CI): Verify the build passes and config is correct. You may mark behavioral assertions as SKIP with reason "infrastructure-only change, not testable via HTTP or browser."
-
-3. **Check each contract assertion:** For each assertion, run the appropriate test. Mark PASS, FAIL, or SKIP.
-   - PASS: The assertion is demonstrably true.
-   - FAIL: The assertion is demonstrably false, or the test reveals a bug.
-   - SKIP: The assertion cannot be tested from outside (e.g., internal refactor). Provide a reason.
-
-## Output Format
-
-Write your report to: <absolute path to mission/validations/task-N-usertest.md>
-
-Use this format:
-
-```markdown
-# User-Test Validation: Task N
-
-## Result: PASS | FAIL
-
-## Test Strategy
-<what you decided and why>
-
-## Tests Run
-| # | Test Description | Method | Result |
-|---|-----------------|--------|--------|
-| 1 | <what was tested> | HTTP/Browser/Manual | PASS/FAIL |
-| 2 | ... | ... | ... |
-
-## Contract Assertions
-| # | Assertion | Result | Evidence |
-|---|-----------|--------|----------|
-| 1 | <assertion text> | PASS/FAIL/SKIP | <evidence or skip reason> |
-| 2 | ... | ... | ... |
-
-## Failed Assertions (if any)
-<detailed explanation of each failure>
-
-## Recommendations (if FAIL)
-<specific guidance for fixing the failures>
-```
-
-IMPORTANT: The overall result is FAIL if ANY contract assertion fails (SKIP does not count as failure). Be thorough -- actually run the tests, don't just read the code and guess.
-```
+Read [prompts/usertest-validator.md](prompts/usertest-validator.md) and use it as the subagent prompt. Fill in the commit SHA and contract assertions for this task.
 
 Read the validator's report from `mission/validations/task-N-usertest.md`.
 
@@ -995,51 +656,7 @@ Run the project's build, test, lint, and format commands against the full reposi
 
 After final gates pass, verify that the built codebase actually contains what the coverage audit promised.
 
-Spawn a Claude subagent with this prompt:
-
-```
-You are a spec delta checker for the Darkfactory mission system. Your job is to verify that the built codebase matches the coverage audit from planning.
-
-## Coverage Audit
-<paste the full coverage-audit.md content>
-
-## Instructions
-
-For each item in the coverage table:
-
-**If COVERED:** Verify the feature is actually present in the codebase. Read the relevant code, check that the described behavior exists. You are not running the code -- just confirming the implementation is present and plausible.
-
-**If APPROVED-DEVIATION:** List the deviation and its classification (Interpretation/Substitution/Removal). Do not re-litigate -- just confirm the deviated behavior (not the original spec) is implemented.
-
-**If GAP (deferred/skipped):** Note it as intentionally excluded. No check needed.
-
-## Output Format
-
-Write your report to: <absolute path to mission/validations/spec-delta.md>
-
-```markdown
-# Spec Delta Check
-
-## Result: CLEAN | DISCREPANCIES FOUND
-
-## Coverage Verification
-| # | PRD Requirement | Audit Status | Verified | Notes |
-|---|----------------|-------------|----------|-------|
-| 1 | <requirement> | COVERED | YES/NO | <evidence or discrepancy> |
-| 2 | <requirement> | APPROVED-DEVIATION (Substitution) | YES | <confirms deviated behavior present> |
-| 3 | <requirement> | GAP (deferred) | SKIPPED | intentionally excluded |
-
-## Discrepancies (if any)
-| # | PRD Requirement | Expected | Found | Severity |
-|---|----------------|----------|-------|----------|
-| N | <requirement> | <what audit promised> | <what's actually in code> | HIGH/MEDIUM/LOW |
-
-## APPROVED-DEVIATION Summary
-| # | PRD Requirement | Classification | Deviated Behavior |
-|---|----------------|---------------|-------------------|
-| 2 | <requirement> | Substitution | <what was implemented instead> |
-```
-```
+Spawn a Claude subagent. Read [prompts/spec-delta-checker.md](prompts/spec-delta-checker.md) and use it as the subagent prompt. Fill in the coverage-audit.md content and the report output path.
 
 Read the delta check report from `mission/validations/spec-delta.md`.
 
@@ -1058,33 +675,7 @@ Create a **draft** pull request using `gh pr create --draft`. Never create a rea
 
 #### PR Body Template
 
-```markdown
-Closes #<PRD issue number from plan>
-
-## Mission: <change-name>
-
-### Tasks
-| # | Task | Commit | Status |
-|---|------|--------|--------|
-| 1 | <name> | <short SHA> | Done |
-| 2 | <name> | <short SHA> | Done |
-
-### Validation Results
-| Task | Scrutiny | User-Test | Demo | Fix Attempts |
-|------|----------|-----------|------|-------------|
-| 1 | PASS | PASS | N/A | 0 |
-| 2 | PASS | PASS | RECORDED | 1 |
-
-### Issues Encountered
-<list any issues from mission/issues/, or "None">
-
-### Mission Stats
-- Total tasks: <N>
-- Total assertions: <M>
-- Total fix attempts: <sum>
-- Circuit breakers triggered: <count>
-- Duration: <start to end>
-```
+Read [templates/pr-body.md](templates/pr-body.md) and fill in the values.
 
 Since the PR is created as a draft, the issue stays open until the developer promotes and merges the PR.
 
@@ -1100,48 +691,7 @@ Both receive the full diff (`git diff <base-branch>...HEAD`) and the full contra
 
 #### Adversarial Reviewer Prompt (used for both A and B)
 
-```
-You are an adversarial reviewer. Your job is to find flaws, inconsistencies, cross-file compatibility issues, and anything the per-task validators may have missed when looking at the full picture.
-
-## Full Diff
-Run `git diff <base-branch>...HEAD` to see all changes from this mission.
-
-## Full Validation Contract
-<paste the ENTIRE contract.md>
-
-## Instructions
-
-1. Read the full diff.
-2. Look for:
-   - Logic errors or edge cases not covered by tests
-   - Cross-file inconsistencies (types, interfaces, naming)
-   - Contract assertions that technically pass but have subtle flaws
-   - Security issues, race conditions, or data integrity problems
-   - Missing error handling or graceful degradation
-   - Integration issues between different tasks' code
-3. For each finding, classify severity as HIGH, MEDIUM, or LOW.
-4. Be adversarial: assume the code is wrong until proven right.
-
-## Output Format
-
-Write your report to: <absolute path to mission/validations/adversarial-{a|b}.md>
-
-```markdown
-# Adversarial Review {A|B}
-
-## Findings
-| # | Category | Severity | Finding |
-|---|----------|----------|---------|
-| 1 | <category> | HIGH/MEDIUM/LOW | <description> |
-| 2 | ... | ... | ... |
-
-## Details
-<detailed explanation of each finding with evidence and suggested fix>
-
-## Summary
-<overall assessment>
-```
-```
+Read [prompts/adversarial-reviewer.md](prompts/adversarial-reviewer.md) and use it as the subagent prompt. Fill in the base branch, diff command, and full contract.md content.
 
 Dispatch both in parallel. Wait for both to complete.
 
