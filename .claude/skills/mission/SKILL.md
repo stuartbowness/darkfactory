@@ -35,27 +35,6 @@ flow: align -> spec -> contract -> build -> validate -> ship
 
 ---
 
-## Resume Support
-
-If `/mission-resume` is invoked (via the mission-resume skill), the orchestrator should:
-
-1. Enter plan mode.
-2. Find the mission directory by scanning `openspec/changes/*/mission/config.yaml`.
-3. Read `progress.md` to determine the last completed task.
-4. Read `tasks.md` to find the next unchecked task.
-5. Rebuild the plan from file state.
-6. Continue from the appropriate step in Phase 8.
-
-This skill does not implement resume directly -- that is handled by the `/mission-resume` skill. But the file-backed state design ensures resume is always possible.
-
----
-
-## Status Checking
-
-Running `/mission-status` (via the mission-status skill) in a separate session should show the current state by reading `progress.md`, `tasks.md`, and `config.yaml`. This skill does not implement status -- that is handled by the `/mission-status` skill.
-
----
-
 ## Phase 0: Enter Plan Mode
 
 > **Rules:** 5, 8
@@ -93,12 +72,7 @@ openspec/changes/<change-name>/mission/
 - Gaps resolved: <added N tasks | deferred N | skipped N>
 
 ## Engine Config
-- Workers: <engine from config.yaml, default codex>
-- Scrutiny validator: <engine, default claude>
-- User-test validator: <engine, default claude>
-- Adversarial reviewer A: <engine, default codex>
-- Adversarial reviewer B: <engine, default claude>
-- Demo video: <engine, default claude>
+Defaults defined in Phase 6 config.yaml. 
 
 ## Skills to Use
 - /grill-me -- alignment interview (planning)
@@ -354,45 +328,22 @@ Before writing the contract, verify that every PRD requirement is covered by at 
 The "Prerequisites met?" column applies to Substitutions only. For Interpretations and Removals, write "--".
 
 4. **Flag gaps and classify deviations.** For each requirement that is not directly covered:
+  **If GAP (no plan to implement):** Add task (and spec requirement if missing) / Defer (out of scope, track for later) / Skip (intentionally not implementing, document why).
 
-   **If GAP (not implemented, no plan to implement differently):**
-   - **Add** -- create a new task (and spec requirement if missing) to cover it
-   - **Defer** -- out of scope for this mission, track for later
-   - **Skip** -- intentionally not implementing (document why)
+  **If DEVIATION (implementing differently than spec), classify:**
+    **Interpretation** (spec is ambiguous, reasonable reading) -- batch-approve with COVERED items.
+    **Substitution** (different approach) -- explicit human approval per item. State the trade-off: "The spec says X. We are doing Y instead because Z. This means [concrete consequence]."
+    **Removal** (not implementing) -- explicit human approval per item. State impact: "Users who need X will not be able to use the tool for that purpose."
 
-   **If DEVIATION (implementing differently than the spec says):**
-   Classify the deviation into one of three categories:
-   - **Interpretation** -- the spec is ambiguous and this is a reasonable reading (e.g., "cap at B" could mean cap-down or cap-up). Requires AI explanation. Approved in batch with other COVERED items.
-   - **Substitution** -- replacing the specified approach with a different one (e.g., Podman instead of bwrap). Requires explicit human approval with the specific trade-off stated: "The spec says X. We are doing Y instead because Z. This means [concrete consequence]."
-   - **Removal** -- not implementing a specified feature (e.g., no thin-tier fallback). Requires explicit human approval with the impact stated: "Users who need X will not be able to use the tool for that purpose."
+  #### Prerequisite check for substitutions
+  For every Substitution, ask: "Does the deviated approach require implementation work that the mapped task will not cover?" Break down the deviated approach into its prerequisites. If any prerequisite is not covered by the mapped task or another existing task, route it through gap remediation (Add task / Defer / Skip). The deviation cannot be approved until all prerequisites are resolved. Resolution options:
+    **Add a task** to cover the missing prerequisite (triggers spec/task re-review)
+    **Expand the mapped task** to include the prerequisite (update tasks.md, re-present for review)
+    **Reclassify as Removal** (forces the human to acknowledge the requirement is being dropped, not substituted)
 
-   #### Prerequisite check for substitutions
+  Mark approved deviations as **APPROVED-DEVIATION** in the coverage table (not COVERED). This status persists through the contract and is re-surfaced during the spec delta check (Phase 9).
 
-   For every Substitution deviation, ask: **"Does the deviated approach require implementation work that the mapped task will not cover?"**
-
-   Break down the deviated approach into its prerequisites. If any prerequisite is not covered by the mapped task or another existing task, add it to the `## Gaps` table and route it through the normal gap remediation flow (Add task / Defer / Skip). The deviation cannot be approved until all its prerequisites are resolved. Resolution options:
-   - **Add a task** to cover the missing prerequisite (goes through the gap flow, triggers spec/task re-review)
-   - **Expand the mapped task** to include the prerequisite (update tasks.md, re-present for review)
-   - **Reclassify as Removal** if the prerequisite is too large or out of scope (this forces the human to acknowledge the requirement is being dropped, not substituted)
-
-   Example of this check catching a gap: PRD says "detect SIGINT during promotion and prompt for resume or cleanup." Deviation says "auto-cleanup instead of interactive prompt" (Substitution, mapped to the cleanup task). The deviated approach (auto-cleanup on next run) requires signal handling to detect interruption and mark state as dirty. The cleanup task only handles stale state detection -- it does not implement signal handling. **This is a gap.** Either add a signal handling task, expand the cleanup task to include signal handling, or reclassify as Removal ("we are not implementing interrupted promotion detection").
-
-   Present the prerequisite analysis for each Substitution alongside the deviation in the review step:
-
-   ```
-   Deviation #54: Interrupted promotion recovery
-   Classification: Substitution
-   Original: SIGINT detection + resume/cleanup prompt
-   Deviated: Auto-cleanup on next run (no interactive prompt)
-   Prerequisites of deviated approach:
-     ✓ Stale state detection (covered by Task 3.3)
-     ✗ Signal handling to mark state as dirty on interruption (NOT covered by any task)
-   → GAP: Add signal handling to Task 3.3, or add a new task, or reclassify as Removal
-   ```
-
-   Mark approved deviations as **APPROVED-DEVIATION** in the coverage table (not COVERED). This status persists through the contract and is re-surfaced during the spec delta check (Phase 9).
-
-   **Present substitutions and removals in a dedicated review step.** After presenting the main coverage table, present all substitution and removal deviations together in a single batch. The human approves or rejects each individually within that step. Do not mix them with the COVERED items review. Interpretations may be batch-approved with the main table.
+  **Present substitutions and removals in a dedicated review step.** The human approves or rejects each individually. Do not mix them with the COVERED items review. Interpretations may be batch-approved with the main table.
 
 5. **Present the coverage table and gap recommendations** to the human. Follow the standard review pattern: AI presents, AI recommends, human decides.
 
@@ -429,7 +380,7 @@ Create `contract.md` in the change directory (`openspec/changes/<change-name>/co
 2. Every assertion must describe **observable behavior** verifiable from outside the code (HTTP response, CLI output, file on disk, UI state, build passing, etc.).
 3. Do NOT reference implementation details (function names, variable names, internal data structures).
 4. Be specific and unambiguous. A validator reading only the contract and the diff should be able to check every assertion without guessing.
-5. Workers never see this file. This is the adversarial separation that makes validation meaningful.
+5. Workers never see this file.
 6. **Write the minimum set of assertions needed to verify the task is complete and correct.** Each assertion should trace to a specific PRD requirement, including error behaviors specified in the PRD or specs. Do not add assertions for edge cases, nice-to-haves, or defensive behaviors unless the PRD explicitly requires them. If an assertion would not cause you to reject the task when it fails, do not include it.
 
 ### Cross-Referencing the PRD
@@ -646,7 +597,7 @@ Example:
 - Concerns: <anything you're uncertain about>
 ```
 
-**The brief NEVER contains contract.md content.** This is the adversarial separation.
+**The brief NEVER contains contract.md content.** 
 
 ### Step 2: Dispatch Worker
 
@@ -756,9 +707,9 @@ Run these checks in order. For each, report PASS or FAIL with evidence.
    - Feature flags for dead code: if the old way is being replaced, delete it. Don't gate behind a flag.
    - Defensive handling of impossible states: catch blocks or null checks for conditions that cannot occur given current code paths.
 
-8. **Code simplify:** Run /simplify against the changed files. Report any additional unnecessary complexity beyond the standards check above.
+8. **Code simplify:** Run /simplify against the changed files. 
 
-9. **Security review (if applicable):** If the diff touches authentication, authorization, secrets, user input handling, or network boundaries, run /security-review against the diff. Report findings by severity (Critical, High, Medium). Otherwise note "N/A -- no sensitive paths touched."
+9. **Security review:** If the diff touches auth, secrets, user input, or network boundaries, run /security-review. Otherwise "N/A."
 
 10. **Contract assertions:** For each assertion in the contract, check it against the diff and test results. Mark each assertion PASS or FAIL with a one-line explanation.
 
@@ -890,7 +841,7 @@ Track the attempt number (starts at 1 for the initial worker, increments on each
 - Concerns: <anything uncertain>
 ```
 
-**The fix brief NEVER contains contract.md content.** Same adversarial separation as the original brief.
+**The fix brief NEVER contains contract.md content.** 
 
 5. **Dispatch fix worker** using the same engine and method as Step 2, but with the fix brief.
 
