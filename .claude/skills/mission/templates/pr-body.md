@@ -1,4 +1,5 @@
-Closes #<PRD issue number from plan>
+<If no spec delta gaps were accepted: Closes #<PRD issue number from plan>>
+<If spec delta gaps were accepted: Refs #<PRD issue number from plan> (some requirements deferred -- see spec-delta.md)>
 
 ## Mission: <change-name>
 
