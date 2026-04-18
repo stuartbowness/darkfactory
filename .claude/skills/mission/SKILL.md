@@ -461,6 +461,8 @@ BRIEF_CONTENT=$(cat "$BRIEF_PATH")
 # Clean stale temp files and directories from previous workers to avoid filling /tmp
 find /tmp -mindepth 1 -maxdepth 1 -user "$(whoami)" -mmin +30 -not -name "claude-*" \( -type f -delete -o -type d -exec rm -rf {} + \) 2>/dev/null
 
+CODEX_STDERR=$(mktemp)
+
 # Start Codex in background
 codex exec \
   --full-auto \
@@ -469,7 +471,7 @@ codex exec \
   -c model_reasoning_effort="high" \
   -o "$HANDOFF_PATH" \
   "$BRIEF_CONTENT" \
-  2>/dev/null &
+  2>"$CODEX_STDERR" &
 
 CODEX_PID=$!
 
@@ -480,11 +482,12 @@ while true; do
     break
   fi
   if ! kill -0 $CODEX_PID 2>/dev/null; then
-    echo "TASK_FAILED: Codex process exited without writing handoff"
+    echo "TASK_FAILED: Codex process exited without writing handoff. Stderr: $(cat "$CODEX_STDERR")"
     break
   fi
   sleep 2
 done
+rm -f "$CODEX_STDERR"
 ```
 
 Use Monitor with a timeout of 600000ms (10 minutes). When Monitor reports:
@@ -663,7 +666,7 @@ Read the delta check report from `mission/validations/spec-delta.md`.
 **If CLEAN (no discrepancies):** Log to progress.md: `<timestamp> -- Spec delta check CLEAN. <N> items verified, <M> approved deviations listed.` Proceed to create the draft PR.
 
 **If DISCREPANCIES FOUND:** Present each discrepancy to the human with three options:
-- **Add fix task** -- create a new task to implement the missing item. The task goes through the normal build loop (brief, worker, scrutiny validation, user-test validation). After completion, re-run final gates and the spec delta check.
+- **Add fix task** -- create a new task to implement the missing item. Write assertions for this task and append them to contract.md (present to human for quick approval). The task then goes through the normal build loop (brief, worker, scrutiny validation, user-test validation). After completion, re-run final gates and the spec delta check.
 - **Reclassify as APPROVED-DEVIATION** -- the item was covered in planning but the implementation intentionally diverged. The human provides a reason and classification (Interpretation/Substitution/Removal). Update the coverage audit on disk.
 - **Accept gap** -- acknowledge the gap and proceed. Log it in progress.md as an accepted gap.
 

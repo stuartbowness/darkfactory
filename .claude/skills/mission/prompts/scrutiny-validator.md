@@ -81,6 +81,7 @@ Use this format:
 | Code standards | PASS/FAIL | ... |
 | Code simplify | PASS/FAIL | ... |
 | Security review | PASS/FAIL/N/A | ... |
+| Contract assertions | PASS/FAIL | ... |
 | Behavioral conformance | PASS/FAIL/N/A | ... |
 
 ## Contract Assertions

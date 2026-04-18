@@ -50,10 +50,10 @@ If `mission/handoffs/task-N.md` exists (worker finished), check which validation
 | Handoff | Scrutiny Report | User-test Report | Resume From |
 |---------|----------------|-----------------|-------------|
 | exists | missing | missing | Step 4 (scrutiny validation) |
+| exists | exists (FAIL) | missing | Step 5a (fix loop with scrutiny failure) |
 | exists | exists (PASS) | missing | Step 6 (user-test validation) |
+| exists | exists (PASS) | exists (FAIL) | Step 5a (fix loop with user-test failure) |
 | exists | exists (PASS) | exists (PASS) | Step 6a (demo video) then mark complete |
-
-If a validation report exists but shows FAIL, resume from the fix loop (Step 5a) with that failure.
 
 Log to progress.md: `<timestamp> -- Task N: resuming from <step name>. Previous session interrupted mid-cycle.`
 
@@ -82,7 +82,7 @@ The plan must include: mission identity, all file paths, engine configuration, t
 Append to `mission/progress.md`:
 
 ```
-Mission resumed in new session. Picking up from task <N>.
+<timestamp> -- Mission resumed in new session. Picking up from task <N>.
 Previously completed: tasks <list of completed task numbers>.
 ```
 
@@ -128,16 +128,18 @@ done
 For Claude workers, use the Agent tool with the brief content.
 
 3. **Handle result** -- TASK_COMPLETE, TASK_FAILED, or timeout.
-4. **Scrutiny validation** -- spawn Claude subagent with the full 9-step check sequence:
+4. **Scrutiny validation** -- spawn Claude subagent with the full 11-step check sequence:
    1. Test presence gate (auto-FAIL if no new tests)
    2. Build
    3. Tests
    4. Lint
    5. Code review (/review) -- check for bugs, security, logic, breaking changes
-   6. Code standards -- 5 anti-pattern checks
-   7. Code simplify (/simplify)
-   8. Security review (/security-review) -- conditional on sensitive code
-   9. Contract assertions
+   6. Module depth review -- check for interface widening, information leaking, premature splitting
+   7. Code standards -- 5 anti-pattern checks
+   8. Code simplify (/simplify)
+   9. Security review (/security-review) -- conditional on sensitive code
+   10. Contract assertions
+   11. Behavioral conformance -- execute minimal test scripts to verify observable behavior
 5. **Handle scrutiny result** -- PASS proceeds to Step 6. FAIL enters fix loop.
 5a. **Fix loop** -- write symptom-based fix brief (no contract text), dispatch fix worker, re-run both per-task validators. Circuit breaker at 3.
 6. **User-test validation** -- spawn Claude subagent that decides API tests, browser tests, or both.

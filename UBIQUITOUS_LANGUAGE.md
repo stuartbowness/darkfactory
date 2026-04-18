@@ -27,7 +27,7 @@
 | --- | --- | --- |
 | **Scrutiny validator** | The first validator type that runs build, test, lint, code review, and code simplify checks against the contract | Code reviewer, linter, static validator |
 | **User-test validator** | The second validator type that tests behavior by hitting the API (HTTP tests) or driving a browser (agent-browser) | QA, E2E tester, integration tester |
-| **Behavioral conformance** | A scrutiny validator check (check 10) that verifies observable behavior by writing and executing a test script rather than reading the code. Falls back to "verified by inspection" if execution is inconclusive. | Behavioral test, execution test, runtime check |
+| **Behavioral conformance** | A scrutiny validator check (check 11) that verifies observable behavior by writing and executing a test script rather than reading the code. Falls back to "verified by inspection" if execution is inconclusive. | Behavioral test, execution test, runtime check |
 | **Final gates** | Whole-repo build, test, lint, and format checks run after the last task completes but before PR creation. Catches regressions introduced by later tasks (e.g., documentation or CI tasks) after the cleanup task ran. | Final checks, post-build gates, repo gates |
 | **Demo video** | A recording of frontend functionality captured after both validators pass, created for human review | Screencast, screen recording |
 | **Fix loop** | The cycle where a validation failure spawns a fix worker, then both validators re-run, up to 3 attempts before asking the human | Retry, repair cycle |
