@@ -37,10 +37,11 @@ For each task, the orchestrator sends a worker (Codex or Claude, your choice) a 
 
 After each worker finishes, two validators check the work:
 
-1. **Scrutiny validator** -- a thorough quality check that runs 10 steps:
+1. **Scrutiny validator** -- a thorough quality check that runs 11 steps:
    - Do tests exist? (auto-fails the task if not)
    - Does the project build, do the tests pass, does the linter pass?
    - Code review and code standards check
+   - Module depth review -- did the change make modules shallower or leak internal details?
    - Complexity check -- is the code more complex than it needs to be?
    - Security review (only when the changes touch auth, secrets, or input handling)
    - Contract check -- does the code do what the contract says it should?
@@ -163,7 +164,7 @@ Darkfactory is controlled through skills -- reusable prompt templates you invoke
 
 | Skill | Purpose |
 |-------|---------|
-| `/mission` | Start an autonomous mission from scratch. Walks you through planning, dispatches workers, validates, and delivers a draft PR. |
+| `/mission` | Start an autonomous mission from scratch. Walks you through planning, dispatches workers, validates, and delivers a draft PR. The skill's control flow lives in `SKILL.md`; templates and validator prompts are in companion files under `templates/` and `prompts/`, loaded on demand. |
 | `/mission-resume` | Resume a mission that was interrupted (session crash, closed terminal). Detects exactly where it left off -- including tasks that were partially validated or committed but not yet checked -- and continues through to the draft PR and code review. |
 | `/mission-status` | Read-only progress check. Open a second terminal while a mission runs to see which tasks are done, in progress, or queued. |
 | `/darkfactory-init` | Check your project setup. Reports what's installed, what's missing, and gives you the exact commands to fix it. |
