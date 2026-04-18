@@ -64,8 +64,8 @@ For each task (numbered by its position in the tasks list), check for validation
 3. **Demo video:** Check if `mission/validations/task-N-demo.mp4` exists
    - Report "yes" if it exists, omit if it does not
 
-4. **Fix attempts:** Search for `mission/issues/task-N-*.md` files
-   - Count the number of matching files
+4. **Fix attempts:** Search for `mission/issues/task-N-v*.md` files, excluding any that contain `-triage` in the filename
+   - Count the number of matching files (each file is one failed attempt)
    - If any exist, append "(N attempts)" to the task's status line
 
 ### Step 4: Detect in-progress tasks
