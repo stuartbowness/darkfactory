@@ -105,7 +105,7 @@ Run `/ubiquitous-language` to create or update `UBIQUITOUS_LANGUAGE.md`.
 
 Run `/write-a-prd` to turn the grill conversation into a structured product requirements document. Use terms from `UBIQUITOUS_LANGUAGE.md` consistently throughout the PRD. The PRD captures: problem statement, solution, user stories, implementation decisions, testing decisions, and out-of-scope items.
 
-After the issue is created, record both the issue URL and the issue number in the plan (under Spec Coverage Audit). The issue number is needed in Phase 9 to link the draft PR back to the issue.
+After the issue is created, add the `darkfactory` label to it: `gh issue edit <number> --add-label darkfactory` (create the label first if it does not exist: `gh label create darkfactory`). Record both the issue URL and the issue number in the plan (under Spec Coverage Audit). The issue number is needed in Phase 9 to link the draft PR back to the issue.
 
 **Gate -- proceed when:**
 - [ ] PRD filed as GitHub issue
@@ -416,7 +416,7 @@ Show the user a summary dashboard:
 
 Ask: "Everything has been reviewed. Ready to start the build?"
 
-- If yes: append `<timestamp> -- Plan approved. <N> tasks, <M> assertions in contract.` to progress.md. Update plan status to BUILDING. Proceed to Phase 8.
+- If yes: append `<timestamp> -- Plan approved. <N> tasks, <M> assertions in contract.` to progress.md. Update plan status to BUILDING. Post a comment on the PRD issue: `gh issue comment <number> --body "Mission dispatched. <N> tasks, <M> assertions. Draft PR will link back on completion."` Proceed to Phase 8.
 - If the human wants to revisit something: loop back to the specific phase they name. Do not re-review everything.
 
 **Gate -- proceed when:**
@@ -545,7 +545,7 @@ Track the attempt number (starts at 1 for the initial worker, increments on each
 
    - **Retry:** Increment the attempt counter by 1 (e.g., attempt 3 becomes attempt 4). Allow one more fix attempt. If it fails again, the circuit breaker triggers again at the new count. Retry does NOT reset the counter.
    - **Skip:** Mark the task as `- [~]` in tasks.md. Log to progress.md: `<timestamp> -- Task N: SKIPPED by human after <attempt> failed attempts.` Continue to the next unchecked task. The build loop ignores `- [~]` tasks (they are neither unchecked nor complete).
-   - **Abort:** Update plan status to PAUSED. Stop the build loop. Report to the human.
+   - **Abort:** Update plan status to PAUSED. Stop the build loop. Post a comment on the PRD issue: `gh issue comment <number> --body "Mission aborted at task N after <attempt> failed validation attempts."` Report to the human.
 
 3. **Diagnostic triage.** Spawn a lightweight Claude subagent to diagnose the failure. The subagent receives:
    - The validator report (from `mission/validations/task-N-scrutiny.md` or `task-N-usertest.md` -- whichever triggered this fix loop entry)
@@ -674,7 +674,7 @@ Log the human's decision for each discrepancy to progress.md.
 
 ### Create Draft PR
 
-Create a **draft** pull request using `gh pr create --draft`. Never create a ready-for-review PR. Use the PR body template below.
+Create a **draft** pull request using `gh pr create --draft --label darkfactory`. Never create a ready-for-review PR. Use the PR body template below. The `Closes #<N>` directive in the PR body will auto-close the PRD issue when the PR merges.
 
 #### PR Body Template
 
