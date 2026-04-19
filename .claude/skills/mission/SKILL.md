@@ -490,7 +490,7 @@ done
 rm -f "$CODEX_STDERR"
 ```
 
-Use Monitor with a timeout of 600000ms (10 minutes). When Monitor reports:
+Use Monitor with a timeout of 1800000ms (30 minutes). When Monitor reports:
 - `TASK_COMPLETE` -> proceed to Step 3
 - `TASK_FAILED` -> proceed to Step 3 (failure path)
 - Timeout -> proceed to Step 3 (timeout path)
@@ -505,7 +505,7 @@ Read the handoff file at `mission/handoffs/task-N.md`.
 
 - **TASK_COMPLETE** (handoff exists and contains a commit SHA): Extract the commit SHA. Log to progress.md: `<timestamp> -- Task N: worker completed. Commit: <SHA>`. Proceed to Step 4.
 - **TASK_FAILED** (handoff missing or no commit SHA): Log to progress.md: `<timestamp> -- Task N: worker FAILED. <reason>`. Ask the human: retry, skip, or abort. If skip: mark the task as `- [~]` in tasks.md and log `<timestamp> -- Task N: SKIPPED by human.` to progress.md. The build loop ignores `- [~]` tasks.
-- **Timeout** (Monitor timed out): Log to progress.md: `<timestamp> -- Task N: worker TIMED OUT after 10 minutes.`. Ask the human: retry, skip, or abort. If skip: mark the task as `- [~]` in tasks.md and log `<timestamp> -- Task N: SKIPPED by human.` to progress.md. The build loop ignores `- [~]` tasks.
+- **Timeout** (Monitor timed out): Log to progress.md: `<timestamp> -- Task N: worker TIMED OUT after 30 minutes.`. Ask the human: retry, skip, or abort. If skip: mark the task as `- [~]` in tasks.md and log `<timestamp> -- Task N: SKIPPED by human.` to progress.md. The build loop ignores `- [~]` tasks.
 
 ### Step 4: Scrutiny Validation
 
