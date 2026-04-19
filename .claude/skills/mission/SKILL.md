@@ -195,11 +195,13 @@ A task is good if you can demo it and verify it independently after it lands.
 
 Every mission's tasks.md MUST include these closing tasks after all feature tasks:
 
-1. **Cleanup task (mandatory).** Remove unused dependencies, dead code, leftover scaffolding, temporary artifacts, and any backwards-compatibility shims. Workers sometimes leave debris that per-task validation does not catch. This task cleans up the codebase before documentation.
+1. **Module shape re-check (mandatory).** Re-read design.md's module descriptions. For each module, compare the description to what the code actually exposes -- in whatever form is natural for the project (public functions, React props, HTTP endpoints, CLI flags, exported types, whatever the project uses). If reality has drifted meaningfully from the description, either update design.md to match (deliberate change) or refactor the code back (unintended drift). This catches cumulative drift across many tasks that per-task scrutiny cannot see.
 
-2. **Documentation task (mandatory).** Write or update documentation for what was built. The orchestrator recommends the documentation scope based on what the feature tasks produce -- this varies by mission type. Not every mission needs install instructions, architecture diagrams, or API docs. Use terms from `UBIQUITOUS_LANGUAGE.md` consistently. If unsure what documentation is needed, ask the human during this review.
+2. **Cleanup task (mandatory).** Remove unused dependencies, dead code, leftover scaffolding, temporary artifacts, and any backwards-compatibility shims. Workers sometimes leave debris that per-task validation does not catch. This task cleans up the codebase before documentation.
 
-3. **CI configuration task (optional).** Add or update CI/CD pipeline configuration. The orchestrator recommends whether to include this based on the change scope. The human decides during this review.
+3. **Documentation task (mandatory).** Write or update documentation for what was built. The orchestrator recommends the documentation scope based on what the feature tasks produce -- this varies by mission type. Not every mission needs install instructions, architecture diagrams, or API docs. Use terms from `UBIQUITOUS_LANGUAGE.md` consistently. If unsure what documentation is needed, ask the human during this review.
+
+4. **CI configuration task (optional).** Add or update CI/CD pipeline configuration. The orchestrator recommends whether to include this based on the change scope. The human decides during this review.
 
 If the design (Phase 4.3) identified refactoring needed for existing code, those tasks go before the feature tasks in tasks.md.
 
