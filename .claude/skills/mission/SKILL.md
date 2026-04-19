@@ -166,10 +166,14 @@ Design is required for every mission. The build loop and worker briefs depend on
 
 For each major component or module in the design, consider its depth. A deep module has a small interface hiding significant implementation. A shallow module has a large interface with thin logic behind it. Prefer deep modules -- they are more testable at the boundary, easier for workers to implement in a single task, and easier for subsequent workers to use correctly.
 
-For each module, describe:
-- **Interface** -- what callers see (public API, CLI flags, function signatures)
-- **What it hides** -- the complexity behind the interface that callers don't need to know about
-- **Why this boundary** -- what makes this the right place to draw the line
+design.md MUST include a `## Module Shapes` subsection with one entry per module. Each entry:
+
+- **Name:** the module's name as it appears in code
+- **Interface:** the public surface item-by-item (functions with signatures, HTTP endpoints, CLI flags, React props, exported types -- whatever is natural for the project)
+- **Hides:** what the module abstracts over (schema, serialization, pagination, etc.)
+- **Intentionally narrow:** operations deliberately excluded (e.g., "no bulk ops, no search")
+
+Single-module projects get one entry. This subsection is the frozen reference for the closing Module shape re-check task (see Phase 4.4) -- it is the contract between design intent and final code.
 
 If a module has a large interface relative to its implementation, ask whether it should be split differently or whether some of its interface belongs in a higher-level module. A good test: can a worker implement this module in a single task and a validator test it at the boundary? If not, the module may be too shallow or too broad.
 
@@ -195,11 +199,13 @@ A task is good if you can demo it and verify it independently after it lands.
 
 Every mission's tasks.md MUST include these closing tasks after all feature tasks:
 
-1. **Cleanup task (mandatory).** Remove unused dependencies, dead code, leftover scaffolding, temporary artifacts, and any backwards-compatibility shims. Workers sometimes leave debris that per-task validation does not catch. This task cleans up the codebase before documentation.
+1. **Module shape re-check (mandatory).** Read design.md's `## Module Shapes` subsection. For each module listed, read the current code and list its actual public surface item-by-item. Compare actual to designed, item by item. For any difference, write a Drift entry classified as `NONE`, `APPROVED` (design.md updated in this commit), or `REFACTOR NEEDED` (refactor in this commit). Write the full audit to `mission/validations/module-shape-audit.md`. The final audit must have no `REFACTOR NEEDED` entries -- if drift required a refactor, the refactor happened in this commit and the audit reflects the new actual surface. This closing task catches cumulative drift that per-task module depth review cannot see, and is the first closing task so that any refactor it triggers runs before the Cleanup task removes debris.
 
-2. **Documentation task (mandatory).** Write or update documentation for what was built. The orchestrator recommends the documentation scope based on what the feature tasks produce -- this varies by mission type. Not every mission needs install instructions, architecture diagrams, or API docs. Use terms from `UBIQUITOUS_LANGUAGE.md` consistently. If unsure what documentation is needed, ask the human during this review.
+2. **Cleanup task (mandatory).** Remove unused dependencies, dead code, leftover scaffolding, temporary artifacts, and any backwards-compatibility shims. Workers sometimes leave debris that per-task validation does not catch. This task cleans up the codebase before documentation.
 
-3. **CI configuration task (optional).** Add or update CI/CD pipeline configuration. The orchestrator recommends whether to include this based on the change scope. The human decides during this review.
+3. **Documentation task (mandatory).** Write or update documentation for what was built. The orchestrator recommends the documentation scope based on what the feature tasks produce -- this varies by mission type. Not every mission needs install instructions, architecture diagrams, or API docs. Use terms from `UBIQUITOUS_LANGUAGE.md` consistently. If unsure what documentation is needed, ask the human during this review.
+
+4. **CI configuration task (optional).** Add or update CI/CD pipeline configuration. The orchestrator recommends whether to include this based on the change scope. The human decides during this review.
 
 If the design (Phase 4.3) identified refactoring needed for existing code, those tasks go before the feature tasks in tasks.md.
 
@@ -313,6 +319,16 @@ Cap `[inspection]` assertions at **20% of total per task**. If more than 20% req
 Use the format in [templates/contract.md](templates/contract.md).
 
 When a PRD requirement traces to an APPROVED-DEVIATION item in the coverage audit, mark it with `(DEVIATED)` in the PRD Requirements comment. The assertion itself describes the actual implemented behavior (the deviation), not the original spec requirement. This gives the human visibility during contract review into which assertions exist because of an approved deviation.
+
+### Module Shape Re-check Task Assertions
+
+The mandatory Module shape re-check closing task (Phase 4.4) does not trace to a PRD requirement -- it is a meta-task that audits design drift. Its contract entry always includes these three assertions verbatim:
+
+- `[output]` Every module listed in design.md's `## Module Shapes` subsection has a corresponding section in `mission/validations/module-shape-audit.md` with both "Designed surface" and "Actual surface" lists
+- `[output]` Every Drift entry in `module-shape-audit.md` is classified as `NONE`, `APPROVED`, or `REFACTOR NEEDED` (no blanks, no "looks fine")
+- `[inspection]` No line in `module-shape-audit.md` starts with `REFACTOR NEEDED`
+
+The first two force evidence of a side-by-side read: a worker cannot produce that output without listing both surfaces item by item. The third forces the refactor to happen before commit.
 
 ### Contract Review
 
