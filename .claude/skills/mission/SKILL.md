@@ -195,15 +195,17 @@ A task is good if you can demo it and verify it independently after it lands.
 
 Every mission's tasks.md MUST include these closing tasks after all feature tasks:
 
-1. **Cleanup task (mandatory).** Remove unused dependencies, dead code, leftover scaffolding, temporary artifacts, and any backwards-compatibility shims. Workers sometimes leave debris that per-task validation does not catch. This task cleans up the codebase before the shape re-check so the re-check does not flag soon-to-be-deleted surface area.
+1. **Smoke test (mandatory unless the mission has no runnable user flow).** Write or update one end-to-end test that exercises the primary user flow against real dependencies -- no project-internal mocks. External services may use hermetic local fakes. Keep it under 30 seconds. One evolving smoke test per project, not N stale ones. If the mission has no runnable user flow (scaffolding, infrastructure, pure refactor), note why in the handoff.
 
-2. **Module shape re-check (mandatory for missions with 5+ feature tasks; optional otherwise).** Re-read design.md's module descriptions. For each module, compare the description to what the code actually exposes -- in whatever form is natural for the project (public functions, React props, HTTP endpoints, CLI flags, exported types, data schemas, message topics, job parameters, config keys, whatever contract callers actually depend on). If reality has drifted meaningfully from the description, either update design.md to match (deliberate change) or refactor the code back (unintended drift). "Meaningful drift" means: any public surface item added, removed, or renamed that is not reflected in design.md; any change to the vocabulary or contract callers depend on; or a cumulative widening where a module that was described as having N operations now has noticeably more. Temporary shims and internal helpers do not count. For small missions (under 5 feature tasks) a one-line "no drift observed" note in the handoff is sufficient -- this step exists to catch cumulative drift across many tasks, which rarely occurs in short missions. This catches drift that per-task scrutiny cannot see.
+2. **Cleanup task (mandatory).** Remove unused dependencies, dead code, leftover scaffolding, temporary artifacts, and any backwards-compatibility shims. Workers sometimes leave debris that per-task validation does not catch. This task cleans up the codebase before the shape re-check so the re-check does not flag soon-to-be-deleted surface area.
+
+3. **Module shape re-check (mandatory for missions with 5+ feature tasks; optional otherwise).** Re-read design.md's module descriptions. For each module, compare the description to what the code actually exposes -- in whatever form is natural for the project (public functions, React props, HTTP endpoints, CLI flags, exported types, data schemas, message topics, job parameters, config keys, whatever contract callers actually depend on). If reality has drifted meaningfully from the description, either update design.md to match (deliberate change) or refactor the code back (unintended drift). "Meaningful drift" means: any public surface item added, removed, or renamed that is not reflected in design.md; any change to the vocabulary or contract callers depend on; or a cumulative widening where a module that was described as having N operations now has noticeably more. Temporary shims and internal helpers do not count. For small missions (under 5 feature tasks) a one-line "no drift observed" note in the handoff is sufficient -- this step exists to catch cumulative drift across many tasks, which rarely occurs in short missions. This catches drift that per-task scrutiny cannot see.
 
    Write the findings to `mission/validations/module-shape-audit.md` -- a short free-form note listing each module, whether drift was found, and what was done about it ("no drift," "design.md updated," or "refactored"). No required format; the file exists as a record that the check happened.
 
-3. **Documentation task (mandatory).** Write or update documentation for what was built. The orchestrator recommends the documentation scope based on what the feature tasks produce -- this varies by mission type. Not every mission needs install instructions, architecture diagrams, or API docs. Use terms from `UBIQUITOUS_LANGUAGE.md` consistently. If unsure what documentation is needed, ask the human during this review.
+4. **Documentation task (mandatory).** Write or update documentation for what was built. The orchestrator recommends the documentation scope based on what the feature tasks produce -- this varies by mission type. Not every mission needs install instructions, architecture diagrams, or API docs. Use terms from `UBIQUITOUS_LANGUAGE.md` consistently. If unsure what documentation is needed, ask the human during this review.
 
-4. **CI configuration task (optional).** Add or update CI/CD pipeline configuration. The orchestrator recommends whether to include this based on the change scope. The human decides during this review.
+5. **CI configuration task (optional).** Add or update CI/CD pipeline configuration. The orchestrator recommends whether to include this based on the change scope. The human decides during this review.
 
 If the design (Phase 4.3) identified refactoring needed for existing code, those tasks go before the feature tasks in tasks.md.
 
@@ -317,6 +319,16 @@ Cap `[inspection]` assertions at **20% of total per task**. If more than 20% req
 Use the format in [templates/contract.md](templates/contract.md).
 
 When a PRD requirement traces to an APPROVED-DEVIATION item in the coverage audit, mark it with `(DEVIATED)` in the PRD Requirements comment. The assertion itself describes the actual implemented behavior (the deviation), not the original spec requirement. This gives the human visibility during contract review into which assertions exist because of an approved deviation.
+
+### Smoke Test Task Assertions
+
+The mandatory Smoke test closing task (Phase 4.4) gets these three assertions verbatim:
+
+- `[execution]` The smoke test passes when run as part of the project's standard test command
+- `[output]` The smoke test invokes the production entry point and asserts an observable outcome (HTTP response, exit code, DOM state, row in a database, etc.)
+- `[inspection]` The smoke test uses no project-internal mocks, stubs, or test doubles
+
+If the mission has no runnable user flow and the task was skipped with a handoff note, these assertions do not apply -- the task is marked SKIP with the handoff note as evidence.
 
 ### Contract Review
 

@@ -39,6 +39,7 @@ Run these checks in order. For each, report PASS or FAIL with evidence.
    - Belt-and-suspenders: redundant validation that duplicates what the framework, DB, or upstream already guarantees (re-checking auth after middleware, null-checking non-null TypeScript values, re-validating input that a validator already checked).
    - Feature flags for dead code: if the old way is being replaced, delete it. Don't gate behind a flag.
    - Defensive handling of impossible states: catch blocks or null checks for conditions that cannot occur given current code paths.
+   - Production fallback to test doubles: production code that defaults to a test-only object. Test doubles (named Null/Mock/Fake/Stub) belong in test code. Production fallbacks should be named production types.
 
 8. **Code simplify:** Run /simplify against the changed files. 
 
