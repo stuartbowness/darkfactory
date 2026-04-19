@@ -461,9 +461,7 @@ BRIEF_CONTENT=$(cat "$BRIEF_PATH")
 # Clean stale temp files and directories from previous workers to avoid filling /tmp
 find /tmp -mindepth 1 -maxdepth 1 -user "$(whoami)" -mmin +30 -not -name "claude-*" \( -type f -delete -o -type d -exec rm -rf {} + \) 2>/dev/null
 
-CODEX_STDERR=$(mktemp)
-
-# Start Codex in background
+# Run Codex in foreground, merge stderr, stream progress + failure signals to Monitor
 codex exec \
   --full-auto \
   --sandbox workspace-write \
@@ -471,23 +469,16 @@ codex exec \
   -c model_reasoning_effort="high" \
   -o "$HANDOFF_PATH" \
   "$BRIEF_CONTENT" \
-  2>"$CODEX_STDERR" &
+  2>&1 \
+  | grep -E --line-buffered 'tokens used|reasoning:|running:|writing to|codex:|exec cmd|Error|error:|panic|Traceback|FAILED|timeout|rate limit|OOM|Killed'
 
-CODEX_PID=$!
+EXIT=${PIPESTATUS[0]}
 
-# Poll for handoff file or process exit
-while true; do
-  if [ -f "$HANDOFF_PATH" ]; then
-    echo "TASK_COMPLETE: Handoff written to $HANDOFF_PATH"
-    break
-  fi
-  if ! kill -0 $CODEX_PID 2>/dev/null; then
-    echo "TASK_FAILED: Codex process exited without writing handoff. Stderr: $(cat "$CODEX_STDERR")"
-    break
-  fi
-  sleep 2
-done
-rm -f "$CODEX_STDERR"
+if [ $EXIT -eq 0 ] && [ -f "$HANDOFF_PATH" ]; then
+  echo "TASK_COMPLETE: handoff written"
+else
+  echo "TASK_FAILED: codex exited $EXIT; handoff $([ -f "$HANDOFF_PATH" ] && echo present || echo missing)"
+fi
 ```
 
 Use Monitor with a timeout of 1800000ms (30 minutes). When Monitor reports:
@@ -695,6 +686,41 @@ Both receive the full diff (`git diff <base-branch>...HEAD`) and the full contra
 #### Adversarial Reviewer Prompt (used for both A and B)
 
 Read [prompts/adversarial-reviewer.md](prompts/adversarial-reviewer.md) and use it as the subagent prompt. Fill in the base branch, diff command, and full contract.md content.
+
+#### Reviewer A Dispatch Script (codex, via Monitor)
+
+```bash
+REPORT_PATH="<absolute path to mission/validations/adversarial-a.md>"
+DIFF_PATH=$(mktemp --suffix=-mission-diff)
+PROMPT_PATH=$(mktemp --suffix=-mission-diff)
+
+# Guard mission-diff* from the stale temp cleanup
+find /tmp -mindepth 1 -maxdepth 1 -user "$(whoami)" -mmin +30 -not -name "claude-*" -not -name "*mission-diff*" \( -type f -delete -o -type d -exec rm -rf {} + \) 2>/dev/null
+
+git diff <base-branch>...HEAD > "$DIFF_PATH"
+# Write the adversarial-reviewer.md prompt content to $PROMPT_PATH with the diff path and contract.md content filled in
+
+codex exec \
+  --full-auto \
+  --sandbox workspace-write \
+  -m gpt-5.4 \
+  -c model_reasoning_effort="high" \
+  -o "$REPORT_PATH" \
+  "$(cat "$PROMPT_PATH")" \
+  2>&1 \
+  | grep -E --line-buffered 'tokens used|reasoning:|running:|writing to|codex:|exec cmd|Error|error:|panic|Traceback|FAILED|timeout|rate limit|OOM|Killed'
+
+EXIT=${PIPESTATUS[0]}
+rm -f "$DIFF_PATH" "$PROMPT_PATH"
+
+if [ $EXIT -eq 0 ] && [ -f "$REPORT_PATH" ]; then
+  echo "REVIEW_COMPLETE: report written"
+else
+  echo "REVIEW_FAILED: codex exited $EXIT; report $([ -f "$REPORT_PATH" ] && echo present || echo missing)"
+fi
+```
+
+Use Monitor with a timeout of 1800000ms (30 minutes). Reviewer B runs in parallel via the Agent tool.
 
 Dispatch both in parallel. Wait for both to complete.
 
