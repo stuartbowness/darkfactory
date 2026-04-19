@@ -451,7 +451,7 @@ Read the engine from `mission/config.yaml`.
 
 #### If engine is `codex`:
 
-Use the Monitor tool to run the worker in the background. Use this exact bash script:
+Use the Monitor tool to run the worker. Use this exact bash script:
 
 ```bash
 BRIEF_PATH="<absolute path to mission/briefs/task-N.md>"
@@ -691,8 +691,8 @@ Read [prompts/adversarial-reviewer.md](prompts/adversarial-reviewer.md) and use 
 
 ```bash
 REPORT_PATH="<absolute path to mission/validations/adversarial-a.md>"
-DIFF_PATH=$(mktemp --suffix=-mission-diff)
-PROMPT_PATH=$(mktemp --suffix=-mission-diff)
+DIFF_PATH=$(mktemp /tmp/mission-diff.XXXXXX)
+PROMPT_PATH=$(mktemp /tmp/mission-diff.XXXXXX)
 
 # Guard mission-diff* from the stale temp cleanup
 find /tmp -mindepth 1 -maxdepth 1 -user "$(whoami)" -mmin +30 -not -name "claude-*" -not -name "*mission-diff*" \( -type f -delete -o -type d -exec rm -rf {} + \) 2>/dev/null
