@@ -27,6 +27,8 @@ Next, it creates a series of planning documents using [OpenSpec](https://github.
 - **Design** -- architecture decisions and technical approach
 - **Tasks** -- an ordered checklist of implementation work
 
+Every tasks.md ends with a set of **mandatory closing tasks** that run after the feature work: a smoke test (one end-to-end test through the primary user flow against real dependencies), a cleanup task (remove dead code, unused deps, and leftover scaffolding), a module shape re-check (catch drift between design.md and what the code actually exposes -- required once a mission has 5+ feature tasks), and a documentation task. A CI configuration task is optional and added when relevant.
+
 After the tasks are defined, the orchestrator runs a **coverage audit**. This maps every requirement from the PRD to one or more tasks. If anything is missing, it flags it. If a requirement was intentionally changed or dropped, you approve that decision explicitly. For substitutions, the orchestrator also checks that the replacement approach is fully covered by existing tasks -- if the substitution drops something important, it's flagged as a gap. Nothing falls through the cracks by accident.
 
 Finally, it writes a **contract** -- a checklist of things the finished code should do, written so they can be tested from the outside (by running the code, not by reading the source). For example: "the login endpoint returns a 401 when given wrong credentials." Each item traces back to a PRD requirement and is tagged with how it should be verified (by executing the code, checking its output, or inspecting the source). Before moving on, the orchestrator runs a testability check to catch any vague or untestable items early. You review the contract, confirm which AI models handle each role (see [Configuration](#configuration)), and approve launch.
@@ -37,7 +39,7 @@ For each task, the orchestrator sends a worker (Codex or Claude, your choice) a 
 
 After each worker finishes, two validators check the work:
 
-1. **Scrutiny validator** -- a thorough quality check that runs 11 steps:
+1. **Scrutiny validator** -- a thorough quality check that runs a sequence of checks:
    - Do tests exist? (auto-fails the task if not)
    - Does the project build, do the tests pass, does the linter pass?
    - Code review and code standards check
@@ -156,6 +158,7 @@ openspec/changes/<change-name>/
     handoffs/task-N.md     # Worker handoff reports
     validations/           # Validator reports, demo videos
     issues/                # Failure details per attempt
+    logs/                  # Streaming output from workers and reviewers (tail -f to watch live)
 ```
 
 ## Skills
@@ -164,10 +167,20 @@ Darkfactory is controlled through skills -- reusable prompt templates you invoke
 
 | Skill | Purpose |
 |-------|---------|
-| `/mission` | Start an autonomous mission from scratch. Walks you through planning, dispatches workers, validates, and delivers a draft PR. The skill's control flow lives in `SKILL.md`; templates and validator prompts are in companion files under `templates/` and `prompts/`, loaded on demand. |
+| `/mission` | Start an autonomous mission from scratch. Walks you through planning, dispatches workers, validates, and delivers a draft PR. |
 | `/mission-resume` | Resume a mission that was interrupted (session crash, closed terminal). Detects exactly where it left off -- including tasks that were partially validated or committed but not yet checked -- and continues through to the draft PR and code review. |
 | `/mission-status` | Read-only progress check. Open a second terminal while a mission runs to see which tasks are done, in progress, or queued. |
 | `/darkfactory-init` | Check your project setup. Reports what's installed, what's missing, and gives you the exact commands to fix it. |
+
+### Skill structure
+
+`/mission` is split across files so only the control flow is always in context:
+
+- `SKILL.md` -- control flow, rules, phase gates (auto-loaded)
+- `templates/` -- artifacts the orchestrator fills in: `plan.md`, `coverage-audit.md`, `contract.md`, `worker-brief.md`, `worker-fix-brief.md`, `pr-body.md`
+- `prompts/` -- prompts handed to subagents: `scrutiny-validator.md`, `usertest-validator.md`, `spec-delta-checker.md`, `adversarial-reviewer.md`
+
+Companion files are read on demand when the skill reaches the step that needs them.
 
 ### Required external skills
 
