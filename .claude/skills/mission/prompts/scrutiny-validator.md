@@ -10,7 +10,7 @@ SHA: <commit-sha>
 
 Run these checks in order. For each, report PASS or FAIL with evidence.
 
-1. **Test presence gate:** Run `git show <commit-sha> --stat` and check if any test files were added or modified. If the diff contains zero test files and zero new test assertions, this is an automatic FAIL. Workers are required to use /tdd -- no new tests means TDD was not followed.
+1. **Test presence gate:** Run `git show <commit-sha> --stat` and check if any test files were added or modified. If the diff contains zero test files and zero new test assertions, this is an automatic FAIL. Workers are required to use /tdd -- no new tests means TDD was not followed. Exception: closing tasks that produce no testable code (documentation, cleanup, module shape re-check) are exempt from this gate.
 
 2. **Build:** Run the project's build command. Does it pass?
 
@@ -50,7 +50,7 @@ Run these checks in order. For each, report PASS or FAIL with evidence.
 
 8. **Code simplify:** Run /simplify against the changed files. 
 
-9. **Security review:** If the diff touches auth, secrets, user input, or network boundaries, run /security-review. Otherwise "N/A."
+9. **Security review:** If the diff touches auth, secrets, user input, network boundaries, or filesystem trust boundaries (copying/moving/promoting files between directories, extracting archives, sandbox-to-production transfers), run /security-review. Otherwise "N/A."
 
 10. **Contract assertions:** Mark each assertion PASS, FAIL, or SKIP with a one-line explanation. SKIPs for work deferred to later tasks: append to `mission/deferrals.md` as `task N -- <assertion>`.
 
