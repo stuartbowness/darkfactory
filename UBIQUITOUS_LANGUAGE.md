@@ -38,7 +38,6 @@
 | Term | Definition | Aliases to avoid |
 | --- | --- | --- |
 | **Serial execution** | The rule that only one worker runs at a time to prevent conflicts | Sequential, single-threaded |
-| **Monitor** | The Claude Code tool used as the single pattern for all background work notification throughout a mission | Watcher, poller, listener |
 | **Engine** | The configurable AI model/tool used for a given role (e.g. Codex for workers, Claude for validators) | Model, provider, backend |
 | **Plan mode** | The Claude Code plan that serves as the orchestrator's durable operating manual, guaranteed to survive context compaction | System prompt, instructions |
 
