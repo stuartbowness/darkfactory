@@ -421,6 +421,8 @@ mkdir -p openspec/changes/<change-name>/mission/{briefs,handoffs,validations,iss
 > **Inputs:** tasks.md, contract.md, coverage-audit.md, config.yaml
 > **Outputs:** Human approval, progress.md updated, plan status = BUILDING
 
+Ensure a feature branch. If `$(git rev-parse --abbrev-ref HEAD)` equals `$(gh api repos/:owner/:repo --jq .default_branch)` (or `main` if that fails), run `git checkout -b "mission/<change-name>"` and log the checkout to progress.md.
+
 Show the user a summary dashboard:
 1. **Mission overview** -- change name, total tasks (feature + closing), total contract assertions
 2. **Coverage audit result** -- number of PRD requirements covered, any deferred/skipped items
@@ -551,7 +553,7 @@ Track the attempt number (starts at 1 for the initial worker, increments on each
 
    - **Retry:** Increment the attempt counter by 1 (e.g., attempt 3 becomes attempt 4). Allow one more fix attempt. If it fails again, the circuit breaker triggers again at the new count. Retry does NOT reset the counter.
    - **Skip:** Mark the task as `- [~]` in tasks.md. Log to progress.md: `<timestamp> -- Task N: SKIPPED by human after <attempt> failed attempts.` Continue to the next unchecked task. The build loop ignores `- [~]` tasks (they are neither unchecked nor complete).
-   - **Abort:** Update plan status to PAUSED. Stop the build loop. Post a comment on the PRD issue: `gh issue comment <number> --body "Mission aborted at task N after <attempt> failed validation attempts."` Report to the human.
+   - **Abort:** Update plan status to PAUSED. Stop the build loop. Close the PRD issue with a reason: `gh issue close <number> --reason "not planned" --comment "Mission aborted at task N after <attempt> failed validation attempts."` Report to the human.
 
 3. **Diagnostic triage.** Spawn a lightweight Claude subagent to diagnose the failure. The subagent receives:
    - The validator report (from `mission/validations/task-N-scrutiny.md` or `task-N-usertest.md` -- whichever triggered this fix loop entry)
@@ -763,6 +765,7 @@ Full reports at:
 - mission/validations/adversarial-b.md
 
 Review the PR and the adversarial findings. You decide what to address.
+If you decide not to ship this mission (reviewers found blockers, priorities changed), close the draft PR and the PRD issue yourself: `gh pr close <PR> --delete-branch` and `gh issue close <PRD> --reason "not planned"`. The orchestrator only handles the happy path and circuit-breaker abort.
 After merge:
 1. Run /opsx:archive to move the change files to the archive directory
 2. Commit and push the archive move:
