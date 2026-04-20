@@ -400,7 +400,13 @@ Started: <ISO 8601 timestamp>
 - <timestamp> -- Mission directory created. Awaiting approval.
 ```
 
-Create the five subdirectories: `briefs/`, `handoffs/`, `validations/`, `issues/`, `logs/`.
+Create the five subdirectories with one command:
+
+```bash
+mkdir -p openspec/changes/<change-name>/mission/{briefs,handoffs,validations,issues,logs}
+```
+
+`logs/` is load-bearing: the worker and adversarial dispatch scripts redirect to `mission/logs/*.log` and will fail if the directory does not exist.
 
 **Gate -- proceed when:**
 - [ ] mission/ directory exists with config.yaml and progress.md
@@ -468,7 +474,7 @@ BRIEF_CONTENT=$(cat "$BRIEF_PATH")
 # Clean stale temp files and directories from previous workers to avoid filling /tmp
 find /tmp -mindepth 1 -maxdepth 1 -user "$(whoami)" -mmin +30 -not -name "claude-*" \( -type f -delete -o -type d -exec rm -rf {} + \) 2>/dev/null
 
-# Run Codex, merge stderr, tee to log file for human inspection
+# Run Codex, redirect stdout+stderr to log file (agent reads log only on failure; no mid-run output lands in agent context)
 codex exec \
   --full-auto \
   --sandbox workspace-write \
@@ -476,10 +482,9 @@ codex exec \
   -c model_reasoning_effort="high" \
   -o "$HANDOFF_PATH" \
   "$BRIEF_CONTENT" \
-  2>&1 \
-  | tee "$LOG_PATH"
+  > "$LOG_PATH" 2>&1
 
-EXIT=${PIPESTATUS[0]}
+EXIT=$?
 
 if [ $EXIT -eq 0 ] && [ -f "$HANDOFF_PATH" ]; then
   echo "TASK_COMPLETE: handoff written"
@@ -488,7 +493,8 @@ else
 fi
 ```
 
-The Bash tool runs this in the background and notifies you when it completes. Read the final stdout line:
+The Bash tool returns a shell task ID immediately and notifies you when it completes. On completion, call BashOutput on that shell task ID to retrieve stdout. The only thing on stdout is the single final line -- either `TASK_COMPLETE` or `TASK_FAILED` -- because all codex output was redirected to `$LOG_PATH`.
+
 - `TASK_COMPLETE` -> proceed to Step 3
 - `TASK_FAILED` -> proceed to Step 3 (failure path). Read `$LOG_PATH` for failure context before asking the human.
 
@@ -719,10 +725,9 @@ codex exec \
   -c model_reasoning_effort="high" \
   -o "$REPORT_PATH" \
   "$(cat "$PROMPT_PATH")" \
-  2>&1 \
-  | tee "$LOG_PATH"
+  > "$LOG_PATH" 2>&1
 
-EXIT=${PIPESTATUS[0]}
+EXIT=$?
 rm -f "$DIFF_PATH" "$PROMPT_PATH"
 
 if [ $EXIT -eq 0 ] && [ -f "$REPORT_PATH" ]; then
@@ -732,11 +737,9 @@ else
 fi
 ```
 
-The Bash tool runs this in the background and notifies you when it completes. Read the final stdout line for `REVIEW_COMPLETE` or `REVIEW_FAILED`. Reviewer B runs in parallel via the Agent tool.
+The Bash tool returns a shell task ID immediately. Reviewer B runs synchronously via the Agent tool. To run them in parallel: **dispatch Reviewer A first** (non-blocking, returns a shell task ID), **then dispatch Reviewer B** (blocks until it returns). When B returns, call BashOutput on A's shell task ID -- if A is done, the final line is `REVIEW_COMPLETE` or `REVIEW_FAILED`; if not, wait for A's completion notification before reading.
 
 **Human visibility:** To watch Reviewer A progress live, run `tail -f <absolute path to mission/logs/adversarial-a-codex.log>` in another terminal.
-
-Dispatch both in parallel. Wait for both to complete.
 
 ### Present to Human
 
