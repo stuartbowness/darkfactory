@@ -88,30 +88,9 @@ Previously completed: tasks <list of completed task numbers>.
 
 ## Phase 6: Continue the Build Loop
 
-Follow the /mission skill's Phase 8 build loop exactly. For each remaining unchecked task, run Steps 1-7 as defined in the /mission skill:
+Follow the `/mission` skill's Phase 8 build loop exactly -- every step, every sub-step, every rule. Do not re-implement the loop here; read Phase 8 in `.claude/skills/mission/SKILL.md` and execute it as written.
 
-1. **Assemble brief** -- check if brief exists, reuse or create. Brief never contains contract content.
-2. **Dispatch worker** -- use the dispatch script from `/mission` Phase 8 Step 2 (Bash with `run_in_background: true` for Codex, Agent tool for Claude).
-3. **Handle result** -- TASK_COMPLETE or TASK_FAILED, per `/mission` Phase 8 Step 3.
-4. **Scrutiny validation** -- spawn Claude subagent with the full 11-step check sequence:
-   1. Test presence gate (auto-FAIL if no new tests)
-   2. Build
-   3. Tests
-   4. Lint
-   5. Code review (/review) -- check for bugs, security, logic, breaking changes
-   6. Module depth review -- check for interface widening, information leaking, premature splitting
-   7. Code standards -- 5 anti-pattern checks
-   8. Code simplify (/simplify)
-   9. Security review (/security-review) -- conditional on sensitive code
-   10. Contract assertions
-   11. Behavioral conformance -- execute minimal test scripts to verify observable behavior
-5. **Handle scrutiny result** -- PASS proceeds to Step 6. FAIL enters fix loop.
-5a. **Fix loop** -- write symptom-based fix brief (no contract text), dispatch fix worker, re-run both per-task validators. Circuit breaker at 3.
-6. **User-test validation** -- spawn Claude subagent that decides API tests, browser tests, or both.
-6a. **Demo video** -- frontend tasks only, non-blocking on failure.
-7. **Track progress** -- mark task complete, update progress.md.
-
-If Phase 3a detected a mid-cycle task, resume from the appropriate step rather than starting from Step 1.
+If Phase 3a detected a mid-cycle task, resume from the appropriate step in `/mission` Phase 8 rather than starting from Step 1.
 
 ## Phase 7: Mission Completion
 
