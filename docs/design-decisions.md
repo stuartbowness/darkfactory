@@ -4,7 +4,7 @@ Captured from the grill-me session on 2026-04-10.
 
 ## Vision
 
-A lightweight multi-agent mission system built entirely from Claude Code primitives (skills, subagents, plan mode, Monitor, hooks) and Codex CLI. No custom IDE or app. Inspired by Factory's Missions architecture.
+A lightweight multi-agent mission system built entirely from Claude Code primitives (skills, subagents, plan mode, hooks) and Codex CLI. No custom IDE or app. Inspired by Factory's Missions architecture.
 
 ## Phase Flow
 
@@ -53,10 +53,10 @@ Validators receive: commit SHA + contract assertions. They do NOT receive propos
 
 ## Key Design Decisions
 
-### Monitor for external processes
-- Monitor is used for external process dispatch (Codex workers, Codex adversarial reviews)
+### Bash run_in_background for external processes
+- Long-running external processes (Codex workers, Codex adversarial reviews) run via Bash with `run_in_background: true`, with stdout+stderr redirected to a log file under `mission/logs/`
 - Claude subagent validators use the Agent tool directly since they run within the session
-- Saves tokens vs blocking on Codex -- Claude goes idle while Codex works
+- The log file lets the human watch progress in another terminal (`tail -f`) without the agent paying context cost for mid-run events
 
 ### File-backed state
 - All mission state lives on disk in the mission directory
@@ -135,7 +135,7 @@ openspec/changes/<change-name>/mission/
 For each unchecked task in tasks.md:
 1. Read mission state from mission/progress.md
 2. Write brief to mission/briefs/task-N.md
-3. Kick off worker via Monitor (engine per config.yaml)
+3. Kick off worker via Bash `run_in_background` (engine per config.yaml)
 4. On completion, read mission/handoffs/task-N.md
 5. Spawn scrutiny validator (commit SHA + contract assertions)
 6. If fail -> write symptom-based fix brief, spawn fix worker, re-validate both. Circuit breaker: 3 attempts -> ask human.
@@ -247,7 +247,7 @@ openspec/changes/<change-name>/
 ## Build Order (Darkfactory itself)
 
 1. **Orchestrator skeleton** -- /mission skill, plan mode, grill, /opsx:propose, contract.md, mission directory
-2. **Worker loop** -- brief writing, Codex invocation via Monitor, handoff reading
+2. **Worker loop** -- brief writing, Codex invocation via Bash `run_in_background`, handoff reading
 3. **Scrutiny validation** -- build/test/lint + /review + fix loop with circuit breaker
 4. **User-test validation** -- agent-browser + HTTP tests
 5. **Demo video + draft PR** -- completion phase

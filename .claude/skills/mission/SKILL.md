@@ -15,7 +15,6 @@ flow: align -> spec -> contract -> build -> validate -> ship
 7. **Draft PRs only.** Never create a ready-for-review PR. The human promotes it.
 8. **Plan is the operating manual.** Keep the plan updated after every phase and step. It must be accurate if context compacts.
 9. **Skipped tasks use `- [~]`.** The build loop treats `- [~]` as neither unchecked nor complete. Skipped tasks are not re-attempted.
-10. **Monitor is for external processes.** Monitor is used for external process dispatch (Codex workers, Codex adversarial reviews). Claude subagent validators use the Agent tool directly since they run within the session and return synchronously.
 
 ---
 
@@ -374,6 +373,7 @@ mission/
   handoffs/
   validations/
   issues/
+  logs/
 ```
 
 ### config.yaml
@@ -400,11 +400,17 @@ Started: <ISO 8601 timestamp>
 - <timestamp> -- Mission directory created. Awaiting approval.
 ```
 
-Create the four subdirectories: `briefs/`, `handoffs/`, `validations/`, `issues/`.
+Create the five subdirectories with one command:
+
+```bash
+mkdir -p openspec/changes/<change-name>/mission/{briefs,handoffs,validations,issues,logs}
+```
+
+`logs/` is load-bearing: the worker and adversarial dispatch scripts redirect to `mission/logs/*.log` and will fail if the directory does not exist.
 
 **Gate -- proceed when:**
 - [ ] mission/ directory exists with config.yaml and progress.md
-- [ ] briefs/, handoffs/, validations/, issues/ subdirectories created
+- [ ] briefs/, handoffs/, validations/, issues/, logs/ subdirectories created
 
 ---
 
@@ -434,7 +440,7 @@ Ask: "Everything has been reviewed. Ready to start the build?"
 
 ## Phase 8: Build Loop
 
-> **Rules:** 1, 2, 3, 4, 5, 6, 8, 9, 10
+> **Rules:** 1, 2, 3, 4, 5, 6, 8, 9
 > **Goal:** Build all tasks with per-task validation.
 > **Inputs:** tasks.md, contract.md, design.md, proposal.md, config.yaml, UBIQUITOUS_LANGUAGE.md
 > **Outputs:** Committed code per task, validation reports in mission/validations/. Codebase deltas are internal (populate subsequent task briefs within this phase).
@@ -457,17 +463,18 @@ Read the engine from `mission/config.yaml`.
 
 #### If engine is `codex`:
 
-Use the Monitor tool to run the worker. Use this exact bash script:
+Use the Bash tool with `run_in_background: true` to run the worker. Use this exact bash script:
 
 ```bash
 BRIEF_PATH="<absolute path to mission/briefs/task-N.md>"
 HANDOFF_PATH="<absolute path to mission/handoffs/task-N.md>"
+LOG_PATH="<absolute path to mission/logs/task-N-codex.log>"
 BRIEF_CONTENT=$(cat "$BRIEF_PATH")
 
 # Clean stale temp files and directories from previous workers to avoid filling /tmp
 find /tmp -mindepth 1 -maxdepth 1 -user "$(whoami)" -mmin +30 -not -name "claude-*" \( -type f -delete -o -type d -exec rm -rf {} + \) 2>/dev/null
 
-# Run Codex in foreground, merge stderr, stream progress + failure signals to Monitor
+# Run Codex, redirect stdout+stderr to log file (agent reads log only on failure; no mid-run output lands in agent context)
 codex exec \
   --full-auto \
   --sandbox workspace-write \
@@ -475,22 +482,25 @@ codex exec \
   -c model_reasoning_effort="high" \
   -o "$HANDOFF_PATH" \
   "$BRIEF_CONTENT" \
-  2>&1 \
-  | grep -E --line-buffered 'tokens used|reasoning:|running:|writing to|codex:|exec cmd|Error|error:|panic|Traceback|FAILED|timeout|rate limit|OOM|Killed'
+  > "$LOG_PATH" 2>&1
 
-EXIT=${PIPESTATUS[0]}
+EXIT=$?
 
 if [ $EXIT -eq 0 ] && [ -f "$HANDOFF_PATH" ]; then
   echo "TASK_COMPLETE: handoff written"
 else
-  echo "TASK_FAILED: codex exited $EXIT; handoff $([ -f "$HANDOFF_PATH" ] && echo present || echo missing)"
+  echo "TASK_FAILED: codex exited $EXIT; handoff $([ -f "$HANDOFF_PATH" ] && echo present || echo missing). Log: $LOG_PATH"
 fi
 ```
 
-Use Monitor with a timeout of 1800000ms (30 minutes). When Monitor reports:
+The Bash tool returns a shell task ID immediately and notifies you when it completes. On completion, call BashOutput on that shell task ID to retrieve stdout. The only thing on stdout is the single final line -- either `TASK_COMPLETE` or `TASK_FAILED` -- because all codex output was redirected to `$LOG_PATH`.
+
 - `TASK_COMPLETE` -> proceed to Step 3
-- `TASK_FAILED` -> proceed to Step 3 (failure path)
-- Timeout -> proceed to Step 3 (timeout path)
+- `TASK_FAILED` -> proceed to Step 3 (failure path). Read `$LOG_PATH` for failure context before asking the human.
+
+**Human visibility:** To watch codex progress live, run `tail -f <absolute path to mission/logs/task-N-codex.log>` in another terminal.
+
+**If codex hangs:** There is no hard timeout. If activity in the log stops for several minutes and the background task is still running, the human can kill it manually: `ps aux | grep codex` then `kill <pid>`. The bash process will exit non-zero, which becomes TASK_FAILED.
 
 #### If engine is `claude`:
 
@@ -502,7 +512,6 @@ Read the handoff file at `mission/handoffs/task-N.md`.
 
 - **TASK_COMPLETE** (handoff exists and contains a commit SHA): Extract the commit SHA. Log to progress.md: `<timestamp> -- Task N: worker completed. Commit: <SHA>`. Proceed to Step 4.
 - **TASK_FAILED** (handoff missing or no commit SHA): Log to progress.md: `<timestamp> -- Task N: worker FAILED. <reason>`. Ask the human: retry, skip, or abort. If skip: mark the task as `- [~]` in tasks.md and log `<timestamp> -- Task N: SKIPPED by human.` to progress.md. The build loop ignores `- [~]` tasks.
-- **Timeout** (Monitor timed out): Log to progress.md: `<timestamp> -- Task N: worker TIMED OUT after 30 minutes.`. Ask the human: retry, skip, or abort. If skip: mark the task as `- [~]` in tasks.md and log `<timestamp> -- Task N: SKIPPED by human.` to progress.md. The build loop ignores `- [~]` tasks.
 
 ### Step 4: Scrutiny Validation
 
@@ -629,7 +638,7 @@ Spawn a Claude subagent to run `/demo-video`. The subagent should save the recor
 
 ## Phase 9: Mission Completion
 
-> **Rules:** 1, 2, 5, 7, 10
+> **Rules:** 1, 2, 5, 7
 > **Goal:** Final gates, draft PR, and dual adversarial review.
 > **Inputs:** All committed code (from Phase 8), contract.md, coverage-audit.md, PRD issue number (from plan, for PR linking)
 > **Outputs:** Draft PR, adversarial review reports, plan status = COMPLETE
@@ -686,7 +695,7 @@ Since the PR is created as a draft, the issue stays open until the developer pro
 After the draft PR is created, run a final adversarial review against the full diff of all mission commits.
 
 Run two independent reviewers in parallel:
-- **Reviewer A** (engine from `adversarial_reviewer_a` in config.yaml, default: codex) -- dispatched via Monitor
+- **Reviewer A** (engine from `adversarial_reviewer_a` in config.yaml, default: codex) -- dispatched via Bash with `run_in_background: true`
 - **Reviewer B** (engine from `adversarial_reviewer_b` in config.yaml, default: claude) -- dispatched via Agent tool
 
 Both receive the full diff (`git diff <base-branch>...HEAD`) and the full contract.md.
@@ -695,10 +704,11 @@ Both receive the full diff (`git diff <base-branch>...HEAD`) and the full contra
 
 Read [prompts/adversarial-reviewer.md](prompts/adversarial-reviewer.md) and use it as the subagent prompt. Fill in the base branch, diff command, and full contract.md content.
 
-#### Reviewer A Dispatch Script (codex, via Monitor)
+#### Reviewer A Dispatch Script (codex)
 
 ```bash
 REPORT_PATH="<absolute path to mission/validations/adversarial-a.md>"
+LOG_PATH="<absolute path to mission/logs/adversarial-a-codex.log>"
 DIFF_PATH=$(mktemp /tmp/mission-diff.XXXXXX)
 PROMPT_PATH=$(mktemp /tmp/mission-diff.XXXXXX)
 
@@ -715,22 +725,21 @@ codex exec \
   -c model_reasoning_effort="high" \
   -o "$REPORT_PATH" \
   "$(cat "$PROMPT_PATH")" \
-  2>&1 \
-  | grep -E --line-buffered 'tokens used|reasoning:|running:|writing to|codex:|exec cmd|Error|error:|panic|Traceback|FAILED|timeout|rate limit|OOM|Killed'
+  > "$LOG_PATH" 2>&1
 
-EXIT=${PIPESTATUS[0]}
+EXIT=$?
 rm -f "$DIFF_PATH" "$PROMPT_PATH"
 
 if [ $EXIT -eq 0 ] && [ -f "$REPORT_PATH" ]; then
   echo "REVIEW_COMPLETE: report written"
 else
-  echo "REVIEW_FAILED: codex exited $EXIT; report $([ -f "$REPORT_PATH" ] && echo present || echo missing)"
+  echo "REVIEW_FAILED: codex exited $EXIT; report $([ -f "$REPORT_PATH" ] && echo present || echo missing). Log: $LOG_PATH"
 fi
 ```
 
-Use Monitor with a timeout of 1800000ms (30 minutes). Reviewer B runs in parallel via the Agent tool.
+The Bash tool returns a shell task ID immediately. Reviewer B runs synchronously via the Agent tool. To run them in parallel: **dispatch Reviewer A first** (non-blocking, returns a shell task ID), **then dispatch Reviewer B** (blocks until it returns). When B returns, call BashOutput on A's shell task ID -- if A is done, the final line is `REVIEW_COMPLETE` or `REVIEW_FAILED`; if not, wait for A's completion notification before reading.
 
-Dispatch both in parallel. Wait for both to complete.
+**Human visibility:** To watch Reviewer A progress live, run `tail -f <absolute path to mission/logs/adversarial-a-codex.log>` in another terminal.
 
 ### Present to Human
 

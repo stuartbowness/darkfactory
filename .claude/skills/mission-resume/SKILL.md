@@ -91,43 +91,8 @@ Previously completed: tasks <list of completed task numbers>.
 Follow the /mission skill's Phase 8 build loop exactly. For each remaining unchecked task, run Steps 1-7 as defined in the /mission skill:
 
 1. **Assemble brief** -- check if brief exists, reuse or create. Brief never contains contract content.
-2. **Dispatch worker** -- use the full Monitor-based dispatch for Codex:
-
-```bash
-BRIEF_PATH="<absolute path to mission/briefs/task-N.md>"
-HANDOFF_PATH="<absolute path to mission/handoffs/task-N.md>"
-BRIEF_CONTENT=$(cat "$BRIEF_PATH")
-
-# Clean stale temp files and directories from previous workers to avoid filling /tmp
-find /tmp -mindepth 1 -maxdepth 1 -user "$(whoami)" -mmin +30 -not -name "claude-*" \( -type f -delete -o -type d -exec rm -rf {} + \) 2>/dev/null
-
-codex exec \
-  --full-auto \
-  --sandbox workspace-write \
-  -m gpt-5.4 \
-  -c model_reasoning_effort="high" \
-  -o "$HANDOFF_PATH" \
-  "$BRIEF_CONTENT" \
-  2>/dev/null &
-
-CODEX_PID=$!
-
-while true; do
-  if [ -f "$HANDOFF_PATH" ]; then
-    echo "TASK_COMPLETE: Handoff written to $HANDOFF_PATH"
-    break
-  fi
-  if ! kill -0 $CODEX_PID 2>/dev/null; then
-    echo "TASK_FAILED: Codex process exited without writing handoff"
-    break
-  fi
-  sleep 2
-done
-```
-
-For Claude workers, use the Agent tool with the brief content.
-
-3. **Handle result** -- TASK_COMPLETE, TASK_FAILED, or timeout.
+2. **Dispatch worker** -- use the dispatch script from `/mission` Phase 8 Step 2 (Bash with `run_in_background: true` for Codex, Agent tool for Claude).
+3. **Handle result** -- TASK_COMPLETE or TASK_FAILED, per `/mission` Phase 8 Step 3.
 4. **Scrutiny validation** -- spawn Claude subagent with the full 11-step check sequence:
    1. Test presence gate (auto-FAIL if no new tests)
    2. Build
@@ -153,9 +118,10 @@ If Phase 3a detected a mid-cycle task, resume from the appropriate step rather t
 When all tasks are checked in tasks.md:
 
 1. Create a draft PR using `gh pr create --draft` with a mission summary (tasks, validation results, issues, stats).
-2. Run dual adversarial review against the full diff (`git diff <base-branch>...HEAD`):
-   - Reviewer A (engine from config.yaml, default codex) via Monitor
-   - Reviewer B (engine from config.yaml, default claude) via Agent tool
+2. Run dual adversarial review against the full diff (`git diff <base-branch>...HEAD`) following `/mission` Phase 9's Dual Adversarial Review section:
+   - Reviewer A (engine from config.yaml, default codex) dispatched first via Bash with `run_in_background: true` (returns a shell task ID)
+   - Reviewer B (engine from config.yaml, default claude) dispatched via Agent tool, which blocks until it returns
+   - When B returns, call BashOutput on A's shell task ID to retrieve its terminal line
    - Both receive the full diff and the full contract
    - Reports written to `mission/validations/adversarial-a.md` and `adversarial-b.md`
 3. Present both reports to the human alongside the draft PR link.
