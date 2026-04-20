@@ -47,12 +47,15 @@ Enter plan mode immediately. Write a durable operating manual as the plan. This 
 
 Write this plan, filling in values as they become known. Read the plan structure from [templates/plan.md](templates/plan.md).
 
+To fill in the **Darkfactory SHA** field, run `git -C ~/.darkfactory rev-parse HEAD`; if `git -C ~/.darkfactory status --porcelain` returns anything, append `-dirty` to the SHA. Paste the result into the plan. If `~/.darkfactory` does not exist (non-standard install), resolve the darkfactory clone path from the symlink target of `~/.claude/skills/mission` and use that instead.
+
 ### First Action
 
 Check if `UBIQUITOUS_LANGUAGE.md` exists in the repo root. If it does, read it now so all phases use consistent terminology.
 
 **Gate -- proceed when:**
 - [ ] Plan is written and active in plan mode
+- [ ] Darkfactory SHA captured in plan
 - [ ] UBIQUITOUS_LANGUAGE.md checked (read if exists, noted if absent)
 
 ---
