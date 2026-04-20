@@ -19,7 +19,7 @@ SHA: <commit-sha>
 3. **Check each contract assertion:** For each assertion, run the appropriate test. Mark PASS, FAIL, or SKIP.
    - PASS: The assertion is demonstrably true.
    - FAIL: The assertion is demonstrably false, or the test reveals a bug.
-   - SKIP: The assertion cannot be tested from outside (e.g., internal refactor). Provide a reason.
+   - SKIP: The assertion cannot be tested from outside (e.g., internal refactor) or the work is deferred to a later task. Provide a reason. If deferred to a later task, append to `mission/deferrals.md` as `task N -- <assertion>`.
 
 ## Output Format
 

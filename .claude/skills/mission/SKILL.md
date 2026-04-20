@@ -203,7 +203,7 @@ Every mission's tasks.md MUST include these closing tasks after all feature task
 
    Write the findings to `mission/validations/module-shape-audit.md` -- a short free-form note listing each module, whether drift was found, and what was done about it ("no drift," "design.md updated," or "refactored"). No required format; the file exists as a record that the check happened.
 
-4. **Documentation task (mandatory).** Write or update documentation for what was built. The orchestrator recommends the documentation scope based on what the feature tasks produce -- this varies by mission type. Not every mission needs install instructions, architecture diagrams, or API docs. Use terms from `UBIQUITOUS_LANGUAGE.md` consistently. If unsure what documentation is needed, ask the human during this review.
+4. **Documentation task (mandatory).** Write or update documentation for what was built. The orchestrator recommends the documentation scope based on what the feature tasks produce -- this varies by mission type. Not every mission needs install instructions, architecture diagrams, or API docs. Use terms from `UBIQUITOUS_LANGUAGE.md` consistently. Any commands shown in docs must be executed against the built artifacts and the actual output pasted -- don't show output that wasn't produced. If unsure what documentation is needed, ask the human during this review.
 
 5. **CI configuration task (optional).** Add or update CI/CD pipeline configuration. The orchestrator recommends whether to include this based on the change scope. The human decides during this review.
 
@@ -643,6 +643,8 @@ Run the project's build, test, lint, and format commands against the full reposi
 - Tests: do all tests pass?
 - Lint: zero warnings (e.g., `cargo clippy -- -D warnings`, `eslint .`)
 - Format: zero diffs (e.g., `cargo fmt --check`, `prettier --check .`)
+
+Also check `mission/deferrals.md`. If the file exists and contains entries, present them to the human: each line is a SKIP'd assertion from an earlier task that was supposed to be picked up later. For each, the human decides: accept (the deferral is fine), resolve (spawn a fix task to cover it), or dispute (the assertion was never actually deferred). Clear the file before proceeding once the human has ruled on every entry.
 
 **If all gates pass:** Log to progress.md: `<timestamp> -- Final gates PASSED.` Proceed to the spec delta check.
 

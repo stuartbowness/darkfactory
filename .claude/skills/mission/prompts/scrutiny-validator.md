@@ -44,7 +44,7 @@ Run these checks in order. For each, report PASS or FAIL with evidence.
 
 9. **Security review:** If the diff touches auth, secrets, user input, or network boundaries, run /security-review. Otherwise "N/A."
 
-10. **Contract assertions:** For each assertion in the contract, check it against the diff and test results. Mark each assertion PASS or FAIL with a one-line explanation.
+10. **Contract assertions:** Mark each assertion PASS, FAIL, or SKIP with a one-line explanation. SKIPs for work deferred to later tasks: append to `mission/deferrals.md` as `task N -- <assertion>`.
 
 11. **Behavioral conformance:** For each assertion that describes observable behavior (CLI output, exit codes, file content, API response, shell behavior), write and execute a minimal test script that verifies the behavior by actually running the code. Do not rely solely on reading the code -- run it. Examples:
     - CLI flag assertion: run the binary with the flag, check output
