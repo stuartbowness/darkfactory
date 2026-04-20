@@ -754,7 +754,11 @@ Full reports at:
 - mission/validations/adversarial-b.md
 
 Review the PR and the adversarial findings. You decide what to address.
-After merge, run /opsx:archive to archive the change.
+After merge:
+1. Run /opsx:archive to move the change files to the archive directory
+2. Commit and push the archive move:
+   - If main is unprotected: `git checkout main && git pull && git add openspec/ && git commit -m "chore: archive <change-name>" && git push`
+   - If main is protected: create a branch (`git checkout -b archive/<change-name>`), commit, push, open a PR, merge it
 ```
 
 Update plan status to COMPLETE.
