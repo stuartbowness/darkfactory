@@ -298,6 +298,7 @@ Create `contract.md` in the change directory (`openspec/changes/<change-name>/co
 4. Be specific and unambiguous. A validator reading only the contract and the diff should be able to check every assertion without guessing.
 5. Workers never see this file.
 6. **Write the minimum set of assertions needed to verify the task is complete and correct.** Each assertion should trace to a specific PRD requirement, including error behaviors specified in the PRD or specs. Do not add assertions for edge cases, nice-to-haves, or defensive behaviors unless the PRD explicitly requires them. If an assertion would not cause you to reject the task when it fails, do not include it.
+7. **Include at least one error-path assertion per task that introduces fallible operations.** If the task adds error handling, Result types, try/catch, or exit codes, include an assertion that verifies what happens when the dependency is missing, the input is malformed, or the operation fails. Workers optimize for making assertions pass -- if all assertions are happy-path, error handling will be untested.
 
 ### Cross-Referencing the PRD
 

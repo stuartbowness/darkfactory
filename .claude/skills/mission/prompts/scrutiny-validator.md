@@ -50,7 +50,7 @@ Run these checks in order. For each, report PASS or FAIL with evidence.
 
 8. **Code simplify:** Run /simplify against the changed files. 
 
-9. **Security review:** If the diff touches auth, secrets, user input, or network boundaries, run /security-review. Otherwise "N/A."
+9. **Security review:** If the diff touches auth, secrets, user input, network boundaries, or filesystem trust boundaries (copying/moving/promoting files between directories, extracting archives, sandbox-to-production transfers), run /security-review. Otherwise "N/A."
 
 10. **Contract assertions:** Mark each assertion PASS, FAIL, or SKIP with a one-line explanation. SKIPs for work deferred to later tasks: append to `mission/deferrals.md` as `task N -- <assertion>`.
 
