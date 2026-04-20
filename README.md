@@ -45,7 +45,7 @@ After each worker finishes, two validators check the work:
    - Code review and code standards check
    - Module depth review -- did the change make modules shallower or leak internal details?
    - Complexity check -- is the code more complex than it needs to be?
-   - Security review (only when the changes touch auth, secrets, or input handling)
+   - Security review (only when the changes touch auth, secrets, input handling, or filesystem trust boundaries)
    - Contract check -- does the code do what the contract says it should?
    - Execution check -- actually runs the code to confirm it works, rather than just reading the source
 
@@ -194,7 +194,7 @@ The skills above are bundled in this repo. But `/mission` also calls other skill
 | `/tdd` | [layercodedev/skills](https://github.com/layercodedev/skills/tree/main/tdd) | Build phase: workers use test-driven development |
 | `/review` | Built-in Claude Code (required) | Scrutiny validator: code review step |
 | `/simplify` | Built-in Claude Code (required) | Scrutiny validator: complexity check step |
-| `/security-review` | Your global Claude skills (conditional) | Scrutiny validator: security audit, only runs when the diff touches auth, secrets, or input handling |
+| `/security-review` | Your global Claude skills (conditional) | Scrutiny validator: security audit, only runs when the diff touches auth, secrets, input handling, or filesystem trust boundaries |
 | `/test-app` | Your project's Claude skills (optional) | User-test validator: browser-based testing |
 | `/demo-video` | Your project's Claude skills (optional) | Records a demo of frontend changes after validation passes |
 | `openspec` CLI | Installed by `npm install -g openspec` | Planning phase: creates the structured artifacts (proposal, specs, design, tasks) |
