@@ -25,13 +25,21 @@ Run these checks in order. For each, report PASS or FAIL with evidence.
    - Breaking changes: API contract changes, removed exports, changed behavior
    Report findings by severity (critical / warning / nit) with file:line references.
 
-6. **Module depth review:** For each file the diff touches, assess whether the change made the module shallower. A deep module has a small interface hiding a large implementation (Ousterhout, "A Philosophy of Software Design"). Check for:
-   - **Interface widening:** Did the diff add new public items (functions, types, classes, endpoints, exports) that don't hide at least 3 internal branches, match arms, or await points behind the interface? The test: if removing the new export would force callers to duplicate 3+ branches or non-inlineable control flow, it is deep. If callers could inline it in one line, it is shallow. Exception: facade and adapter modules exist specifically to present a stable interface over an unstable dependency -- thin delegation is their purpose, not a flaw. Similarly, Go packages with many small exported functions, Python `__init__.py` re-exports, and framework-required patterns (Next.js route handlers, Rust trait impls) are idiomatic, not shallow.
-   - **Information leaking:** Does the public interface expose internal representations that callers should not depend on? Examples: returning raw database row types from a service function, exposing wire-format enums in a domain API, leaking internal error variants through public result types. Deep modules hide design decisions behind domain types.
-   - **Premature splitting:** Did the diff introduce multiple new files whose public APIs all serve the same caller-facing concern (same struct/enum, same workflow step) where one module would suffice? The test: if the diff itself created files A, B, and C, and none of them has independent callers outside the group, they should be one module. More files is not better architecture. A module that combines related concerns (e.g., buffering + caching + I/O in a file stream) behind a small interface is deep, not over-scoped -- do not flag it.
-   - **Deep module preserved:** If a file is large but has a small public interface and hides significant implementation, that is correct. Do not flag it. Large files are fine when they are deep modules.
-   
-   Report: for each structural issue found, name the module, describe what interface widened or what internal detail leaked, and recommend a specific fix. If the module structure is clean, report "No structural issues."
+6. **Module depth review:** Evaluate whether the PR changes module depth in a healthy direction. Deep modules (narrow interface, rich hidden behaviour) are the design ideal. Shallow modules (wide interface relative to what they hide) are the design liability.
+
+   Flag any of the following:
+
+   - **Interface widening:** A module gains new public methods, exported symbols, or required parameters without a commensurate increase in hidden complexity. Each new surface point is a coupling tax on every caller; justify it. If removing the new export would force callers to duplicate 3+ branches or non-inlineable control flow, it is deep; if callers could inline it in one line, it is shallow. Facade and adapter modules, and idiomatic or framework-required patterns where thin delegation is the convention — for example, TypeScript barrel re-exports (`index.ts`), Python `__init__.py` re-exports, Next.js route handlers, or Rust trait impls — are not shallow-module violations.
+   - **Information leaking:** Implementation details — internal types, error codes, processing order, config shape — surface in the public interface or in caller code that now has to know them.
+   - **Premature splitting:** One coherent abstraction is divided into two or more shallower modules whose combined interface is wider than the original and whose separation does not reflect a genuine domain boundary. If the diff created files A, B, and C and none of them has independent callers outside the group, they should be one module.
+   - **Overgrown shallow module:** A module that was already shallow accumulates more interface without gaining proportional depth.
+   - **Deep module preserved or deepened (safe harbour):** The change keeps the interface stable or narrows it while adding or consolidating hidden behaviour. This is the target state; note it briefly and move on. Do not flag large generated files, schemas, fixtures, localization data, snapshots, SVG/assets, lockfiles, or test data as module-depth failures.
+
+   Verdict guidance:
+   - PASS when any interface addition is minor, justified by hidden complexity, or required by an idiomatic/framework pattern; when module boundaries stay stable or become narrower; and when any split modules have independent callers or clear domain boundaries.
+   - FAIL when the diff creates systematic interface widening, leaks implementation details into public interfaces or callers, splits one coherent abstraction into files without independent callers or domain boundaries, or adds surface area to an already shallow module without proportional hidden complexity.
+
+   Report: write one bullet per individual finding instance; state which symbol or boundary is affected and why it matters for depth. If nothing flagged, write 'No module depth issues.'
 
 7. **Code standards check:** Review the diff for these specific anti-patterns. Flag any found:
    - Backwards-compatibility code: old code paths kept "just in case" (renamed `_` variables, re-exports of removed types, `// removed` comments, deprecated shims). If unused, it should be deleted.
