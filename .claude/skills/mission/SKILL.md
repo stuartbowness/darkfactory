@@ -8,7 +8,7 @@ flow: align -> spec -> contract -> build -> validate -> ship
 
 1. **Serial execution.** One worker at a time. Never dispatch two workers in parallel. (Exception: the two adversarial reviewers in Phase 9 run in parallel since they are independent read-only reviewers.)
 2. **Adversarial separation.** Workers never see `contract.md`. Validators never see `proposal.md` or `design.md`.
-3. **Both per-task validators re-run after every fix.** Even if only one failed, both scrutiny and user-test re-run to catch regressions. Adversarial review runs once at the end, not per task.
+3. **Both per-task validators re-run after every fix.** Even if only one failed, both scrutiny and user-test re-run to catch regressions. Exception: Phase 9 gate fixes run scrutiny only. Adversarial review runs once at the end, not per task.
 4. **Circuit breaker at 3.** After 3 failed attempts on the same task, stop and ask the human. Retry allows one more attempt but does NOT reset the counter.
 5. **File-backed state.** All decisions and status go to disk. The mission must be resumable from files alone.
 6. **Single commit per task.** One task, one worker, one commit, one validation cycle.
@@ -193,6 +193,8 @@ Each task must be a **vertical slice**: a thin end-to-end path through all layer
 
 A task is good if you can demo it and verify it independently after it lands.
 
+When a task adds public surface area to a module (new exports, API endpoints, CLI flags), include the implementation behind that surface in the same task. Do not split a module's interface from its implementation across tasks -- the per-task validator judges depth from a single diff and will flag an interface without the work behind it.
+
 #### Mandatory Closing Tasks
 
 Every mission's tasks.md MUST include these closing tasks after all feature tasks:
@@ -293,11 +295,11 @@ Create `contract.md` in the change directory (`openspec/changes/<change-name>/co
 ### Contract Rules
 
 1. Group assertions by task, matching the task list in tasks.md.
-2. Every assertion must describe **observable behavior** verifiable from outside the code (HTTP response, CLI output, file on disk, UI state, build passing, etc.).
+2. Assertions should describe **observable behavior** verifiable from outside the code (HTTP response, CLI output, file on disk, UI state, build passing, etc.). Where this is genuinely not possible, use `[inspection]` assertions -- see the verification method tags in the contract template for caps.
 3. Do NOT reference implementation details (function names, variable names, internal data structures).
 4. Be specific and unambiguous. A validator reading only the contract and the diff should be able to check every assertion without guessing.
 5. Workers never see this file.
-6. **Write the minimum set of assertions needed to verify the task is complete and correct.** Each assertion should trace to a specific PRD requirement, including error behaviors specified in the PRD or specs. Do not add assertions for edge cases, nice-to-haves, or defensive behaviors unless the PRD explicitly requires them. If an assertion would not cause you to reject the task when it fails, do not include it.
+6. **Write the minimum set of assertions needed to verify the task is complete and correct.** Each assertion should trace to a specific PRD requirement, including error behaviors specified in the PRD or specs. Do not add assertions for edge cases, nice-to-haves, or defensive behaviors unless the PRD explicitly requires them. If an assertion would not cause you to reject the task when it fails, do not include it. Place assertions on the earliest task where they become verifiable -- if a behavior spans multiple tasks, put the assertion on the task where it can first be checked, not where the work begins.
 
 ### Cross-Referencing the PRD
 
