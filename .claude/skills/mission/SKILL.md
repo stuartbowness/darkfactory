@@ -104,7 +104,7 @@ Run `/ubiquitous-language` to create or update `UBIQUITOUS_LANGUAGE.md`.
 
 Run `/write-a-prd` to turn the grill conversation into a structured product requirements document. Use terms from `UBIQUITOUS_LANGUAGE.md` consistently throughout the PRD. The PRD captures: problem statement, solution, user stories, implementation decisions, testing decisions, and out-of-scope items.
 
-After the issue is created, add the `darkfactory` label to it: `gh issue edit <number> --add-label darkfactory` (create the label first if it does not exist: `gh label create darkfactory`). Record both the issue URL and the issue number in the plan (under Spec Coverage Audit). The issue number is needed in Phase 9 to link the draft PR back to the issue.
+After the issue is created, record both the issue URL and the issue number in the plan (under Spec Coverage Audit). The issue number is needed in Phase 9 to link the draft PR back to the issue.
 
 **Gate -- proceed when:**
 - [ ] PRD filed as GitHub issue
@@ -682,7 +682,7 @@ Log the human's decision for each discrepancy to progress.md.
 
 ### Create Draft PR
 
-Create a **draft** pull request using `gh pr create --draft --label darkfactory`. Never create a ready-for-review PR. Use the PR body template below. The `Closes #<N>` directive in the PR body will auto-close the PRD issue when the PR merges.
+Create a **draft** pull request using `gh pr create --draft`. Never create a ready-for-review PR. Use the PR body template below. The `Closes #<N>` directive in the PR body will auto-close the PRD issue when the PR merges.
 
 #### PR Body Template
 
