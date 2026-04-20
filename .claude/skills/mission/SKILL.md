@@ -421,7 +421,7 @@ mkdir -p openspec/changes/<change-name>/mission/{briefs,handoffs,validations,iss
 > **Inputs:** tasks.md, contract.md, coverage-audit.md, config.yaml
 > **Outputs:** Human approval, progress.md updated, plan status = BUILDING
 
-Ensure a feature branch. If `$(git rev-parse --abbrev-ref HEAD)` equals `$(gh api repos/:owner/:repo --jq .default_branch)` (or `main` if that fails), run `git checkout -b "mission/<change-name>"` and log the checkout to progress.md.
+Ensure a feature branch. If `git rev-parse --abbrev-ref HEAD` equals `gh api repos/{owner}/{repo} --jq .default_branch` (abort Phase 7 if that gh call fails -- it means no GitHub remote or bad auth), run `git checkout -b mission/<change-name>` -- or with a timestamp suffix if that branch already exists. Log the checkout to progress.md.
 
 Show the user a summary dashboard:
 1. **Mission overview** -- change name, total tasks (feature + closing), total contract assertions
@@ -765,7 +765,7 @@ Full reports at:
 - mission/validations/adversarial-b.md
 
 Review the PR and the adversarial findings. You decide what to address.
-If you decide not to ship this mission (reviewers found blockers, priorities changed), close the draft PR and the PRD issue yourself: `gh pr close <PR> --delete-branch` and `gh issue close <PRD> --reason "not planned"`. The orchestrator only handles the happy path and circuit-breaker abort.
+If you decide not to ship this mission (reviewers found blockers, priorities changed), close the draft PR and the PRD issue yourself: `gh pr close <PR number> --delete-branch` and `gh issue close <PRD issue number> --reason "not planned"`. Stop here -- do not proceed to the After merge steps below. The orchestrator only handles the happy path and circuit-breaker abort.
 After merge:
 1. Run /opsx:archive to move the change files to the archive directory
 2. Commit and push the archive move:
