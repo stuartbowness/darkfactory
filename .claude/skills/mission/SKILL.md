@@ -477,9 +477,11 @@ BRIEF_CONTENT=$(cat "$BRIEF_PATH")
 find /tmp -mindepth 1 -maxdepth 1 -user "$(whoami)" -mmin +30 -not -name "claude-*" \( -type f -delete -o -type d -exec rm -rf {} + \) 2>/dev/null
 
 # Run Codex, redirect stdout+stderr to log file (agent reads log only on failure; no mid-run output lands in agent context)
+# sandbox_workspace_write.writable_roots=[".git"] lets the worker git commit inside the sandbox (workspace-write blocks .git/ by default)
 codex exec \
   --full-auto \
   --sandbox workspace-write \
+  -c 'sandbox_workspace_write.writable_roots=[".git"]' \
   -m gpt-5.4 \
   -c model_reasoning_effort="high" \
   -o "$HANDOFF_PATH" \
