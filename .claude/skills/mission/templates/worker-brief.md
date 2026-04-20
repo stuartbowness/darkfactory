@@ -36,6 +36,9 @@ Example:
 - Endpoints: POST /api/auth/login (body: {email, password}) → 200 {token: string}
 >
 
+## Downstream Consumers
+<Which later tasks in tasks.md will call this code? For each, name one minimum integration test that proves the call path works. Leave empty if no later task consumes this one.>
+
 ## Procedures
 - Use `/tdd` to implement this task
 - Commit all changes (code + tests) in a single commit with message: "[task-N] <description>"
