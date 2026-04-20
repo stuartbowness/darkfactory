@@ -5,6 +5,10 @@
 ## State Directory
 openspec/changes/<change-name>/mission/
 
+## Darkfactory SHA
+<full SHA of ~/.darkfactory at plan-creation time; append "-dirty" if working tree has uncommitted changes>
+Captured so this mission can be reproduced against the exact skill version that ran it.
+
 ## OpenSpec Artifacts
 - Proposal: openspec/changes/<change-name>/proposal.md
 - Specs: openspec/changes/<change-name>/specs/<capability>/spec.md (one per capability)
