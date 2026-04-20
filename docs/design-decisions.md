@@ -54,7 +54,7 @@ Validators receive: commit SHA + contract assertions. They do NOT receive propos
 ## Key Design Decisions
 
 ### Bash run_in_background for external processes
-- Long-running external processes (Codex workers, Codex adversarial reviews) run via Bash with `run_in_background: true`, teed to a log file under `mission/logs/`
+- Long-running external processes (Codex workers, Codex adversarial reviews) run via Bash with `run_in_background: true`, with stdout+stderr redirected to a log file under `mission/logs/`
 - Claude subagent validators use the Agent tool directly since they run within the session
 - The log file lets the human watch progress in another terminal (`tail -f`) without the agent paying context cost for mid-run events
 

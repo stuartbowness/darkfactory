@@ -118,9 +118,10 @@ If Phase 3a detected a mid-cycle task, resume from the appropriate step rather t
 When all tasks are checked in tasks.md:
 
 1. Create a draft PR using `gh pr create --draft` with a mission summary (tasks, validation results, issues, stats).
-2. Run dual adversarial review against the full diff (`git diff <base-branch>...HEAD`):
-   - Reviewer A (engine from config.yaml, default codex) via Bash with `run_in_background: true`
-   - Reviewer B (engine from config.yaml, default claude) via Agent tool
+2. Run dual adversarial review against the full diff (`git diff <base-branch>...HEAD`) following `/mission` Phase 9's Dual Adversarial Review section:
+   - Reviewer A (engine from config.yaml, default codex) dispatched first via Bash with `run_in_background: true` (returns a shell task ID)
+   - Reviewer B (engine from config.yaml, default claude) dispatched via Agent tool, which blocks until it returns
+   - When B returns, call BashOutput on A's shell task ID to retrieve its terminal line
    - Both receive the full diff and the full contract
    - Reports written to `mission/validations/adversarial-a.md` and `adversarial-b.md`
 3. Present both reports to the human alongside the draft PR link.
