@@ -696,31 +696,41 @@ Since the PR is created as a draft, the issue stays open until the developer pro
 
 ### Dual Adversarial Review
 
-After the draft PR is created, run a final adversarial review against the full diff of all mission commits.
+After the draft PR is created, run a final adversarial review that walks every mission commit one at a time, groups findings by task, and does a final cross-task pass. Reviewers do not read the full diff in one go -- that stalls on large missions. The per-commit loop keeps each read bounded.
 
 Run two independent reviewers in parallel:
 - **Reviewer A** (engine from `adversarial_reviewer_a` in config.yaml, default: codex) -- dispatched via Bash with `run_in_background: true`
 - **Reviewer B** (engine from `adversarial_reviewer_b` in config.yaml, default: claude) -- dispatched via Agent tool
 
-Both receive the full diff (`git diff <base-branch>...HEAD`) and the full contract.md.
+Both receive a **pinned base SHA** (the merge-base of `<base-branch>` and HEAD, resolved once up front), the full contract.md, and the report path. The prompt instructs each reviewer to run `git log --reverse --format="%h %s" <base-sha>..HEAD` itself and iterate. Pinning avoids the review scope shifting if `<base-branch>` moves during the review.
+
+Before dispatching either reviewer, compute the base SHA:
+
+```bash
+BASE_SHA=$(git merge-base <base-branch> HEAD)
+if [ -z "$BASE_SHA" ]; then
+  echo "ABORT: could not resolve merge-base for <base-branch>..HEAD"
+  exit 1
+fi
+```
+
+Pass `$BASE_SHA` into both reviewer prompts.
 
 #### Adversarial Reviewer Prompt (used for both A and B)
 
-Read [prompts/adversarial-reviewer.md](prompts/adversarial-reviewer.md) and use it as the subagent prompt. Fill in the base branch, diff command, and full contract.md content.
+Read [prompts/adversarial-reviewer.md](prompts/adversarial-reviewer.md) and use it as the subagent prompt. Fill in the base SHA (from `$BASE_SHA` above), the full contract.md content, and the absolute report path.
 
 #### Reviewer A Dispatch Script (codex)
 
 ```bash
 REPORT_PATH="<absolute path to mission/validations/adversarial-a.md>"
 LOG_PATH="<absolute path to mission/logs/adversarial-a-codex.log>"
-DIFF_PATH=$(mktemp /tmp/mission-diff.XXXXXX)
-PROMPT_PATH=$(mktemp /tmp/mission-diff.XXXXXX)
+PROMPT_PATH=$(mktemp /tmp/mission-prompt.XXXXXX)
 
-# Guard mission-diff* from the stale temp cleanup
-find /tmp -mindepth 1 -maxdepth 1 -user "$(whoami)" -mmin +30 -not -name "claude-*" -not -name "*mission-diff*" \( -type f -delete -o -type d -exec rm -rf {} + \) 2>/dev/null
+# Guard mission-prompt* from the stale temp cleanup
+find /tmp -mindepth 1 -maxdepth 1 -user "$(whoami)" -mmin +30 -not -name "claude-*" -not -name "*mission-prompt*" \( -type f -delete -o -type d -exec rm -rf {} + \) 2>/dev/null
 
-git diff <base-branch>...HEAD > "$DIFF_PATH"
-# Write the adversarial-reviewer.md prompt content to $PROMPT_PATH with the diff path and contract.md content filled in
+# Write the adversarial-reviewer.md prompt content to $PROMPT_PATH with $BASE_SHA, contract.md content, and report path filled in
 
 codex exec \
   --full-auto \
@@ -732,7 +742,7 @@ codex exec \
   > "$LOG_PATH" 2>&1
 
 EXIT=$?
-rm -f "$DIFF_PATH" "$PROMPT_PATH"
+rm -f "$PROMPT_PATH"
 
 if [ $EXIT -eq 0 ] && [ -f "$REPORT_PATH" ]; then
   echo "REVIEW_COMPLETE: report written"

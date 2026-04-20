@@ -54,7 +54,7 @@ After all tasks complete:
 11. Run final gates (build, test, lint, format)
 12. Run spec delta check against coverage audit
 13. Create draft PR
-14. Run dual adversarial review (Codex + Claude) against full diff
+14. Run dual adversarial review (Codex + Claude): each walks mission commits one at a time, groups findings by task, then does a cross-task pass
 15. Present both reports to human alongside PR link
 
 ## Rules
