@@ -10,6 +10,46 @@ No custom IDE or framework required. Darkfactory is built from Claude Code's own
 
 Inspired by [Factory's Missions architecture](https://www.factory.ai/) and [Matt Pocock's AI development skills](https://github.com/mattpocock/skills).
 
+## Setup
+
+### Prerequisites
+
+- [Claude Code](https://docs.anthropic.com/en/docs/claude-code) installed and authenticated
+- [OpenSpec CLI](https://github.com/Fission-AI/OpenSpec) installed (`npm install -g openspec`)
+- [Codex CLI](https://github.com/openai/codex) installed (`npm install -g @openai/codex`) and authenticated (`codex login`)
+- [GitHub CLI](https://cli.github.com/) installed and authenticated (`gh auth login`) -- used for filing the PRD as a GitHub issue and creating draft PRs
+- A git repository to work in
+
+### First-time install
+
+Clone Darkfactory and symlink its skills into your global Claude Code skills directory:
+
+```bash
+git clone https://github.com/layercodedev/darkfactory.git ~/.darkfactory
+ln -sf ~/.darkfactory/.claude/skills/mission ~/.claude/skills/mission
+ln -sf ~/.darkfactory/.claude/skills/mission-resume ~/.claude/skills/mission-resume
+ln -sf ~/.darkfactory/.claude/skills/mission-status ~/.claude/skills/mission-status
+ln -sf ~/.darkfactory/.claude/skills/darkfactory-init ~/.claude/skills/darkfactory-init
+```
+
+Symlinks mean the skills always point to your local clone, so updating is just a `git pull` (see below).
+
+Restart Claude Code, then from any project run:
+
+```
+/darkfactory-init
+```
+
+This checks your entire setup and tells you exactly what's missing. It verifies core skills, supporting skills, CLI tools (codex, gh, openspec), and initializes OpenSpec in the current project if needed.
+
+### Updating
+
+Since skills are symlinked to your clone, pulling updates everything:
+
+```bash
+cd ~/.darkfactory && git pull
+```
+
 ## What it does
 
 A mission is the core unit of work. It takes you from a goal ("build user authentication") to a validated draft PR, through three stages.
@@ -201,46 +241,6 @@ The skills above are bundled in this repo. But `/mission` also calls other skill
 | `/opsx:archive` | Installed by `openspec init` | Post-merge: moves the change's planning files into the OpenSpec archive directory |
 
 `/review` and `/simplify` are mandatory -- the scrutiny validator always runs them. `/security-review` only runs when relevant. `/test-app` and `/demo-video` are optional and project-specific -- you write these yourself for your project if you want browser testing or demo recordings.
-
-## Setup
-
-### Prerequisites
-
-- [Claude Code](https://docs.anthropic.com/en/docs/claude-code) installed and authenticated
-- [OpenSpec CLI](https://github.com/Fission-AI/OpenSpec) installed (`npm install -g openspec`)
-- [Codex CLI](https://github.com/openai/codex) installed (`npm install -g @openai/codex`) and authenticated (`codex login`)
-- [GitHub CLI](https://cli.github.com/) installed and authenticated (`gh auth login`) -- used for filing the PRD as a GitHub issue and creating draft PRs
-- A git repository to work in
-
-### First-time install
-
-Clone Darkfactory and symlink its skills into your global Claude Code skills directory:
-
-```bash
-git clone https://github.com/layercodedev/darkfactory.git ~/.darkfactory
-ln -sf ~/.darkfactory/.claude/skills/mission ~/.claude/skills/mission
-ln -sf ~/.darkfactory/.claude/skills/mission-resume ~/.claude/skills/mission-resume
-ln -sf ~/.darkfactory/.claude/skills/mission-status ~/.claude/skills/mission-status
-ln -sf ~/.darkfactory/.claude/skills/darkfactory-init ~/.claude/skills/darkfactory-init
-```
-
-Symlinks mean the skills always point to your local clone, so updating is just a `git pull` (see below).
-
-Restart Claude Code, then from any project run:
-
-```
-/darkfactory-init
-```
-
-This checks your entire setup and tells you exactly what's missing. It verifies core skills, supporting skills, CLI tools (codex, gh, openspec), and initializes OpenSpec in the current project if needed.
-
-### Updating
-
-Since skills are symlinked to your clone, pulling updates everything:
-
-```bash
-cd ~/.darkfactory && git pull
-```
 
 ### Configuration
 
