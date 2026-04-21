@@ -520,7 +520,12 @@ Use the Agent tool to spawn a subagent. Pass the full brief content as the promp
 Read the handoff file at `mission/handoffs/task-N.md`.
 
 - **TASK_COMPLETE** (handoff exists and contains a commit SHA): Extract the commit SHA. Log to progress.md: `<timestamp> -- Task N: worker completed. Commit: <SHA>`. Proceed to Step 4.
-- **TASK_FAILED** (handoff missing or no commit SHA): Log to progress.md: `<timestamp> -- Task N: worker FAILED. <reason>`. Ask the human: retry, skip, or abort. If skip: mark the task as `- [~]` in tasks.md and log `<timestamp> -- Task N: SKIPPED by human.` to progress.md. The build loop ignores `- [~]` tasks.
+- **TASK_FAILED** (handoff missing or no commit SHA):
+  1. If engine is `codex` and this is the first failure for this task: log to progress.md: `<timestamp> -- Task N: codex worker failed. Falling back to claude worker.` Then dispatch a claude worker (Opus 4.6, extended thinking high) using the existing "If engine is `claude`" dispatch path with the same brief. Wait for the result.
+     - If the claude fallback produces `TASK_COMPLETE`: log to progress.md: `<timestamp> -- Task N: claude fallback succeeded. Commit: <SHA>.` Proceed to Step 4.
+     - If the claude fallback also fails: fall through to the human escalation below.
+  2. Human escalation (reached when: engine is `claude`, engine is `codex` and both attempts failed, or any second failure): log to progress.md: `<timestamp> -- Task N: worker FAILED. <reason>.` Ask the human: retry, skip, or abort. If skip: mark the task as `- [~]` in tasks.md and log `<timestamp> -- Task N: SKIPPED by human.` to progress.md. The build loop ignores `- [~]` tasks.
+  3. On the next task, revert to the configured engine. This fallback is per-task only.
 
 ### Step 4: Scrutiny Validation
 
