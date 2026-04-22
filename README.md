@@ -1,5 +1,7 @@
 # Darkfactory
 
+![Darkfactory](docs/darkfactory-header.jpeg)
+
 Darkfactory lets you describe what you want to build, and then multiple AI agents plan the work, write the code, check each other's work, and deliver a draft pull request. It runs inside [Claude Code](https://docs.anthropic.com/en/docs/claude-code).
 
 No custom IDE or framework required. Darkfactory is built from Claude Code's own features:
@@ -107,53 +109,7 @@ You review the findings, promote the PR from draft to ready, and merge.
 
 ## Architecture
 
-```
-                                You
-                                 │
-                          /mission skill
-                                 │
-                           Orchestrator
-                                 │
-                                 ▼
-    ┌────────────────────────────────────────────────────┐
-    │  Spec phase                                        │
-    │                                                    │
-    │  Grill you for alignment, establish shared         │
-    │  language, write a PRD, then generate and          │
-    │  review each artifact: proposal, specs,            │
-    │  design, tasks. Run a coverage audit that          │
-    │  classifies any deviations from the spec.          │
-    │  Write a validation contract.                      │
-    │                                                    │
-    │  ◄── you review and approve each step              │
-    └──────────────────────────┬─────────────────────────┘
-                               ▼
-    ┌────────────────────────────────────────────────────┐
-    │  Build phase                                       │
-    │                                                    │
-    │  For each task: dispatch a worker (Codex or        │
-    │  Claude), then run scrutiny validation (build,     │
-    │  test, lint, code review, contract assertions,     │
-    │  behavioral conformance) and user-test             │
-    │  validation (HTTP and browser checks). On          │
-    │  failure, a fix worker addresses the issues        │
-    │  and both validators re-run.                       │
-    │                                                    │
-    │  Autonomous until circuit breaker (3 attempts)     │
-    └──────────────────────────┬─────────────────────────┘
-                               ▼
-    ┌────────────────────────────────────────────────────┐
-    │  Completion                                        │
-    │                                                    │
-    │  Re-run build, test, lint, and format gates        │
-    │  on the full repo. Verify every covered item       │
-    │  from the spec audit is actually in the code.      │
-    │  Create a draft PR. Run dual adversarial           │
-    │  review (Codex + Claude in parallel).              │
-    │                                                    │
-    │  ◄── you review findings and merge                 │
-    └────────────────────────────────────────────────────┘
-```
+![Darkfactory architecture diagram](docs/architecture.png)
 
 ### Three roles
 
