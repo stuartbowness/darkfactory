@@ -487,7 +487,7 @@ codex exec \
   --full-auto \
   --sandbox workspace-write \
   -c 'sandbox_workspace_write.writable_roots=[".git"]' \
-  -m gpt-5.4 \
+  -m gpt-5.5 \
   -c model_reasoning_effort="high" \
   -o "$HANDOFF_PATH" \
   "$BRIEF_CONTENT" \
@@ -745,7 +745,7 @@ find /tmp -mindepth 1 -maxdepth 1 -user "$(whoami)" -mmin +30 -not -name "claude
 codex exec \
   --full-auto \
   --sandbox workspace-write \
-  -m gpt-5.4 \
+  -m gpt-5.5 \
   -c model_reasoning_effort="high" \
   -o "$REPORT_PATH" \
   "$(cat "$PROMPT_PATH")" \

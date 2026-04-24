@@ -1,5 +1,0 @@
-engines:
-  worker: claude
-  scrutiny_validator: claude
-  usertest_validator: claude
-  demo_video: claude
