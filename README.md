@@ -268,8 +268,6 @@ The workflow scales naturally to match the size of the work. A small bug fix pro
 
 The first version was hand-written during a `/grill-me` session that produced the design decisions and shared vocabulary. The second version was built by Darkfactory itself -- Claude workers generated the skills from the specs, and a Codex code review caught issues that a fix worker addressed. Everything since then has been iterative improvement, and the system is still actively evolving.
 
-The original self-build artifacts are in `archive/` (ignored by Claude via `.claudeignore`).
-
 ## Key references
 
 - [Factory Missions talk](docs/reference_factory_talk.md) -- the multi-agent architecture that inspired this project
