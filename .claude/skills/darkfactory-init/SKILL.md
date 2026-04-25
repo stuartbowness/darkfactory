@@ -89,10 +89,10 @@ Note: After first-time `openspec init`, the user needs to restart Claude Code fo
 Check each required CLI tool:
 
 ```bash
-codex --version 2>/dev/null
-gh --version 2>/dev/null
-gh auth status 2>/dev/null
-openspec --version 2>/dev/null
+codex --version 2>/dev/null || echo "NOT_INSTALLED"
+gh --version 2>/dev/null || echo "NOT_INSTALLED"
+gh auth status 2>/dev/null || echo "NOT_INSTALLED"
+openspec --version 2>/dev/null || echo "NOT_INSTALLED"
 ```
 
 Implementation note: when running CLI checks in parallel Bash calls, use a pattern that always exits 0, such as `command --version 2>/dev/null || echo "NOT_INSTALLED"`. In Claude Code, a non-zero exit code cancels sibling parallel Bash calls.
