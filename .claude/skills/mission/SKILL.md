@@ -15,6 +15,7 @@ flow: align -> spec -> contract -> build -> validate -> ship
 7. **Draft PRs only.** Never create a ready-for-review PR. The human promotes it.
 8. **Plan is the operating manual.** Keep the plan updated after every phase and step. It must be accurate if context compacts.
 9. **Skipped tasks use `- [~]`.** The build loop treats `- [~]` as neither unchecked nor complete. Skipped tasks are not re-attempted.
+10. **Mark tasks done in tasks.md immediately.** After a task passes validation, change `- [ ]` to `- [x]` in tasks.md before moving to the next task. This is required for resume to work correctly.
 
 ---
 
