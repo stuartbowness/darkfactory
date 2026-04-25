@@ -491,7 +491,7 @@ codex exec \
   -c model_reasoning_effort="high" \
   -o "$HANDOFF_PATH" \
   "$BRIEF_CONTENT" \
-  > "$LOG_PATH" 2>&1
+  < /dev/null > "$LOG_PATH" 2>&1
 
 EXIT=$?
 
@@ -749,7 +749,7 @@ codex exec \
   -c model_reasoning_effort="high" \
   -o "$REPORT_PATH" \
   "$(cat "$PROMPT_PATH")" \
-  > "$LOG_PATH" 2>&1
+  < /dev/null > "$LOG_PATH" 2>&1
 
 EXIT=$?
 rm -f "$PROMPT_PATH"
