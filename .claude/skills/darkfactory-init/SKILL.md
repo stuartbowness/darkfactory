@@ -68,6 +68,8 @@ Also check optional/built-in skills and report their status:
 - `/test-app` -- check ~/.claude/skills/ or .claude/skills/ in the current project
 - `/demo-video` -- check ~/.claude/skills/ or .claude/skills/ in the current project
 
+Implementation note: when running file checks in parallel Bash calls, use a pattern that always exits 0, such as `test -f <path> && echo "found" || echo "missing"`. In Claude Code, a non-zero exit code cancels sibling parallel Bash calls.
+
 ---
 
 ## Step 3: Initialize OpenSpec
@@ -76,7 +78,7 @@ Check if `openspec/config.yaml` exists in the current directory.
 
 **If it exists:** Report "OpenSpec: already initialized."
 
-**If it doesn't exist:** Run `openspec init --tools claude,codex`. If `openspec` CLI is not available, report: "OpenSpec CLI not installed. Run: `npm install -g openspec`"
+**If it doesn't exist:** Run `openspec init --tools claude,codex --force`. The `--force` flag ensures non-interactive cleanup of legacy files. If `openspec` CLI is not available, report: "OpenSpec CLI not installed. Run: `npm install -g openspec`"
 
 Note: After first-time `openspec init`, the user needs to restart Claude Code for `/opsx:` commands to register.
 
@@ -87,11 +89,13 @@ Note: After first-time `openspec init`, the user needs to restart Claude Code fo
 Check each required CLI tool:
 
 ```bash
-codex --version 2>/dev/null
-gh --version 2>/dev/null
-gh auth status 2>/dev/null
-openspec --version 2>/dev/null
+codex --version 2>/dev/null || echo "NOT_INSTALLED"
+gh --version 2>/dev/null || echo "NOT_INSTALLED"
+gh auth status 2>/dev/null || echo "NOT_INSTALLED"
+openspec --version 2>/dev/null || echo "NOT_INSTALLED"
 ```
+
+Implementation note: when running CLI checks in parallel Bash calls, use a pattern that always exits 0, such as `command --version 2>/dev/null || echo "NOT_INSTALLED"`. In Claude Code, a non-zero exit code cancels sibling parallel Bash calls.
 
 For each tool, report:
 - Installed and authenticated (ready)
