@@ -194,7 +194,7 @@ The skills above are bundled in this repo. But `/mission` also calls other skill
 | `/test-app` | Your project's Claude skills (optional) | User-test validator: browser-based testing |
 | `/demo-video` | Your project's Claude skills (optional) | Records a demo of frontend changes after validation passes |
 | `openspec` CLI | Installed by `npm install -g openspec` | Planning phase: creates the structured artifacts (proposal, specs, design, tasks) |
-| `/opsx:archive` | Installed by `openspec init` | Post-merge: moves the change's planning files into the OpenSpec archive directory |
+| `/opsx:archive` | Bundled with Darkfactory | Post-merge: moves the change's planning files into the OpenSpec archive directory |
 
 `/review` and `/simplify` are mandatory -- the scrutiny validator always runs them. `/security-review` only runs when relevant. `/test-app` and `/demo-video` are optional and project-specific -- you write these yourself for your project if you want browser testing or demo recordings.
 
