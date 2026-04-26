@@ -1,5 +1,6 @@
 use clap::Parser;
 
+mod event;
 #[expect(
     dead_code,
     reason = "supervisor is consumed by the upcoming engine module"
