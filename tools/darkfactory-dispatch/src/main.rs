@@ -39,23 +39,65 @@ async fn run() -> Result<u8, (u8, String)> {
     }
 
     let json = cli.json;
-    let spec = cli.dispatch_spec().map_err(cli_error)?;
+    let async_mode = cli.async_mode;
+    let mut spec = cli.dispatch_spec().map_err(cli_error)?;
     let dispatch_id = Ulid::new().to_string();
-    let emitter = Arc::new(Emitter::new(dispatch_id.clone(), StreamMode::Normal));
+    let (store_dir, _host_pid_guard, emitter) = if async_mode {
+        let store_dir = cli::prepare_async_store(&dispatch_id).map_err(cli_error)?;
+        let host_pid_guard = cli::write_host_pid(&store_dir).map_err(cli_error)?;
+        cli::write_initial_status(&store_dir, &dispatch_id).map_err(cli_error)?;
+        let events = cli::open_events_log(&store_dir).map_err(cli_error)?;
+        cli::print_async_started(&dispatch_id).map_err(cli_error)?;
+        spec.store_dir = Some(store_dir.clone());
+        (
+            Some(store_dir),
+            Some(host_pid_guard),
+            Arc::new(Emitter::with_writer(
+                dispatch_id.clone(),
+                StreamMode::Normal,
+                events,
+            )),
+        )
+    } else {
+        (
+            None,
+            None,
+            Arc::new(Emitter::new(dispatch_id.clone(), StreamMode::Normal)),
+        )
+    };
 
-    let result = engine::dispatch(spec, dispatch_id, emitter)
-        .await
-        .map_err(engine_error)?;
-    cli::print_result(&result, json).map_err(cli_error)?;
+    let result = match engine::dispatch(spec, dispatch_id.clone(), emitter).await {
+        Ok(result) => result,
+        Err(error) => {
+            if let Some(store_dir) = &store_dir {
+                let _ = cli::write_result(
+                    store_dir,
+                    &cli::failed_start_result(dispatch_id, error.to_string()),
+                );
+            }
+            return Err(engine_error(error));
+        }
+    };
+    if let Some(store_dir) = &store_dir {
+        cli::write_result(store_dir, &result).map_err(cli_error)?;
+    } else {
+        cli::print_result(&result, json).map_err(cli_error)?;
+    }
 
     Ok(cli::exit_code_for_result(&result))
 }
 
 fn handle_lifecycle_command(command: Commands) -> Result<u8, (u8, String)> {
     match command {
-        Commands::Status { id } => Err(cli_error(format!("status is not implemented yet: {id}"))),
-        Commands::Result { id } => Err(cli_error(format!("result is not implemented yet: {id}"))),
-        Commands::Wait { id } => Err(cli_error(format!("wait is not implemented yet: {id}"))),
+        Commands::Status { id } => {
+            cli::print_status(&id).map_err(cli_error)?;
+            Ok(0)
+        }
+        Commands::Result { id } => {
+            cli::print_result_for_id(&id).map_err(cli_error)?;
+            Ok(0)
+        }
+        Commands::Wait { id } => cli::wait_for_id(&id).map_err(cli_error),
     }
 }
 

@@ -189,6 +189,7 @@ fn spec(
         output: Some(output.to_path_buf()),
         cwd: cwd.to_path_buf(),
         log,
+        store_dir: None,
     }
 }
 

@@ -19,6 +19,7 @@ pub(crate) struct DispatchSpec {
     pub(crate) output: Option<PathBuf>,
     pub(crate) cwd: PathBuf,
     pub(crate) log: Option<PathBuf>,
+    pub(crate) store_dir: Option<PathBuf>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

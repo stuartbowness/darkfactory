@@ -43,6 +43,7 @@ pub(crate) async fn dispatch(
         .args(args)
         .current_dir(&spec.cwd)
         .stdin(StdinMode::Null)
+        .parent_death_watch(spec.store_dir.is_none())
         .spawn()
         .map_err(map_supervisor_error)?;
 
@@ -54,7 +55,11 @@ pub(crate) async fn dispatch(
     let mut stdout_reader = BufReader::with_capacity(STDOUT_BUFFER_BYTES, stdout).lines();
     let mut tracker = ActivityTracker::new();
     let output_path = spec.output.clone();
-    let status_dir = status_dir(&dispatch_id);
+    let cleanup_status_dir = spec.store_dir.is_none();
+    let status_dir = spec
+        .store_dir
+        .clone()
+        .unwrap_or_else(|| status_dir(&dispatch_id));
 
     let soft_sleep = time::sleep(Duration::from_secs(spec.timeout_sec));
     tokio::pin!(soft_sleep);
@@ -116,9 +121,12 @@ pub(crate) async fn dispatch(
             _ = watchdog_interval.tick() => {
                 let _ = write_status_json_atomic(
                     &status_dir,
+                    "running",
                     &dispatch_id,
                     started.elapsed().as_secs(),
-                    &tracker,
+                    tracker.last_activity.clone(),
+                    tracker.activity.tool_calls,
+                    tracker.activity.files_changed.len() as u64,
                 );
             }
 
@@ -149,6 +157,18 @@ pub(crate) async fn dispatch(
     emitter
         .emit_dispatch_end(status_name(&result.status), result.duration_ms)
         .map_err(dispatch_event_error)?;
+    let _ = write_status_json_atomic(
+        &status_dir,
+        status_name(&result.status),
+        &result.dispatch_id,
+        result.duration_ms / 1000,
+        "done".to_string(),
+        result.activity.tool_calls,
+        result.activity.files_changed.len() as u64,
+    );
+    if cleanup_status_dir {
+        let _ = std::fs::remove_dir_all(&status_dir);
+    }
 
     Ok(result)
 }
@@ -635,17 +655,20 @@ fn failure_message(exit: ExitResult, output_exists: bool, stderr: &str) -> Strin
 
 fn write_status_json_atomic(
     dir: &Path,
+    state: &str,
     dispatch_id: &str,
     elapsed_s: u64,
-    tracker: &ActivityTracker,
+    last_activity: String,
+    tools_used: u64,
+    files_changed: u64,
 ) -> io::Result<()> {
     std::fs::create_dir_all(dir)?;
     let status = LiveStatus {
-        state: "running".to_string(),
+        state: state.to_string(),
         elapsed_s,
-        last_activity: tracker.last_activity.clone(),
-        tools_used: tracker.activity.tool_calls,
-        files_changed: tracker.activity.files_changed.len() as u64,
+        last_activity,
+        tools_used,
+        files_changed,
         dispatch_id: dispatch_id.to_string(),
         ts: Utc::now().to_rfc3339_opts(SecondsFormat::Secs, true),
     };
@@ -718,6 +741,7 @@ mod tests {
             output: Some(PathBuf::from("out.txt")),
             cwd: PathBuf::from("."),
             log: None,
+            store_dir: None,
         };
 
         let args = build_codex_args(&spec)

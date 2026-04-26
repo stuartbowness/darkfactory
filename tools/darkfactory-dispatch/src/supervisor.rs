@@ -129,6 +129,7 @@ impl SupervisorBuilder {
 
         // SAFETY: This runs in the child process after fork and before exec.
         // Only async-signal-safe libc calls are made here.
+        let _parent_death_watch = self.parent_death_watch;
         unsafe {
             command.pre_exec(|| {
                 if libc::setpgid(0, 0) != 0 {
@@ -137,7 +138,9 @@ impl SupervisorBuilder {
 
                 #[cfg(target_os = "linux")]
                 {
-                    if libc::prctl(libc::PR_SET_PDEATHSIG, libc::SIGKILL) != 0 {
+                    if _parent_death_watch
+                        && libc::prctl(libc::PR_SET_PDEATHSIG, libc::SIGKILL) != 0
+                    {
                         return Err(io::Error::last_os_error());
                     }
                 }
