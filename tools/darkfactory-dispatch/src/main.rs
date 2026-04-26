@@ -5,6 +5,7 @@ use clap::Parser;
     reason = "supervisor is consumed by the upcoming engine module"
 )]
 mod supervisor;
+mod types;
 
 #[derive(Parser)]
 #[command(
