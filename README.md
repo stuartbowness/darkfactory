@@ -20,6 +20,7 @@ Inspired by [Factory's Missions architecture](https://www.factory.ai/) and [Matt
 - [OpenSpec CLI](https://github.com/Fission-AI/OpenSpec) installed (`npm install -g openspec`)
 - [Codex CLI](https://github.com/openai/codex) installed (`npm install -g @openai/codex`) and authenticated (`codex login`)
 - [GitHub CLI](https://cli.github.com/) installed and authenticated (`gh auth login`) -- used for filing the PRD as a GitHub issue and creating draft PRs
+- [jq](https://jqlang.github.io/jq/) installed (`brew install jq`) -- used for parsing dispatch results
 - A git repository to work in
 
 ### First-time install
@@ -33,6 +34,14 @@ ln -sf ~/.darkfactory/.claude/skills/mission-resume ~/.claude/skills/mission-res
 ln -sf ~/.darkfactory/.claude/skills/mission-status ~/.claude/skills/mission-status
 ln -sf ~/.darkfactory/.claude/skills/darkfactory-init ~/.claude/skills/darkfactory-init
 ```
+
+Then build and install the dispatch supervisor:
+
+```bash
+cd ~/.darkfactory/tools/darkfactory-dispatch && make install
+```
+
+This compiles a Rust binary and copies it to `~/.local/bin/darkfactory-dispatch`. It supervises Codex subprocess dispatches with process group isolation, two-phase timeout, NDJSON heartbeat events, and structured JSON results.
 
 Symlinks mean the skills always point to your local clone, so updating is just a `git pull` (see below).
 
