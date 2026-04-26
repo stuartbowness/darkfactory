@@ -259,6 +259,10 @@ impl RunHandle {
         }
     }
 
+    pub(crate) fn kill_soft(&self) -> Result<(), SupervisorError> {
+        signal_group(self.inner.pgid, libc::SIGTERM)
+    }
+
     pub(crate) fn kill(&self) -> Result<(), SupervisorError> {
         signal_group(self.inner.pgid, libc::SIGKILL)
     }

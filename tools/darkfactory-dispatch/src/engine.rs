@@ -93,13 +93,25 @@ pub(crate) async fn dispatch(
             }
 
             result = run_handle.wait() => {
-                break (result.map_err(map_supervisor_error)?, false);
+                // Drain remaining stdout before finalizing -- child may have
+                // written final NDJSON lines (token counts, activity) just
+                // before exiting.
+                while let Ok(Some(line)) = stdout_reader.next_line().await {
+                    write_log_line(&log, &line).await?;
+                    if let Some(event) = parse_codex_event(&line) {
+                        tracker.apply(event, &emitter)?;
+                    }
+                }
+                // If soft timeout already fired (SIGTERM sent), this is still a timeout
+                break (result.map_err(map_supervisor_error)?, !soft_armed);
             }
 
             () = &mut soft_sleep, if soft_armed => {
                 soft_armed = false;
-                tracker.last_activity = format!("soft timeout after {}s", spec.timeout_sec);
+                tracker.last_activity = format!("soft timeout after {}s -- sending SIGTERM", spec.timeout_sec);
                 emitter.emit_timeout_warning().map_err(dispatch_event_error)?;
+                // Send SIGTERM immediately at soft timeout (not just a warning)
+                let _ = run_handle.kill_soft();
                 hard_sleep = Some(Box::pin(time::sleep(Duration::from_secs(grace_sec))));
             }
 
@@ -110,11 +122,10 @@ pub(crate) async fn dispatch(
                     std::future::pending::<()>().await;
                 }
             }, if hard_sleep.is_some() => {
-                tracker.last_activity = format!("hard timeout after {}s grace", grace_sec);
-                let exit = run_handle
-                    .graceful_stop(grace_sec.max(10))
-                    .await
-                    .map_err(map_supervisor_error)?;
+                tracker.last_activity = format!("hard timeout after {}s grace -- sending SIGKILL", grace_sec);
+                // Hard timeout: SIGKILL directly, no second grace period
+                run_handle.kill().map_err(map_supervisor_error)?;
+                let exit = run_handle.wait().await.map_err(map_supervisor_error)?;
                 break (exit, true);
             }
 

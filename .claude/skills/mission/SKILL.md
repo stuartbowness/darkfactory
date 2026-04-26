@@ -493,12 +493,17 @@ DISPATCH_RESULT=$(darkfactory-dispatch \
   --log "$LOG_PATH" \
   --json)
 
-DISPATCH_STATUS=$(echo "$DISPATCH_RESULT" | jq -r '.status')
-
-if [ "$DISPATCH_STATUS" = "completed" ] && [ -f "$HANDOFF_PATH" ]; then
-  echo "TASK_COMPLETE: handoff written"
+if [ -z "$DISPATCH_RESULT" ]; then
+  echo "TASK_FAILED: dispatcher crashed with no output. Log: $LOG_PATH"
 else
-  echo "TASK_FAILED: dispatch status $DISPATCH_STATUS; handoff $([ -f "$HANDOFF_PATH" ] && echo present || echo missing). Log: $LOG_PATH"
+  DISPATCH_STATUS=$(echo "$DISPATCH_RESULT" | jq -r '.status')
+  DISPATCH_ERROR=$(echo "$DISPATCH_RESULT" | jq -r '.error.message // empty')
+
+  if [ "$DISPATCH_STATUS" = "completed" ] && [ -f "$HANDOFF_PATH" ]; then
+    echo "TASK_COMPLETE: handoff written"
+  else
+    echo "TASK_FAILED: dispatch status $DISPATCH_STATUS${DISPATCH_ERROR:+; error: $DISPATCH_ERROR}; handoff $([ -f "$HANDOFF_PATH" ] && echo present || echo missing). Log: $LOG_PATH"
+  fi
 fi
 ```
 
@@ -752,13 +757,19 @@ DISPATCH_RESULT=$(darkfactory-dispatch \
   --log "$LOG_PATH" \
   --json)
 
-DISPATCH_STATUS=$(echo "$DISPATCH_RESULT" | jq -r '.status')
 rm -f "$PROMPT_PATH"
 
-if [ "$DISPATCH_STATUS" = "completed" ] && [ -f "$REPORT_PATH" ]; then
-  echo "REVIEW_COMPLETE: report written"
+if [ -z "$DISPATCH_RESULT" ]; then
+  echo "REVIEW_FAILED: dispatcher crashed with no output. Log: $LOG_PATH"
 else
-  echo "REVIEW_FAILED: dispatch status $DISPATCH_STATUS; report $([ -f "$REPORT_PATH" ] && echo present || echo missing). Log: $LOG_PATH"
+  DISPATCH_STATUS=$(echo "$DISPATCH_RESULT" | jq -r '.status')
+  DISPATCH_ERROR=$(echo "$DISPATCH_RESULT" | jq -r '.error.message // empty')
+
+  if [ "$DISPATCH_STATUS" = "completed" ] && [ -f "$REPORT_PATH" ]; then
+    echo "REVIEW_COMPLETE: report written"
+  else
+    echo "REVIEW_FAILED: dispatch status $DISPATCH_STATUS${DISPATCH_ERROR:+; error: $DISPATCH_ERROR}; report $([ -f "$REPORT_PATH" ] && echo present || echo missing). Log: $LOG_PATH"
+  fi
 fi
 ```
 
