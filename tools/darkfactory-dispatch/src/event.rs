@@ -304,6 +304,7 @@ pub(crate) fn heartbeat_ticker(
 #[cfg(test)]
 mod tests {
     use std::sync::{Arc, Mutex};
+    use std::time::Duration;
 
     use serde_json::Value;
 
@@ -448,18 +449,36 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread")]
     async fn heartbeat_ticker_can_be_cancelled() {
-        let (emitter, _buffer) = emitter_with_buffer(StreamMode::Verbose);
+        let (emitter, buffer) = emitter_with_buffer(StreamMode::Verbose);
         let cancel = CancellationToken::new();
         let last_activity = Arc::new(Mutex::new("initializing".to_string()));
 
         heartbeat_ticker(
             Arc::new(emitter),
-            3600,
+            1,
             Arc::clone(&last_activity),
             cancel.clone(),
         );
+        tokio::time::sleep(Duration::from_millis(1_100)).await;
+
+        let events_before_cancel = buffer_lines(&buffer);
+        assert!(
+            events_before_cancel
+                .iter()
+                .any(|event| event["type"] == "heartbeat"),
+            "ticker should emit at least one heartbeat before cancellation"
+        );
+        let event_count_before_cancel = events_before_cancel.len();
+
         cancel.cancel();
-        cancel.cancelled().await;
+        tokio::time::sleep(Duration::from_millis(1_100)).await;
+
+        let events_after_cancel = buffer_lines(&buffer);
+        assert_eq!(
+            events_after_cancel.len(),
+            event_count_before_cancel,
+            "ticker should not emit more events after cancellation"
+        );
 
         let _stderr_emitter = Emitter::new("dispatch-456", StreamMode::Verbose);
     }

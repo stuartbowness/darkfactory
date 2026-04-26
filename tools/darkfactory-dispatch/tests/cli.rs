@@ -75,32 +75,31 @@ fn json_and_async_are_mutually_exclusive() {
 #[test]
 fn status_unknown_id_exits_nonzero() {
     let mut cmd = Command::cargo_bin("darkfactory-dispatch").expect("binary exists");
+    let dispatch_id = unknown_dispatch_id();
 
-    cmd.args(["status", "nonexistent-id-12345"])
+    cmd.args(["status", &dispatch_id])
         .assert()
         .failure()
         .stderr(
             predicate::str::contains("dispatch not found")
-                .and(predicate::str::contains("nonexistent-id-12345")),
+                .and(predicate::str::contains(dispatch_id)),
         );
 }
 
 #[test]
 fn result_unknown_id_exits_nonzero() {
     let mut cmd = Command::cargo_bin("darkfactory-dispatch").expect("binary exists");
+    let dispatch_id = unknown_dispatch_id();
 
-    cmd.args(["result", "nonexistent-id-12345"])
-        .assert()
-        .failure();
+    cmd.args(["result", &dispatch_id]).assert().failure();
 }
 
 #[test]
 fn wait_unknown_id_exits_nonzero() {
     let mut cmd = Command::cargo_bin("darkfactory-dispatch").expect("binary exists");
+    let dispatch_id = unknown_dispatch_id();
 
-    cmd.args(["wait", "nonexistent-id-12345"])
-        .assert()
-        .failure();
+    cmd.args(["wait", &dispatch_id]).assert().failure();
 }
 
 #[test]
@@ -298,6 +297,10 @@ fn temp_test_dir(name: &str) -> std::io::Result<PathBuf> {
     ));
     std::fs::create_dir_all(&path)?;
     Ok(path)
+}
+
+fn unknown_dispatch_id() -> String {
+    format!("unknown-id-{}", Ulid::new())
 }
 
 fn kill_process_group(pid: i32) {

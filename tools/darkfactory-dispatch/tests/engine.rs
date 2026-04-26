@@ -15,6 +15,7 @@ use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, LazyLock, Mutex};
+use std::time::{Duration, Instant};
 
 use event::{Emitter, StreamMode};
 use nix::libc;
@@ -101,6 +102,40 @@ async fn timeout_dispatch_stops_child_process() -> Result<(), Box<dyn std::error
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn hard_timeout_kills_child_that_ignores_sigterm() -> Result<(), Box<dyn std::error::Error>> {
+    let _path_guard = TestPath::install_script("test_codex_sigkill.sh", None).await?;
+    let tmp = temp_test_dir("sigkill-timeout")?;
+    let output = tmp.join("result.md");
+    let pid_file = tmp.join("pid");
+    std::env::set_var("CODEX_MOCK_PID_FILE", &pid_file);
+
+    let started = Instant::now();
+    let result = engine::dispatch(
+        spec(&tmp, &output, None, 1, 2),
+        "dispatch-sigkill-timeout".to_string(),
+        emitter("dispatch-sigkill-timeout").0,
+    )
+    .await?;
+    let elapsed = started.elapsed();
+
+    std::env::remove_var("CODEX_MOCK_PID_FILE");
+    assert_eq!(result.status, DispatchStatus::TimedOut);
+
+    let pid = std::fs::read_to_string(pid_file)?.trim().parse::<i32>()?;
+    assert_process_exits(pid).await?;
+    assert!(
+        elapsed >= Duration::from_secs(3),
+        "elapsed {elapsed:?} should include timeout plus grace"
+    );
+    assert!(
+        elapsed < Duration::from_secs(8),
+        "elapsed {elapsed:?} should not wait far beyond timeout plus grace"
+    );
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn heartbeat_events_are_emitted_during_running_dispatch(
 ) -> Result<(), Box<dyn std::error::Error>> {
     let _path_guard = TestPath::install("delayed_success").await?;
@@ -152,7 +187,7 @@ async fn malformed_ndjson_is_counted_and_logged() -> Result<(), Box<dyn std::err
 }
 
 #[tokio::test(flavor = "multi_thread")]
-async fn missing_codex_binary_returns_spawn_error() -> Result<(), Box<dyn std::error::Error>> {
+async fn missing_codex_binary_returns_binary_not_found() -> Result<(), Box<dyn std::error::Error>> {
     let _path_guard = TestPath::missing_binary().await?;
     let tmp = temp_test_dir("missing-binary")?;
     let output = tmp.join("result.md");
@@ -164,10 +199,7 @@ async fn missing_codex_binary_returns_spawn_error() -> Result<(), Box<dyn std::e
     )
     .await;
 
-    assert!(matches!(
-        result,
-        Err(DispatchError::BinaryNotFound | DispatchError::SpawnFailed(_))
-    ));
+    assert!(matches!(result, Err(DispatchError::BinaryNotFound)));
 
     Ok(())
 }
@@ -189,6 +221,11 @@ async fn failed_child_reports_failed_status_and_exit_code() -> Result<(), Box<dy
     assert_eq!(result.status, DispatchStatus::Failed);
     assert_eq!(result.exit_code, Some(1));
     assert_eq!(result.signal, None);
+    assert!(result.output_exists);
+    assert_eq!(
+        result.error.as_ref().map(|error| error.code.as_str()),
+        Some("process_failed")
+    );
 
     Ok(())
 }
@@ -301,9 +338,18 @@ struct TestPath {
 
 impl TestPath {
     async fn install(mode: &str) -> Result<Self, Box<dyn std::error::Error>> {
+        Self::install_script("test_codex_mock.sh", Some(mode)).await
+    }
+
+    async fn install_script(
+        source_name: &str,
+        mode: Option<&str>,
+    ) -> Result<Self, Box<dyn std::error::Error>> {
         let guard = PATH_LOCK.lock().await;
         let bin_dir = temp_test_dir("bin")?;
-        let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/test_codex_mock.sh");
+        let source = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("tests")
+            .join(source_name);
         let target = bin_dir.join("codex");
         std::fs::copy(source, &target)?;
 
@@ -311,7 +357,10 @@ impl TestPath {
         let previous_mode = std::env::var("CODEX_MOCK_MODE").ok();
         let path = previous_path.clone().unwrap_or_default();
         std::env::set_var("PATH", format!("{}:{path}", bin_dir.display()));
-        std::env::set_var("CODEX_MOCK_MODE", mode);
+        match mode {
+            Some(mode) => std::env::set_var("CODEX_MOCK_MODE", mode),
+            None => std::env::remove_var("CODEX_MOCK_MODE"),
+        }
 
         Ok(Self {
             _guard: guard,
@@ -356,7 +405,7 @@ async fn assert_process_exits(pid: i32) -> Result<(), Box<dyn std::error::Error>
         if !process_exists(pid) {
             return Ok(());
         }
-        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+        tokio::time::sleep(Duration::from_millis(50)).await;
     }
 
     Err(format!("process {pid} still exists").into())

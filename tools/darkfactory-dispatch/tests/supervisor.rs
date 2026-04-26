@@ -47,11 +47,8 @@ async fn kill_terminates_the_whole_process_group() -> Result<(), Box<dyn std::er
 #[tokio::test(flavor = "multi_thread")]
 async fn graceful_stop_kills_after_grace_when_sigterm_is_ignored(
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let handle = SupervisorBuilder::new("python3")
-        .args([
-            "-c",
-            "import signal, time; signal.signal(signal.SIGTERM, signal.SIG_IGN); print('ready', flush=True); time.sleep(300)",
-        ])
+    let handle = SupervisorBuilder::new("sh")
+        .args(["-c", "trap '' TERM; echo ready; sleep 300"])
         .spawn()?;
     let mut lines = BufReader::new(handle.stdout()?).lines();
     let ready = tokio::time::timeout(Duration::from_secs(2), lines.next_line())

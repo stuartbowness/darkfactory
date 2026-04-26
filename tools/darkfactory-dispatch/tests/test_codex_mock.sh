@@ -45,6 +45,7 @@ case "$mode" in
   failed)
     echo '{"type":"thread.started","thread_id":"fail-test"}'
     echo '{"type":"turn.completed","usage":{"input_tokens":10,"output_tokens":5,"reasoning_tokens":0}}'
+    write_output
     exit 1
     ;;
   no_output)
