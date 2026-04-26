@@ -349,7 +349,7 @@ fn parse_codex_event(line: &str) -> Option<HarnessEvent> {
                     .unwrap_or_else(|| "codex error".to_string()),
             ),
         ),
-        _ => Some(event(EventKind::RawPassthrough).text(line)),
+        _ => None,
     }
 }
 
@@ -404,7 +404,7 @@ fn is_file_read(item_type: &str, raw: &Value) -> bool {
     matches!(item_type, "file_read" | "read_file")
         || matches!(
             item_string(raw, "name").as_deref(),
-            Some("read_file" | "Read")
+            Some("read" | "read_file" | "Read")
         )
 }
 
@@ -416,7 +416,7 @@ fn is_file_write(item_type: &str, raw: &Value) -> bool {
             .is_some_and(|change| !change.is_empty())
         || matches!(
             item_string(raw, "name").as_deref(),
-            Some("write_file" | "Edit" | "Write")
+            Some("write" | "write_file" | "Edit" | "Write")
         )
 }
 
@@ -818,5 +818,183 @@ mod tests {
         let event = parse_codex_event("not json").expect("event");
         assert_eq!(event.kind, EventKind::RawPassthrough);
         assert_eq!(event.text.as_deref(), Some("not json"));
+    }
+
+    #[test]
+    fn parse_codex_event_table() {
+        let cases = vec![
+            (
+                "thread.started",
+                r#"{"type":"thread.started","thread_id":"test-abc-123"}"#,
+                Some(EventKind::SessionStart),
+            ),
+            (
+                "item.started tool_use",
+                r#"{"type":"item.started","item":{"type":"tool_use","name":"shell"}}"#,
+                Some(EventKind::ToolStart),
+            ),
+            (
+                "item.started agent_message",
+                r#"{"type":"item.started","item":{"type":"agent_message"}}"#,
+                None,
+            ),
+            (
+                "item.started command_execution",
+                r#"{"type":"item.started","item":{"type":"command_execution","command":"cargo test"}}"#,
+                Some(EventKind::CommandRun),
+            ),
+            (
+                "item.completed agent_message",
+                r#"{"type":"item.completed","item":{"type":"agent_message","text":"I created the file."}}"#,
+                Some(EventKind::Response),
+            ),
+            (
+                "item.completed tool_use",
+                r#"{"type":"item.completed","item":{"type":"tool_use","name":"shell"}}"#,
+                Some(EventKind::ToolEnd),
+            ),
+            (
+                "item.completed command_execution",
+                r#"{"type":"item.completed","item":{"type":"command_execution","command":"cargo test"}}"#,
+                Some(EventKind::ToolEnd),
+            ),
+            (
+                "item.completed file write",
+                r#"{"type":"item.completed","item":{"type":"tool_use","name":"write","file_path":"src/main.rs"}}"#,
+                Some(EventKind::FileWrite),
+            ),
+            (
+                "item.completed file read",
+                r#"{"type":"item.completed","item":{"type":"tool_use","name":"read","file_path":"Cargo.toml"}}"#,
+                Some(EventKind::FileRead),
+            ),
+            (
+                "turn.completed",
+                r#"{"type":"turn.completed","usage":{"input_tokens":100,"output_tokens":50,"reasoning_tokens":20}}"#,
+                Some(EventKind::TurnComplete),
+            ),
+            (
+                "turn.failed",
+                r#"{"type":"turn.failed","error":{"message":"rate limited"}}"#,
+                Some(EventKind::TurnFailed),
+            ),
+            (
+                "error",
+                r#"{"type":"error","error":{"message":"connection reset"}}"#,
+                Some(EventKind::Error),
+            ),
+            (
+                "non-json line",
+                "This is not JSON at all",
+                Some(EventKind::RawPassthrough),
+            ),
+            (
+                "unknown json type",
+                r#"{"type":"unknown.future.event","data":"something"}"#,
+                None,
+            ),
+            ("turn.started", r#"{"type":"turn.started"}"#, None),
+            ("item.updated", r#"{"type":"item.updated","item":{}}"#, None),
+            ("empty line", "", None),
+        ];
+
+        for (name, input, expected_kind) in cases {
+            let result = parse_codex_event(input);
+            match expected_kind {
+                Some(kind) => {
+                    let event = result.unwrap_or_else(|| panic!("{name}: should parse"));
+                    assert_eq!(event.kind, kind, "{name}: wrong EventKind");
+                }
+                None => assert!(result.is_none(), "{name}: should return None"),
+            }
+        }
+    }
+
+    #[test]
+    fn parse_codex_event_extracts_session_id() {
+        let event = parse_codex_event(r#"{"type":"thread.started","thread_id":"test-abc-123"}"#)
+            .expect("thread.started should parse");
+
+        assert_eq!(event.session_id.as_deref(), Some("test-abc-123"));
+    }
+
+    #[test]
+    fn parse_codex_event_extracts_tool_names() {
+        let started = parse_codex_event(
+            r#"{"type":"item.started","item":{"type":"tool_use","name":"shell"}}"#,
+        )
+        .expect("item.started tool_use should parse");
+        let completed = parse_codex_event(
+            r#"{"type":"item.completed","item":{"type":"tool_use","name":"shell"}}"#,
+        )
+        .expect("item.completed tool_use should parse");
+
+        assert_eq!(started.tool.as_deref(), Some("shell"));
+        assert_eq!(completed.tool.as_deref(), Some("shell"));
+    }
+
+    #[test]
+    fn parse_codex_event_extracts_commands() {
+        let started = parse_codex_event(
+            r#"{"type":"item.started","item":{"type":"command_execution","command":"cargo test"}}"#,
+        )
+        .expect("command_execution start should parse");
+        let completed = parse_codex_event(
+            r#"{"type":"item.completed","item":{"type":"command_execution","command":"cargo test"}}"#,
+        )
+        .expect("command_execution completion should parse");
+
+        assert_eq!(started.command.as_deref(), Some("cargo test"));
+        assert_eq!(completed.command.as_deref(), Some("cargo test"));
+    }
+
+    #[test]
+    fn parse_codex_event_extracts_response_and_error_text() {
+        let response = parse_codex_event(
+            r#"{"type":"item.completed","item":{"type":"agent_message","text":"I created the file."}}"#,
+        )
+        .expect("agent_message should parse");
+        let failed =
+            parse_codex_event(r#"{"type":"turn.failed","error":{"message":"rate limited"}}"#)
+                .expect("turn.failed should parse");
+        let error = parse_codex_event(r#"{"type":"error","error":{"message":"connection reset"}}"#)
+            .expect("error should parse");
+
+        assert_eq!(response.text.as_deref(), Some("I created the file."));
+        assert_eq!(failed.text.as_deref(), Some("rate limited"));
+        assert_eq!(error.text.as_deref(), Some("connection reset"));
+    }
+
+    #[test]
+    fn parse_codex_event_extracts_file_paths() {
+        let write = parse_codex_event(
+            r#"{"type":"item.completed","item":{"type":"tool_use","name":"write","file_path":"src/main.rs"}}"#,
+        )
+        .expect("file write should parse");
+        let read = parse_codex_event(
+            r#"{"type":"item.completed","item":{"type":"tool_use","name":"read","file_path":"Cargo.toml"}}"#,
+        )
+        .expect("file read should parse");
+
+        assert_eq!(write.file.as_deref(), Some("src/main.rs"));
+        assert_eq!(read.file.as_deref(), Some("Cargo.toml"));
+    }
+
+    #[test]
+    fn parse_codex_event_extracts_token_counts() {
+        let event = parse_codex_event(
+            r#"{"type":"turn.completed","usage":{"input_tokens":100,"output_tokens":50,"reasoning_tokens":20}}"#,
+        )
+        .expect("turn.completed should parse");
+        let tokens = event.tokens.expect("turn.completed should include tokens");
+
+        assert_eq!(
+            tokens,
+            TokenUsage {
+                input: 100,
+                output: 50,
+                reasoning: 20,
+            }
+        );
     }
 }
