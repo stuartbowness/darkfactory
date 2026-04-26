@@ -44,6 +44,7 @@ Check if each required supporting skill exists in `~/.claude/skills/`:
 - `~/.claude/skills/ubiquitous-language/SKILL.md`
 - `~/.claude/skills/write-a-prd/SKILL.md`
 - `~/.claude/skills/tdd/SKILL.md`
+- `~/.claude/skills/security-review/SKILL.md`
 
 If any are missing, report only the missing ones:
 
@@ -55,6 +56,7 @@ Missing supporting skills. Install them:
   ln -sf ~/.darkfactory-skills/ubiquitous-language ~/.claude/skills/ubiquitous-language
   ln -sf ~/.darkfactory-skills/write-a-prd ~/.claude/skills/write-a-prd
   ln -sf ~/.darkfactory-skills/tdd ~/.claude/skills/tdd
+  ln -sf ~/.darkfactory-skills/security-review ~/.claude/skills/security-review
 
 Then restart Claude Code and re-run /darkfactory-init.
 ```
@@ -132,7 +134,7 @@ Supporting skills:
   [x] /tdd
   [x] /review (built-in)
   [x] /simplify (built-in)
-  [x] /security-review (conditional)
+  [x] /security-review
   [ ] /test-app (optional)
   [ ] /demo-video (optional)
 
