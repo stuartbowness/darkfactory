@@ -477,29 +477,28 @@ Use the Bash tool with `run_in_background: true` to run the worker. Use this exa
 BRIEF_PATH="<absolute path to mission/briefs/task-N.md>"
 HANDOFF_PATH="<absolute path to mission/handoffs/task-N.md>"
 LOG_PATH="<absolute path to mission/logs/task-N-codex.log>"
-BRIEF_CONTENT=$(cat "$BRIEF_PATH")
-
 # Clean stale temp files and directories from previous workers to avoid filling /tmp
 find /tmp -mindepth 1 -maxdepth 1 -user "$(whoami)" -mmin +30 -not -name "claude-*" \( -type f -delete -o -type d -exec rm -rf {} + \) 2>/dev/null
 
-# Run Codex, redirect stdout+stderr to log file (agent reads log only on failure; no mid-run output lands in agent context)
-# sandbox_workspace_write.writable_roots=[".git"] lets the worker git commit inside the sandbox (workspace-write blocks .git/ by default)
-codex exec \
-  --full-auto \
+# Dispatch via darkfactory-dispatch: process supervisor with timeout, heartbeat, and structured JSON result
+DISPATCH_RESULT=$(darkfactory-dispatch \
+  --model gpt-5.5 \
+  --effort high \
+  --timeout 1800 \
   --sandbox workspace-write \
-  -c 'sandbox_workspace_write.writable_roots=[".git"]' \
-  -m gpt-5.5 \
-  -c model_reasoning_effort="high" \
-  -o "$HANDOFF_PATH" \
-  "$BRIEF_CONTENT" \
-  < /dev/null > "$LOG_PATH" 2>&1
+  --config 'sandbox_workspace_write.writable_roots=[".git"]' \
+  --prompt-file "$BRIEF_PATH" \
+  --output "$HANDOFF_PATH" \
+  --cwd "$(pwd)" \
+  --log "$LOG_PATH" \
+  --json)
 
-EXIT=$?
+DISPATCH_STATUS=$(echo "$DISPATCH_RESULT" | jq -r '.status')
 
-if [ $EXIT -eq 0 ] && [ -f "$HANDOFF_PATH" ]; then
+if [ "$DISPATCH_STATUS" = "completed" ] && [ -f "$HANDOFF_PATH" ]; then
   echo "TASK_COMPLETE: handoff written"
 else
-  echo "TASK_FAILED: codex exited $EXIT; handoff $([ -f "$HANDOFF_PATH" ] && echo present || echo missing). Log: $LOG_PATH"
+  echo "TASK_FAILED: dispatch status $DISPATCH_STATUS; handoff $([ -f "$HANDOFF_PATH" ] && echo present || echo missing). Log: $LOG_PATH"
 fi
 ```
 
@@ -508,9 +507,7 @@ The Bash tool returns a shell task ID immediately and notifies you when it compl
 - `TASK_COMPLETE` -> proceed to Step 3
 - `TASK_FAILED` -> proceed to Step 3 (failure path). Read `$LOG_PATH` for failure context before asking the human.
 
-**Human visibility:** To watch codex progress live, run `tail -f <absolute path to mission/logs/task-N-codex.log>` in another terminal.
-
-**If codex hangs:** There is no hard timeout. If activity in the log stops for several minutes and the background task is still running, the human can kill it manually: `ps aux | grep codex` then `kill <pid>`. The bash process will exit non-zero, which becomes TASK_FAILED.
+**Human visibility:** To watch dispatch progress live, run `tail -f <absolute path to mission/logs/task-N-codex.log>` in another terminal. The dispatcher emits heartbeat events every 15 seconds to stderr showing elapsed time and current activity. If the configured timeout is reached, the dispatcher kills the codex process automatically (soft warning, then hard kill after grace period).
 
 #### If engine is `claude`:
 
@@ -743,22 +740,25 @@ find /tmp -mindepth 1 -maxdepth 1 -user "$(whoami)" -mmin +30 -not -name "claude
 
 # Write the adversarial-reviewer.md prompt content to $PROMPT_PATH with $BASE_SHA, contract.md content, and report path filled in
 
-codex exec \
-  --full-auto \
+# Dispatch via darkfactory-dispatch: process supervisor with timeout, heartbeat, and structured JSON result
+DISPATCH_RESULT=$(darkfactory-dispatch \
+  --model gpt-5.5 \
+  --effort high \
+  --timeout 2700 \
   --sandbox workspace-write \
-  -m gpt-5.5 \
-  -c model_reasoning_effort="high" \
-  -o "$REPORT_PATH" \
-  "$(cat "$PROMPT_PATH")" \
-  < /dev/null > "$LOG_PATH" 2>&1
+  --prompt-file "$PROMPT_PATH" \
+  --output "$REPORT_PATH" \
+  --cwd "$(pwd)" \
+  --log "$LOG_PATH" \
+  --json)
 
-EXIT=$?
+DISPATCH_STATUS=$(echo "$DISPATCH_RESULT" | jq -r '.status')
 rm -f "$PROMPT_PATH"
 
-if [ $EXIT -eq 0 ] && [ -f "$REPORT_PATH" ]; then
+if [ "$DISPATCH_STATUS" = "completed" ] && [ -f "$REPORT_PATH" ]; then
   echo "REVIEW_COMPLETE: report written"
 else
-  echo "REVIEW_FAILED: codex exited $EXIT; report $([ -f "$REPORT_PATH" ] && echo present || echo missing). Log: $LOG_PATH"
+  echo "REVIEW_FAILED: dispatch status $DISPATCH_STATUS; report $([ -f "$REPORT_PATH" ] && echo present || echo missing). Log: $LOG_PATH"
 fi
 ```
 
