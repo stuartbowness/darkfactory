@@ -8,7 +8,6 @@ use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[cfg_attr(test, expect(dead_code, reason = "consumed by upcoming CLI module"))]
 pub(crate) struct DispatchSpec {
     pub(crate) model: String,
     pub(crate) effort: Option<String>,
@@ -83,10 +82,11 @@ pub(crate) struct Activity {
     pub(crate) files_read: Vec<String>,
     pub(crate) commands_run: Vec<String>,
     pub(crate) tool_calls: u64,
+    #[serde(default)]
+    pub(crate) parse_errors: u64,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[cfg_attr(test, expect(dead_code, reason = "consumed by upcoming event module"))]
 pub(crate) struct HarnessEvent {
     pub(crate) kind: EventKind,
     pub(crate) tool: Option<String>,
@@ -113,10 +113,6 @@ pub(crate) enum EventKind {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[cfg_attr(
-    test,
-    expect(dead_code, reason = "consumed by upcoming watchdog module")
-)]
 pub(crate) struct LiveStatus {
     pub(crate) state: String,
     pub(crate) elapsed_s: u64,
@@ -158,6 +154,7 @@ mod tests {
                 files_read: vec!["README.md".to_string()],
                 commands_run: vec!["cargo test".to_string()],
                 tool_calls: 3,
+                parse_errors: 0,
             },
         };
 
@@ -232,5 +229,6 @@ mod tests {
         assert!(activity.files_read.is_empty());
         assert!(activity.commands_run.is_empty());
         assert_eq!(activity.tool_calls, 0);
+        assert_eq!(activity.parse_errors, 0);
     }
 }

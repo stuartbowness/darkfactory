@@ -15,7 +15,7 @@ use serde::Serialize;
 use thiserror::Error;
 use tokio::sync::watch;
 
-const DEFAULT_HEARTBEAT_INTERVAL_SECS: u64 = 30;
+const DEFAULT_HEARTBEAT_INTERVAL_SECS: u64 = 15;
 
 #[derive(Debug, Error)]
 pub(crate) enum EventError {
@@ -105,7 +105,7 @@ impl Emitter {
         Self::with_writer(dispatch_id, stream_mode, io::stderr())
     }
 
-    fn with_writer(
+    pub(crate) fn with_writer(
         dispatch_id: impl Into<String>,
         stream_mode: StreamMode,
         writer: impl Write + Send + 'static,
@@ -212,7 +212,7 @@ impl Emitter {
         })
     }
 
-    fn emit_heartbeat_with_interval(
+    pub(crate) fn emit_heartbeat_with_interval(
         &self,
         last_activity: impl Into<String>,
         interval_s: u64,

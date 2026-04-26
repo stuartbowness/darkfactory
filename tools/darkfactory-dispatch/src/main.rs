@@ -1,9 +1,11 @@
 use clap::Parser;
 
+#[expect(dead_code, reason = "engine is consumed by the upcoming CLI module")]
+mod engine;
 mod event;
 #[expect(
     dead_code,
-    reason = "supervisor is consumed by the upcoming engine module"
+    reason = "supervisor has helper APIs consumed across upcoming CLI work"
 )]
 mod supervisor;
 mod types;
