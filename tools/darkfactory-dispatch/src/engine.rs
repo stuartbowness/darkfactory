@@ -814,6 +814,22 @@ mod tests {
     }
 
     #[test]
+    fn effective_grace_defaults_to_half_timeout() {
+        assert_eq!(effective_grace_sec(900, 0), 450);
+    }
+
+    #[test]
+    fn effective_grace_has_one_second_minimum() {
+        assert_eq!(effective_grace_sec(1, 0), 1);
+        assert_eq!(effective_grace_sec(0, 0), 1);
+    }
+
+    #[test]
+    fn effective_grace_uses_explicit_value() {
+        assert_eq!(effective_grace_sec(900, 30), 30);
+    }
+
+    #[test]
     fn malformed_json_is_raw_passthrough() {
         let event = parse_codex_event("not json").expect("event");
         assert_eq!(event.kind, EventKind::RawPassthrough);

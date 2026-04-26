@@ -13,6 +13,15 @@ use supervisor::SupervisorBuilder;
 use tokio::io::{AsyncBufReadExt, BufReader};
 
 #[tokio::test(flavor = "multi_thread")]
+async fn spawn_nonexistent_binary_returns_error() -> Result<(), Box<dyn std::error::Error>> {
+    let result = SupervisorBuilder::new("nonexistent-binary-xyz").spawn();
+
+    assert!(result.is_err());
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn kill_terminates_the_whole_process_group() -> Result<(), Box<dyn std::error::Error>> {
     let script = "sleep 300 & bg=$!; sleep 300 & fg=$!; echo $$ $bg $fg; wait";
     let handle = SupervisorBuilder::new("sh").args(["-c", script]).spawn()?;
@@ -57,6 +66,29 @@ async fn graceful_stop_kills_after_grace_when_sigterm_is_ignored(
     assert_eq!(result.signal, Some(libc::SIGKILL));
     assert!(elapsed >= Duration::from_secs(1));
     assert!(elapsed < Duration::from_secs(3));
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn kill_soft_sends_sigterm() -> Result<(), Box<dyn std::error::Error>> {
+    let handle = SupervisorBuilder::new("sleep").arg("300").spawn()?;
+
+    handle.kill_soft()?;
+    let result = handle.wait().await?;
+
+    assert_eq!(result.signal, Some(libc::SIGTERM));
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn normal_exit_reports_code_without_signal() -> Result<(), Box<dyn std::error::Error>> {
+    let handle = SupervisorBuilder::new("true").spawn()?;
+    let result = handle.wait().await?;
+
+    assert_eq!(result.code, Some(0));
+    assert_eq!(result.signal, None);
 
     Ok(())
 }
