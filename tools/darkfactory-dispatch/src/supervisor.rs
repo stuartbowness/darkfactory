@@ -131,7 +131,7 @@ impl SupervisorBuilder {
         // Only async-signal-safe libc calls are made here.
         let _parent_death_watch = self.parent_death_watch;
         unsafe {
-            command.pre_exec(|| {
+            command.pre_exec(move || {
                 if libc::setpgid(0, 0) != 0 {
                     return Err(io::Error::last_os_error());
                 }
