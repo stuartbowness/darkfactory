@@ -1,3 +1,6 @@
+SHELL := /bin/bash
+export PATH := $(HOME)/.cargo/bin:$(PATH)
+
 .PHONY: build release install test lint fmt check
 
 build:
