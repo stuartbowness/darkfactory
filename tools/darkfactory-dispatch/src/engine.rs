@@ -93,13 +93,26 @@ pub(crate) async fn dispatch(
             }
 
             result = run_handle.wait() => {
-                // Drain remaining stdout before finalizing -- child may have
+                // Drain remaining stdout with a 2s ceiling -- child may have
                 // written final NDJSON lines (token counts, activity) just
-                // before exiting.
-                while let Ok(Some(line)) = stdout_reader.next_line().await {
-                    write_log_line(&log, &line).await?;
-                    if let Some(event) = parse_codex_event(&line) {
-                        tracker.apply(event, &emitter)?;
+                // before exiting. The ceiling prevents hanging when a
+                // grandchild keeps stdout open.
+                let drain_deadline = time::sleep(Duration::from_secs(2));
+                tokio::pin!(drain_deadline);
+                loop {
+                    tokio::select! {
+                        line = stdout_reader.next_line() => {
+                            match line {
+                                Ok(Some(line)) => {
+                                    write_log_line(&log, &line).await?;
+                                    if let Some(event) = parse_codex_event(&line) {
+                                        tracker.apply(event, &emitter)?;
+                                    }
+                                }
+                                _ => break,
+                            }
+                        }
+                        () = &mut drain_deadline => break,
                     }
                 }
                 // If soft timeout already fired (SIGTERM sent), this is still a timeout
@@ -126,6 +139,25 @@ pub(crate) async fn dispatch(
                 // Hard timeout: SIGKILL directly, no second grace period
                 run_handle.kill().map_err(map_supervisor_error)?;
                 let exit = run_handle.wait().await.map_err(map_supervisor_error)?;
+                // Drain remaining stdout with a 1s ceiling after kill
+                let drain_deadline = time::sleep(Duration::from_secs(1));
+                tokio::pin!(drain_deadline);
+                loop {
+                    tokio::select! {
+                        line = stdout_reader.next_line() => {
+                            match line {
+                                Ok(Some(line)) => {
+                                    write_log_line(&log, &line).await?;
+                                    if let Some(event) = parse_codex_event(&line) {
+                                        tracker.apply(event, &emitter)?;
+                                    }
+                                }
+                                _ => break,
+                            }
+                        }
+                        () = &mut drain_deadline => break,
+                    }
+                }
                 break (exit, true);
             }
 

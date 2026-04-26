@@ -491,7 +491,7 @@ DISPATCH_RESULT=$(darkfactory-dispatch \
   --output "$HANDOFF_PATH" \
   --cwd "$(pwd)" \
   --log "$LOG_PATH" \
-  --json)
+  --json 2>>"$LOG_PATH")
 
 if [ -z "$DISPATCH_RESULT" ]; then
   echo "TASK_FAILED: dispatcher crashed with no output. Log: $LOG_PATH"
@@ -512,7 +512,7 @@ The Bash tool returns a shell task ID immediately and notifies you when it compl
 - `TASK_COMPLETE` -> proceed to Step 3
 - `TASK_FAILED` -> proceed to Step 3 (failure path). Read `$LOG_PATH` for failure context before asking the human.
 
-**Human visibility:** To watch dispatch progress live, run `tail -f <absolute path to mission/logs/task-N-codex.log>` in another terminal. The dispatcher emits heartbeat events every 15 seconds to stderr showing elapsed time and current activity. If the configured timeout is reached, the dispatcher kills the codex process automatically (soft warning, then hard kill after grace period).
+**Human visibility:** To watch dispatch progress live, run `tail -f <absolute path to mission/logs/task-N-codex.log>` in another terminal. The log contains both codex output and dispatcher events (heartbeats every 15 seconds, timeout warnings, tool activity). If the configured timeout is reached, the dispatcher kills the codex process automatically (SIGTERM at soft timeout, SIGKILL after grace period).
 
 #### If engine is `claude`:
 
@@ -755,7 +755,7 @@ DISPATCH_RESULT=$(darkfactory-dispatch \
   --output "$REPORT_PATH" \
   --cwd "$(pwd)" \
   --log "$LOG_PATH" \
-  --json)
+  --json 2>>"$LOG_PATH")
 
 rm -f "$PROMPT_PATH"
 

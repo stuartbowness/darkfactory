@@ -7,7 +7,7 @@ release:
 	cargo build --release
 
 install:
-	cargo build --release && cp target/release/darkfactory-dispatch ~/.local/bin/
+	cargo build --release && mkdir -p ~/.local/bin && cp target/release/darkfactory-dispatch ~/.local/bin/
 
 test:
 	cargo test
