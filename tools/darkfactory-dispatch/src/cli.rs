@@ -17,7 +17,41 @@ const DISPATCH_RETENTION_SECS: u64 = 7 * 24 * 60 * 60;
 #[command(
     name = "darkfactory-dispatch",
     version,
-    about = "Process supervisor for Codex CLI subprocesses"
+    about = "Process supervisor for Codex CLI subprocesses",
+    after_help = "\
+EXAMPLES:
+    # Sync dispatch with JSON result on stdout
+    darkfactory-dispatch \\
+      --model gpt-5.5 --effort high --timeout 900 \\
+      --sandbox workspace-write \\
+      --prompt \"Create hello.py that prints hello world\" \\
+      --json
+
+    # Dispatch with prompt file, output path, and log
+    darkfactory-dispatch \\
+      --model gpt-5.5 --effort high --timeout 1800 \\
+      --sandbox workspace-write \\
+      --config 'sandbox_workspace_write.writable_roots=[\".git\"]' \\
+      --prompt-file brief.md --output handoff.md \\
+      --cwd /path/to/repo --log dispatch.log \\
+      --json
+
+    # Async dispatch with lifecycle management
+    darkfactory-dispatch --async --prompt \"Refactor auth module\" --timeout 1800
+    darkfactory-dispatch status <dispatch-id>
+    darkfactory-dispatch wait <dispatch-id>
+    darkfactory-dispatch result <dispatch-id>
+
+RESULT JSON:
+    Sync mode (--json) emits a single JSON object on stdout:
+    {\"status\":\"completed|timed_out|failed\", \"dispatch_id\":\"...\",
+     \"duration_ms\":N, \"exit_code\":N, \"signal\":null,
+     \"output\":\"/path\", \"output_exists\":true,
+     \"tokens\":{\"input\":N,\"output\":N,\"reasoning\":N},
+     \"activity\":{\"files_changed\":[...],\"commands_run\":[...]}}
+
+    Async mode (--async) emits {\"kind\":\"async_started\",\"dispatch_id\":\"...\"}
+    then continues in the background. Use 'result <id>' to collect."
 )]
 pub(crate) struct Cli {
     #[command(subcommand)]
