@@ -6,6 +6,7 @@ use std::sync::Arc;
 use std::time::Instant as StdInstant;
 
 use chrono::{SecondsFormat, Utc};
+use serde::Deserialize;
 use serde_json::Value;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::sync::Mutex;
@@ -15,16 +16,11 @@ use crate::event::Emitter;
 use crate::supervisor::{ExitResult, StdinMode, SupervisorBuilder, SupervisorError};
 use crate::types::{
     Activity, DispatchError, DispatchErrorInfo, DispatchResult, DispatchSpec, DispatchStatus,
-    EventKind, HarnessEvent, LiveStatus, TokenUsage,
+    EventKind, HarnessEvent, LiveStatus, TokenUsage, DEFAULT_HEARTBEAT_INTERVAL_SECS,
 };
 
 const STDOUT_BUFFER_BYTES: usize = 4 * 1024 * 1024;
 const WATCHDOG_INTERVAL_SECS: u64 = 5;
-
-#[cfg(test)]
-const HEARTBEAT_INTERVAL_SECS: u64 = 1;
-#[cfg(not(test))]
-const HEARTBEAT_INTERVAL_SECS: u64 = 15;
 
 pub(crate) async fn dispatch(
     spec: DispatchSpec,
@@ -33,6 +29,7 @@ pub(crate) async fn dispatch(
 ) -> Result<DispatchResult, DispatchError> {
     let started = StdInstant::now();
     let grace_sec = effective_grace_sec(spec.timeout_sec, spec.grace_sec);
+    let heartbeat_sec = effective_heartbeat_sec(spec.heartbeat_sec);
 
     emitter
         .emit_dispatch_start("codex", spec.model.clone())
@@ -71,11 +68,11 @@ pub(crate) async fn dispatch(
         Duration::from_secs(WATCHDOG_INTERVAL_SECS),
     );
     let mut heartbeat_interval = time::interval_at(
-        Instant::now() + Duration::from_secs(HEARTBEAT_INTERVAL_SECS),
-        Duration::from_secs(HEARTBEAT_INTERVAL_SECS),
+        Instant::now() + Duration::from_secs(heartbeat_sec),
+        Duration::from_secs(heartbeat_sec),
     );
 
-    let (exit, timed_out) = loop {
+    let (exit, timed_out, terminal_error): (ExitResult, bool, Option<DispatchErrorInfo>) = loop {
         tokio::select! {
             line = stdout_reader.next_line(), if stdout_open => {
                 match line {
@@ -116,7 +113,7 @@ pub(crate) async fn dispatch(
                     }
                 }
                 // If soft timeout already fired (SIGTERM sent), this is still a timeout
-                break (result.map_err(map_supervisor_error)?, !soft_armed);
+                break (result.map_err(map_supervisor_error)?, !soft_armed, None);
             }
 
             () = &mut soft_sleep, if soft_armed => {
@@ -158,10 +155,37 @@ pub(crate) async fn dispatch(
                         () = &mut drain_deadline => break,
                     }
                 }
-                break (exit, true);
+                break (exit, true, None);
             }
 
             _ = watchdog_interval.tick() => {
+                if let Some(control) = read_control_file(&status_dir) {
+                    if control.abort {
+                        tracker.last_activity = "abort requested".to_string();
+                        run_handle.kill().map_err(map_supervisor_error)?;
+                        let exit = run_handle.wait().await.map_err(map_supervisor_error)?;
+                        // Drain remaining stdout with a 1s ceiling after kill.
+                        let drain_deadline = time::sleep(Duration::from_secs(1));
+                        tokio::pin!(drain_deadline);
+                        loop {
+                            tokio::select! {
+                                line = stdout_reader.next_line() => {
+                                    match line {
+                                        Ok(Some(line)) => {
+                                            write_log_line(&log, &line).await?;
+                                            if let Some(event) = parse_codex_event(&line) {
+                                                tracker.apply(event, &emitter)?;
+                                            }
+                                        }
+                                        _ => break,
+                                    }
+                                }
+                                () = &mut drain_deadline => break,
+                            }
+                        }
+                        break (exit, false, Some(abort_error(control.reason)));
+                    }
+                }
                 let _ = write_status_json_atomic(
                     &status_dir,
                     "running",
@@ -177,7 +201,7 @@ pub(crate) async fn dispatch(
                 emitter
                     .emit_heartbeat_with_interval(
                         tracker.last_activity.clone(),
-                        HEARTBEAT_INTERVAL_SECS,
+                        heartbeat_sec,
                     )
                     .map_err(dispatch_event_error)?;
             }
@@ -188,15 +212,16 @@ pub(crate) async fn dispatch(
         .await
         .map_err(|error| DispatchError::Other(format!("stderr capture task failed: {error}")))??;
 
-    let result = finalize_result(
+    let result = finalize_result(ResultFinalization {
         dispatch_id,
-        started.elapsed().as_millis() as u64,
+        duration_ms: started.elapsed().as_millis() as u64,
         exit,
         timed_out,
-        output_path.as_deref(),
+        output: output_path,
+        terminal_error,
         tracker,
         stderr,
-    );
+    });
     emitter
         .emit_dispatch_end(status_name(&result.status), result.duration_ms)
         .map_err(dispatch_event_error)?;
@@ -529,6 +554,7 @@ struct ActivityTracker {
     activity: Activity,
     tokens: TokenUsage,
     last_activity: String,
+    response_seen: bool,
 }
 
 impl ActivityTracker {
@@ -537,6 +563,7 @@ impl ActivityTracker {
             activity: Activity::default(),
             tokens: TokenUsage::default(),
             last_activity: "dispatch started".to_string(),
+            response_seen: false,
         }
     }
 
@@ -587,6 +614,7 @@ impl ActivityTracker {
                 }
             }
             EventKind::Response => {
+                self.response_seen = true;
                 self.last_activity = "agent response".to_string();
             }
             EventKind::TurnComplete => {
@@ -627,54 +655,96 @@ fn push_unique(values: &mut Vec<String>, value: String) {
     }
 }
 
-fn finalize_result(
+struct ResultFinalization {
     dispatch_id: String,
     duration_ms: u64,
     exit: ExitResult,
     timed_out: bool,
-    output: Option<&Path>,
+    output: Option<PathBuf>,
+    terminal_error: Option<DispatchErrorInfo>,
     tracker: ActivityTracker,
     stderr: String,
-) -> DispatchResult {
-    let output_exists = output.is_some_and(Path::exists);
-    let status = if timed_out {
+}
+
+fn finalize_result(input: ResultFinalization) -> DispatchResult {
+    let output_exists = input.output.as_deref().is_some_and(Path::exists);
+    let mut status = if input.terminal_error.is_some() {
+        DispatchStatus::Failed
+    } else if input.timed_out {
         DispatchStatus::TimedOut
-    } else if exit.code == Some(0) && output_exists {
+    } else if input.exit.code == Some(0) && output_exists {
         DispatchStatus::Completed
     } else {
         DispatchStatus::Failed
     };
 
-    let error = match status {
-        DispatchStatus::Completed => None,
-        DispatchStatus::TimedOut => Some(DispatchErrorInfo {
-            code: "timed_out".to_string(),
-            message: "dispatch timed out".to_string(),
-            retryable: true,
-        }),
-        DispatchStatus::Failed => Some(DispatchErrorInfo {
-            code: if exit.code == Some(0) && !output_exists {
-                "missing_output"
-            } else {
-                "process_failed"
-            }
-            .to_string(),
-            message: failure_message(exit, output_exists, &stderr),
-            retryable: true,
-        }),
+    let mut error = if let Some(error) = input.terminal_error {
+        Some(error)
+    } else {
+        match status {
+            DispatchStatus::Completed => None,
+            DispatchStatus::TimedOut => Some(DispatchErrorInfo {
+                code: "timed_out".to_string(),
+                message: "dispatch timed out".to_string(),
+                retryable: true,
+            }),
+            DispatchStatus::Failed => Some(DispatchErrorInfo {
+                code: if input.exit.code == Some(0) && !output_exists {
+                    "missing_output"
+                } else {
+                    "process_failed"
+                }
+                .to_string(),
+                message: failure_message(input.exit, output_exists, &input.stderr),
+                retryable: true,
+            }),
+        }
     };
+
+    if status == DispatchStatus::Completed
+        && input.tracker.activity.parse_errors > 0
+        && !input.tracker.response_seen
+    {
+        status = DispatchStatus::Failed;
+        error = Some(output_parse_error(input.tracker.activity.parse_errors));
+    }
 
     DispatchResult {
         status,
-        dispatch_id,
-        duration_ms,
-        exit_code: exit.code,
-        signal: exit.signal,
-        output: output.map(|path| path.display().to_string()),
+        dispatch_id: input.dispatch_id,
+        duration_ms: input.duration_ms,
+        exit_code: input.exit.code,
+        signal: input.exit.signal,
+        output: input.output.map(|path| path.display().to_string()),
         output_exists,
         error,
-        tokens: tracker.tokens,
-        activity: tracker.activity,
+        tokens: input.tracker.tokens,
+        activity: input.tracker.activity,
+    }
+}
+
+fn output_parse_error(parse_errors: u64) -> DispatchErrorInfo {
+    DispatchErrorInfo {
+        code: "output_parse_error".to_string(),
+        message: format!(
+            "Harness output contained {parse_errors} parse error(s) and no final response could be trusted."
+        ),
+        retryable: true,
+    }
+}
+
+fn abort_error(reason: Option<String>) -> DispatchErrorInfo {
+    let reason = reason
+        .map(|reason| reason.trim().to_string())
+        .filter(|reason| !reason.is_empty());
+    let message = match reason {
+        Some(reason) => format!("Abort requested via control file: {reason}"),
+        None => "Abort requested via control file.".to_string(),
+    };
+    DispatchErrorInfo {
+        code: "abort_requested".to_string(),
+        message,
+        retryable: false,
     }
 }
 
@@ -736,11 +806,32 @@ fn status_dir(dispatch_id: &str) -> PathBuf {
         .join(dispatch_id)
 }
 
+#[derive(Debug, Deserialize)]
+struct ControlFile {
+    #[serde(default)]
+    abort: bool,
+    #[serde(default)]
+    reason: Option<String>,
+}
+
+fn read_control_file(dir: &Path) -> Option<ControlFile> {
+    let text = std::fs::read_to_string(dir.join("control.json")).ok()?;
+    serde_json::from_str(&text).ok()
+}
+
 fn effective_grace_sec(timeout_sec: u64, grace_sec: u64) -> u64 {
     if grace_sec == 0 {
         (timeout_sec / 2).max(1)
     } else {
         grace_sec
+    }
+}
+
+fn effective_heartbeat_sec(heartbeat_sec: u64) -> u64 {
+    if heartbeat_sec == 0 {
+        DEFAULT_HEARTBEAT_INTERVAL_SECS
+    } else {
+        heartbeat_sec
     }
 }
 
@@ -778,6 +869,7 @@ mod tests {
             effort: Some("high".to_string()),
             timeout_sec: 10,
             grace_sec: 0,
+            heartbeat_sec: DEFAULT_HEARTBEAT_INTERVAL_SECS,
             sandbox: String::new(),
             configs: vec!["foo=bar".to_string()],
             prompt: "do work".to_string(),

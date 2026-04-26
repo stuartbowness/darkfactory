@@ -38,7 +38,13 @@ case "$mode" in
     ;;
   malformed)
     echo 'not json'
+    echo '{"type":"item.completed","item":{"type":"agent_message","text":"mock response"}}'
     echo '{"type":"turn.completed","usage":{"input_tokens":1,"output_tokens":2,"reasoning_tokens":3}}'
+    echo '{still not json'
+    write_output
+    ;;
+  malformed_only)
+    echo 'not json'
     echo '{still not json'
     write_output
     ;;
@@ -62,6 +68,12 @@ case "$mode" in
   delayed_success)
     echo '{"type":"thread.started","thread_id":"slow-123"}'
     sleep 3
+    echo '{"type":"turn.completed","usage":{"input_tokens":4,"output_tokens":5,"reasoning_tokens":6}}'
+    write_output
+    ;;
+  delayed_success_5)
+    echo '{"type":"thread.started","thread_id":"slow-456"}'
+    sleep 5
     echo '{"type":"turn.completed","usage":{"input_tokens":4,"output_tokens":5,"reasoning_tokens":6}}'
     write_output
     ;;
