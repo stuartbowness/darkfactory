@@ -7,12 +7,18 @@ use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 
+#[cfg(test)]
+pub(crate) const DEFAULT_HEARTBEAT_INTERVAL_SECS: u64 = 1;
+#[cfg(not(test))]
+pub(crate) const DEFAULT_HEARTBEAT_INTERVAL_SECS: u64 = 15;
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub(crate) struct DispatchSpec {
     pub(crate) model: String,
     pub(crate) effort: Option<String>,
     pub(crate) timeout_sec: u64,
     pub(crate) grace_sec: u64,
+    pub(crate) heartbeat_sec: u64,
     pub(crate) sandbox: String,
     pub(crate) configs: Vec<String>,
     pub(crate) prompt: String,

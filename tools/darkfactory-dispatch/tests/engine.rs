@@ -187,6 +187,32 @@ async fn malformed_ndjson_is_counted_and_logged() -> Result<(), Box<dyn std::err
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn parse_errors_without_response_fail_dispatch() -> Result<(), Box<dyn std::error::Error>> {
+    let _path_guard = TestPath::install("malformed_only").await?;
+    let tmp = temp_test_dir("malformed-only")?;
+    let output = tmp.join("result.md");
+    let result = engine::dispatch(
+        spec(&tmp, &output, None, 10, 0),
+        "dispatch-malformed-only".to_string(),
+        emitter("dispatch-malformed-only").0,
+    )
+    .await?;
+
+    assert_eq!(result.status, DispatchStatus::Failed);
+    assert_eq!(result.exit_code, Some(0));
+    assert!(result.output_exists);
+    assert_eq!(result.activity.parse_errors, 2);
+    let error = result.error.as_ref().expect("failed result has error");
+    assert_eq!(error.code, "output_parse_error");
+    assert_eq!(
+        error.message,
+        "Harness output contained 2 parse error(s) and no final response could be trusted."
+    );
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn missing_codex_binary_returns_binary_not_found() -> Result<(), Box<dyn std::error::Error>> {
     let _path_guard = TestPath::missing_binary().await?;
     let tmp = temp_test_dir("missing-binary")?;
@@ -278,6 +304,84 @@ async fn soft_timeout_reports_timed_out_after_sigterm_exit(
     Ok(())
 }
 
+#[tokio::test(flavor = "multi_thread")]
+async fn control_file_abort_kills_child_and_reports_failed(
+) -> Result<(), Box<dyn std::error::Error>> {
+    let _path_guard = TestPath::install("sleep").await?;
+    let tmp = temp_test_dir("control-abort")?;
+    let output = tmp.join("result.md");
+    let store_dir = tmp.join("store");
+    std::fs::create_dir_all(&store_dir)?;
+    let pid_file = tmp.join("pid");
+    std::env::set_var("CODEX_MOCK_PID_FILE", &pid_file);
+
+    let mut dispatch_spec = spec(&tmp, &output, None, 60, 1);
+    dispatch_spec.store_dir = Some(store_dir.clone());
+    let control_dir = store_dir.clone();
+    let writer = tokio::spawn(async move {
+        tokio::time::sleep(Duration::from_millis(100)).await;
+        std::fs::write(
+            control_dir.join("control.json"),
+            r#"{"abort": true, "reason": "test abort"}"#,
+        )
+    });
+
+    let result = engine::dispatch(
+        dispatch_spec,
+        "dispatch-control-abort".to_string(),
+        emitter("dispatch-control-abort").0,
+    )
+    .await?;
+    writer.await??;
+
+    std::env::remove_var("CODEX_MOCK_PID_FILE");
+    assert_eq!(result.status, DispatchStatus::Failed);
+    assert_eq!(
+        result.error.as_ref().map(|error| error.code.as_str()),
+        Some("abort_requested")
+    );
+    assert!(result
+        .error
+        .as_ref()
+        .is_some_and(|error| error.message.contains("test abort")));
+
+    let pid = std::fs::read_to_string(pid_file)?.trim().parse::<i32>()?;
+    assert_process_exits(pid).await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn custom_heartbeat_interval_controls_heartbeat_rate(
+) -> Result<(), Box<dyn std::error::Error>> {
+    let _path_guard = TestPath::install("delayed_success_5").await?;
+    let tmp = temp_test_dir("custom-heartbeat")?;
+    let output = tmp.join("result.md");
+    let (emitter, buffer) = emitter("dispatch-custom-heartbeat");
+    let mut dispatch_spec = spec(&tmp, &output, None, 10, 0);
+    dispatch_spec.heartbeat_sec = 2;
+
+    let result = engine::dispatch(
+        dispatch_spec,
+        "dispatch-custom-heartbeat".to_string(),
+        emitter,
+    )
+    .await?;
+
+    assert_eq!(result.status, DispatchStatus::Completed);
+    let events = buffer_events(&buffer)?;
+    let heartbeats = events
+        .iter()
+        .filter(|event| event["type"] == "heartbeat")
+        .collect::<Vec<_>>();
+    assert!(heartbeats.len() >= 2, "events: {events:?}");
+    assert!(heartbeats
+        .iter()
+        .all(|event| event["interval_s"].as_u64() == Some(2)));
+
+    Ok(())
+}
+
 fn emitter(dispatch_id: &str) -> (Arc<Emitter>, Arc<Mutex<Vec<u8>>>) {
     let buffer = Arc::new(Mutex::new(Vec::new()));
     let emitter = Emitter::with_writer(
@@ -310,6 +414,7 @@ fn spec(
         effort: Some("low".to_string()),
         timeout_sec,
         grace_sec,
+        heartbeat_sec: types::DEFAULT_HEARTBEAT_INTERVAL_SECS,
         sandbox: "workspace-write".to_string(),
         configs: vec!["notify=false".to_string()],
         prompt: "run the test task".to_string(),

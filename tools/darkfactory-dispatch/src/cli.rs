@@ -8,7 +8,10 @@ use nix::libc;
 use serde::Serialize;
 use ulid::Ulid;
 
-use crate::types::{DispatchErrorInfo, DispatchResult, DispatchSpec, DispatchStatus, LiveStatus};
+use crate::types::{
+    DispatchErrorInfo, DispatchResult, DispatchSpec, DispatchStatus, LiveStatus,
+    DEFAULT_HEARTBEAT_INTERVAL_SECS,
+};
 
 const DEFAULT_MODEL: &str = "gpt-5";
 const DISPATCH_RETENTION_SECS: u64 = 7 * 24 * 60 * 60;
@@ -69,6 +72,9 @@ pub(crate) struct Cli {
     #[arg(long)]
     pub(crate) grace: Option<u64>,
 
+    #[arg(long, default_value_t = DEFAULT_HEARTBEAT_INTERVAL_SECS)]
+    pub(crate) heartbeat: u64,
+
     #[arg(long, default_value = "workspace-write")]
     pub(crate) sandbox: String,
 
@@ -106,6 +112,10 @@ pub(crate) enum Commands {
 
 impl Cli {
     pub(crate) fn dispatch_spec(self) -> Result<DispatchSpec, String> {
+        if self.heartbeat == 0 {
+            return Err("--heartbeat must be greater than 0".to_string());
+        }
+
         let prompt = match (self.prompt, self.prompt_file) {
             (Some(prompt), None) => prompt,
             (None, Some(path)) => fs::read_to_string(&path)
@@ -130,6 +140,7 @@ impl Cli {
             effort: self.effort,
             timeout_sec: self.timeout,
             grace_sec: self.grace.unwrap_or_else(|| (self.timeout / 2).max(1)),
+            heartbeat_sec: self.heartbeat,
             sandbox: self.sandbox,
             configs: self.configs,
             prompt,
@@ -432,7 +443,7 @@ fn write_and_sync(path: &Path, bytes: &[u8]) -> io::Result<()> {
     file.write_all(bytes)?;
     file.sync_all()?;
     drop(file);
-    sync_parent(path);
+    sync_parent(path)?;
     Ok(())
 }
 
@@ -455,16 +466,19 @@ fn write_json_atomic<T: Serialize>(path: &Path, value: &T) -> io::Result<()> {
         file.sync_all()?;
     }
     fs::rename(&tmp_path, path)?;
-    sync_parent(path);
+    sync_parent(path)?;
     Ok(())
 }
 
-fn sync_parent(path: &Path) {
-    if let Some(parent) = path.parent() {
-        if let Ok(dir) = File::open(parent) {
-            let _ = dir.sync_all();
-        }
+fn sync_parent(path: &Path) -> io::Result<()> {
+    if let Some(parent) = path
+        .parent()
+        .filter(|parent| !parent.as_os_str().is_empty())
+    {
+        let dir = File::open(parent)?;
+        dir.sync_all()?;
     }
+    Ok(())
 }
 
 fn prune_old_dispatches(root: &Path) -> io::Result<()> {

@@ -22,6 +22,7 @@ fn help_lists_dispatch_flags() {
             .and(predicate::str::contains("--effort"))
             .and(predicate::str::contains("--timeout"))
             .and(predicate::str::contains("--grace"))
+            .and(predicate::str::contains("--heartbeat"))
             .and(predicate::str::contains("--sandbox"))
             .and(predicate::str::contains("--config"))
             .and(predicate::str::contains("--prompt"))
