@@ -20,7 +20,7 @@ use event::{Emitter, StreamMode};
 use nix::libc;
 use serde_json::Value;
 use tokio::sync::Mutex as AsyncMutex;
-use types::{DispatchSpec, DispatchStatus};
+use types::{DispatchError, DispatchSpec, DispatchStatus};
 
 static TEST_ID: AtomicU64 = AtomicU64::new(1);
 static PATH_LOCK: LazyLock<AsyncMutex<()>> = LazyLock::new(|| AsyncMutex::new(()));
@@ -151,6 +151,96 @@ async fn malformed_ndjson_is_counted_and_logged() -> Result<(), Box<dyn std::err
     Ok(())
 }
 
+#[tokio::test(flavor = "multi_thread")]
+async fn missing_codex_binary_returns_spawn_error() -> Result<(), Box<dyn std::error::Error>> {
+    let _path_guard = TestPath::missing_binary().await?;
+    let tmp = temp_test_dir("missing-binary")?;
+    let output = tmp.join("result.md");
+
+    let result = engine::dispatch(
+        spec(&tmp, &output, None, 10, 0),
+        "dispatch-missing-binary".to_string(),
+        emitter("dispatch-missing-binary").0,
+    )
+    .await;
+
+    assert!(matches!(
+        result,
+        Err(DispatchError::BinaryNotFound | DispatchError::SpawnFailed(_))
+    ));
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn failed_child_reports_failed_status_and_exit_code() -> Result<(), Box<dyn std::error::Error>>
+{
+    let _path_guard = TestPath::install("failed").await?;
+    let tmp = temp_test_dir("failed-child")?;
+    let output = tmp.join("result.md");
+
+    let result = engine::dispatch(
+        spec(&tmp, &output, None, 10, 0),
+        "dispatch-failed-child".to_string(),
+        emitter("dispatch-failed-child").0,
+    )
+    .await?;
+
+    assert_eq!(result.status, DispatchStatus::Failed);
+    assert_eq!(result.exit_code, Some(1));
+    assert_eq!(result.signal, None);
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn missing_output_file_reports_failed_result() -> Result<(), Box<dyn std::error::Error>> {
+    let _path_guard = TestPath::install("no_output").await?;
+    let tmp = temp_test_dir("missing-output")?;
+    let output = tmp.join("nonexistent-output.md");
+
+    let result = engine::dispatch(
+        spec(&tmp, &output, None, 10, 0),
+        "dispatch-missing-output".to_string(),
+        emitter("dispatch-missing-output").0,
+    )
+    .await?;
+
+    assert_eq!(result.status, DispatchStatus::Failed);
+    assert!(!result.output_exists);
+    assert_eq!(
+        result.error.as_ref().map(|error| error.code.as_str()),
+        Some("missing_output")
+    );
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn soft_timeout_reports_timed_out_after_sigterm_exit(
+) -> Result<(), Box<dyn std::error::Error>> {
+    let _path_guard = TestPath::install("term_clean").await?;
+    let tmp = temp_test_dir("term-clean")?;
+    let output = tmp.join("result.md");
+    let pid_file = tmp.join("pid");
+    std::env::set_var("CODEX_MOCK_PID_FILE", &pid_file);
+
+    let result = engine::dispatch(
+        spec(&tmp, &output, None, 1, 5),
+        "dispatch-term-clean".to_string(),
+        emitter("dispatch-term-clean").0,
+    )
+    .await?;
+
+    std::env::remove_var("CODEX_MOCK_PID_FILE");
+    assert_eq!(result.status, DispatchStatus::TimedOut);
+
+    let pid = std::fs::read_to_string(pid_file)?.trim().parse::<i32>()?;
+    assert_process_exits(pid).await?;
+
+    Ok(())
+}
+
 fn emitter(dispatch_id: &str) -> (Arc<Emitter>, Arc<Mutex<Vec<u8>>>) {
     let buffer = Arc::new(Mutex::new(Vec::new()));
     let emitter = Emitter::with_writer(
@@ -222,6 +312,22 @@ impl TestPath {
         let path = previous_path.clone().unwrap_or_default();
         std::env::set_var("PATH", format!("{}:{path}", bin_dir.display()));
         std::env::set_var("CODEX_MOCK_MODE", mode);
+
+        Ok(Self {
+            _guard: guard,
+            previous_path,
+            previous_mode,
+        })
+    }
+
+    async fn missing_binary() -> Result<Self, Box<dyn std::error::Error>> {
+        let guard = PATH_LOCK.lock().await;
+        let bin_dir = temp_test_dir("empty-bin")?;
+
+        let previous_path = std::env::var("PATH").ok();
+        let previous_mode = std::env::var("CODEX_MOCK_MODE").ok();
+        std::env::set_var("PATH", bin_dir);
+        std::env::remove_var("CODEX_MOCK_MODE");
 
         Ok(Self {
             _guard: guard,

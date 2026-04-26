@@ -42,6 +42,19 @@ case "$mode" in
     echo '{still not json'
     write_output
     ;;
+  failed)
+    echo '{"type":"thread.started","thread_id":"fail-test"}'
+    echo '{"type":"turn.completed","usage":{"input_tokens":10,"output_tokens":5,"reasoning_tokens":0}}'
+    exit 1
+    ;;
+  no_output)
+    echo '{"type":"thread.started","thread_id":"no-output"}'
+    echo '{"type":"turn.completed","usage":{"input_tokens":10,"output_tokens":5,"reasoning_tokens":0}}'
+    ;;
+  term_clean)
+    trap 'exit 0' TERM
+    sleep 300
+    ;;
   sleep)
     sleep 300
     ;;
