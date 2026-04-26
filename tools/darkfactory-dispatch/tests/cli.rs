@@ -73,6 +73,37 @@ fn json_and_async_are_mutually_exclusive() {
 }
 
 #[test]
+fn status_unknown_id_exits_nonzero() {
+    let mut cmd = Command::cargo_bin("darkfactory-dispatch").expect("binary exists");
+
+    cmd.args(["status", "nonexistent-id-12345"])
+        .assert()
+        .failure()
+        .stderr(
+            predicate::str::contains("dispatch not found")
+                .and(predicate::str::contains("nonexistent-id-12345")),
+        );
+}
+
+#[test]
+fn result_unknown_id_exits_nonzero() {
+    let mut cmd = Command::cargo_bin("darkfactory-dispatch").expect("binary exists");
+
+    cmd.args(["result", "nonexistent-id-12345"])
+        .assert()
+        .failure();
+}
+
+#[test]
+fn wait_unknown_id_exits_nonzero() {
+    let mut cmd = Command::cargo_bin("darkfactory-dispatch").expect("binary exists");
+
+    cmd.args(["wait", "nonexistent-id-12345"])
+        .assert()
+        .failure();
+}
+
+#[test]
 fn async_dispatch_flow_reports_status_and_result() -> Result<(), Box<dyn std::error::Error>> {
     let env = MockEnv::new("async-flow")?;
     let output = env.home.join("result.md");
