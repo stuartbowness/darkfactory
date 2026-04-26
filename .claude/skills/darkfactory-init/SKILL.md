@@ -90,9 +90,11 @@ Check each required CLI tool:
 
 ```bash
 codex --version 2>/dev/null || echo "NOT_INSTALLED"
+darkfactory-dispatch --version 2>/dev/null || echo "NOT_INSTALLED"
 gh --version 2>/dev/null || echo "NOT_INSTALLED"
 gh auth status 2>/dev/null || echo "NOT_INSTALLED"
 openspec --version 2>/dev/null || echo "NOT_INSTALLED"
+jq --version 2>/dev/null || echo "NOT_INSTALLED"
 ```
 
 Implementation note: when running CLI checks in parallel Bash calls, use a pattern that always exits 0, such as `command --version 2>/dev/null || echo "NOT_INSTALLED"`. In Claude Code, a non-zero exit code cancels sibling parallel Bash calls.
@@ -101,6 +103,13 @@ For each tool, report:
 - Installed and authenticated (ready)
 - Installed but not authenticated (needs: `codex login` or `gh auth login`)
 - Not installed (needs: install command)
+
+Install commands if missing:
+- codex: `npm install -g @openai/codex`
+- darkfactory-dispatch: `cd ~/.darkfactory/tools/darkfactory-dispatch && make install`
+- gh: `brew install gh`
+- openspec: `npm install -g @fission-ai/openspec`
+- jq: `brew install jq`
 
 ---
 
@@ -129,8 +138,10 @@ Supporting skills:
 
 CLI tools:
   [x] codex (authenticated)
+  [x] darkfactory-dispatch
   [x] gh (authenticated)
   [x] openspec
+  [x] jq
 
 OpenSpec:
   [x] Initialized
