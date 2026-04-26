@@ -58,6 +58,18 @@
 | **Design** | The OpenSpec artifact describing how it will be built (architecture decisions) | Architecture doc, technical spec |
 | **Tasks** | The OpenSpec artifact listing tasks as checkboxes, each representing one worker's worth of work (should follow the vertical slice best practice) | Checklist, todo list, backlog |
 
+## Dispatch
+
+| Term | Definition | Aliases to avoid |
+| --- | --- | --- |
+| **Dispatcher** | The `darkfactory-dispatch` Rust binary that sits between the orchestrator and a Codex worker as a process supervisor | Wrapper, harness, runner, proxy |
+| **Dispatch** | The act of spawning a supervised Codex subprocess through the dispatcher, including process group setup, timeout management, and structured result reporting | Launch, invoke, run |
+| **Heartbeat** | A periodic NDJSON event emitted by the dispatcher to stderr, carrying elapsed time and last activity, used to distinguish "working" from "dead" | Ping, keepalive, pulse |
+| **Two-phase timeout** | The dispatcher's timeout strategy: a soft timeout sends SIGTERM and arms a grace period, then a hard timeout sends SIGKILL | Timeout, deadline, kill timer |
+| **Process group** | An OS-level grouping (via `setpgid`) that ensures killing the Codex process also kills any grandchild processes it spawned | Process tree, child processes |
+| **Dispatch store** | A minimal filesystem directory at `~/.darkfactory/dispatches/<ulid>/` holding `status.json`, `result.json`, `host.pid`, and `events.jsonl` for async dispatch lifecycle management | State directory, result store |
+| **Dispatch result** | A structured JSON object emitted on stdout when a dispatch completes, containing status, exit code, signal, duration, output path, token usage, and activity | Result, outcome, response |
+
 ## Relationships
 
 - A **Mission** belongs to exactly one **Change**
@@ -65,10 +77,13 @@
 - Each **Task** maps to one **Worker** invocation, one git commit, and one validation cycle
 - A **Contract** contains **Assertions** grouped by **Task**
 - The **Orchestrator** writes **Briefs** and reads **Handoffs**
+- The **Orchestrator** spawns Codex **Workers** through the **Dispatcher**, and Claude **Workers** and **Validators** through the Agent tool
+- The **Dispatcher** supervises the Codex process: it manages the **Process group**, emits **Heartbeats**, enforces the **Two-phase timeout**, and returns a **Dispatch result**
 - **Workers** read **Briefs** and write **Handoffs** -- they never see the **Contract**
 - **Validators** read the **Contract** and the commit diff -- they never see the **Proposal** or **Design**
 - A **Fix loop** produces versioned **Handoffs** (task-N-fix-v2.md) and re-runs both **Validators**
 - The **Circuit breaker** halts the **Fix loop** and returns control to the human
+- The **Dispatch store** is independent of the **Mission directory** -- it holds dispatcher metadata, not mission state
 
 ## Example dialogue
 
@@ -80,13 +95,13 @@
 >
 > **Orchestrator:** "That's a good fit. Let me **/grill-me** you on the requirements first, then I'll create the **Change** via **/opsx:propose** and write the **Contract** before any **Workers** start."
 >
-> **Dev:** "What if the **User-test validator** fails on the WebSocket task?"
+> **Dev:** "What if the Codex **Worker** hangs during the WebSocket task?"
 >
-> **Orchestrator:** "I'll write the failure to **Issues**, spawn a fix **Worker** with the failure context, and re-run both **Validators**. If it fails three times, the **Circuit breaker** kicks in and I'll ask you what to do."
+> **Orchestrator:** "The **Dispatcher** handles that. It emits **Heartbeats** every 15 seconds so I can tell if the worker is still active. If no progress happens, the **Two-phase timeout** fires -- first SIGTERM, then after the grace period SIGKILL to the entire **Process group**. I get a **Dispatch result** with status `timed_out` and fall back to a Claude **Worker**."
 >
 > **Dev:** "And I can check on progress while it runs?"
 >
-> **Orchestrator:** "Yes -- read the **Progress log** directly, or run **/mission-status** in another session for a formatted summary."
+> **Orchestrator:** "Yes -- tail the **Dispatcher's** log for **Heartbeat** events, read the **Progress log** directly, or run **/mission-status** in another session for a formatted summary."
 
 ## Resolved ambiguities
 
