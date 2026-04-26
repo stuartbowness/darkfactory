@@ -21,6 +21,7 @@ Inspired by [Factory's Missions architecture](https://www.factory.ai/) and [Matt
 - [Codex CLI](https://github.com/openai/codex) installed (`npm install -g @openai/codex`) and authenticated (`codex login`)
 - [GitHub CLI](https://cli.github.com/) installed and authenticated (`gh auth login`) -- used for filing the PRD as a GitHub issue and creating draft PRs
 - [jq](https://jqlang.github.io/jq/) installed (`brew install jq`) -- used for parsing dispatch results
+- [Rust toolchain](https://rustup.rs/) installed (`curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`) -- needed to build darkfactory-dispatch
 - A git repository to work in
 
 ### First-time install
