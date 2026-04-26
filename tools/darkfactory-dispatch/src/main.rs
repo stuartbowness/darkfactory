@@ -1,5 +1,11 @@
 use clap::Parser;
 
+#[expect(
+    dead_code,
+    reason = "supervisor is consumed by the upcoming engine module"
+)]
+mod supervisor;
+
 #[derive(Parser)]
 #[command(
     name = "darkfactory-dispatch",
