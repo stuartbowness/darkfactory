@@ -1,0 +1,610 @@
+Reading additional input from stdin...
+OpenAI Codex v0.124.0 (research preview)
+--------
+workdir: /Users/stuart/.darkfactory/tools/darkfactory-dispatch
+model: gpt-5.5
+provider: openai
+approval: never
+sandbox: workspace-write [workdir, /tmp, $TMPDIR, /Users/stuart/.darkfactory/tools/darkfactory-dispatch/.git, /Users/stuart/.codex/memories]
+reasoning effort: high
+reasoning summaries: none
+session id: 019dc750-9dde-7d23-84ad-649cc0ddfffc
+--------
+user
+# Worker Brief: Task 7 - Mission skill integration
+
+## Your Task
+Update `.claude/skills/mission/SKILL.md` to use `darkfactory-dispatch` instead of raw `codex exec` calls. There are two bash blocks to replace:
+
+### 1. Worker dispatch (~line 486)
+
+**Current:**
+```bash
+codex exec \
+  --full-auto \
+  --sandbox workspace-write \
+  -c 'sandbox_workspace_write.writable_roots=[".git"]' \
+  -m gpt-5.5 \
+  -c model_reasoning_effort="high" \
+  -o "$HANDOFF_PATH" \
+  "$BRIEF_CONTENT" \
+  < /dev/null > "$LOG_PATH" 2>&1
+```
+
+**Replace with:**
+```bash
+DISPATCH_RESULT=$(darkfactory-dispatch \
+  --model gpt-5.5 \
+  --effort high \
+  --timeout 1800 \
+  --sandbox workspace-write \
+  --config 'sandbox_workspace_write.writable_roots=[".git"]' \
+  --prompt-file "$BRIEF_PATH" \
+  --output "$HANDOFF_PATH" \
+  --cwd "$(pwd)" \
+  --log "$LOG_PATH" \
+  --json)
+
+DISPATCH_STATUS=$(echo "$DISPATCH_RESULT" | jq -r '.status')
+
+if [ "$DISPATCH_STATUS" = "completed" ] && [ -f "$HANDOFF_PATH" ]; then
+  echo "TASK_COMPLETE: handoff written"
+else
+  echo "TASK_FAILED: dispatch status $DISPATCH_STATUS; handoff $([ -f "$HANDOFF_PATH" ] && echo present || echo missing). Log: $LOG_PATH"
+fi
+```
+
+Note: the prompt is passed via `--prompt-file "$BRIEF_PATH"` instead of `"$BRIEF_CONTENT"` to avoid shell argument length limits on large briefs.
+
+### 2. Adversarial reviewer A dispatch (~line 745)
+
+**Current:**
+```bash
+codex exec \
+  --full-auto \
+  --sandbox workspace-write \
+  -m gpt-5.5 \
+  -c model_reasoning_effort="high" \
+  -o "$REPORT_PATH" \
+  "$(cat "$PROMPT_PATH")" \
+  < /dev/null > "$LOG_PATH" 2>&1
+```
+
+**Replace with:**
+```bash
+DISPATCH_RESULT=$(darkfactory-dispatch \
+  --model gpt-5.5 \
+  --effort high \
+  --timeout 2700 \
+  --sandbox workspace-write \
+  --prompt-file "$PROMPT_PATH" \
+  --output "$REPORT_PATH" \
+  --cwd "$(pwd)" \
+  --log "$LOG_PATH" \
+  --json)
+
+DISPATCH_STATUS=$(echo "$DISPATCH_RESULT" | jq -r '.status')
+```
+
+### 3. Update result parsing
+
+The current skill checks for `TASK_COMPLETE` or `TASK_FAILED` strings on the final stdout line. Update the result handling to parse the JSON result:
+
+- `status: "completed"` -> proceed (equivalent of TASK_COMPLETE)
+- `status: "failed"` or `status: "timed_out"` -> trigger fallback (equivalent of TASK_FAILED)
+
+The existing fallback logic (Claude worker fallback on first codex failure, human escalation on second failure) should be preserved. The trigger condition just changes from string matching to JSON status parsing.
+
+### 4. Remove the `< /dev/null` and `EXIT=$?` patterns
+
+These are no longer needed -- darkfactory-dispatch handles stdin closure and exit code detection internally. The JSON result contains all the information the orchestrator needs.
+
+### 5. Update the human visibility note
+
+Change from:
+> To watch codex progress live, run `tail -f <log path>` in another terminal.
+
+To:
+> To watch dispatch progress live, run `tail -f <log path>` in another terminal. The dispatcher emits heartbeat events every 15 seconds to stderr showing elapsed time and current activity.
+
+## Project Context
+darkfactory-dispatch is the new Rust process supervisor that wraps codex exec with timeout, heartbeat, and structured results. The mission skill is the primary consumer.
+
+## Key Terms
+- **Dispatcher**: The darkfactory-dispatch binary sitting between orchestrator and codex
+- **Dispatch result**: Structured JSON with status, exit_code, signal, tokens, activity
+- **Two-phase timeout**: Soft warning then hard kill -- the dispatcher handles this automatically
+
+## What Previous Tasks Built
+### Tasks 1-6: darkfactory-dispatch binary
+- Full Rust binary with supervisor, engine, event emitter, CLI, async mode
+- 35 tests passing, clippy clean
+
+## Procedures
+- Read the current SKILL.md to understand the full context around the two bash blocks
+- Make targeted replacements -- do not restructure the surrounding skill logic
+- Preserve the existing fallback behavior (Claude fallback on codex failure)
+- Commit: "[task-7] Update mission skill to use darkfactory-dispatch for codex workers"
+- Write handoff to openspec/changes/darkfactory-dispatch/mission/handoffs/task-7.md
+
+## Handoff Report Format
+- Task: Task 7 - Mission skill integration
+- Commit SHA: <full SHA>
+- Approach: <brief explanation>
+- Commands run: <commands and exit codes>
+- Concerns: <anything uncertain>
+codex
+I’ll update the mission skill directly, then run a focused diff check and commit it. I’m first reading the surrounding shell snippets so the JSON status change fits the existing fallback flow without reshaping it.
+exec
+/bin/zsh -lc 'rg -n "codex exec|TASK_COMPLETE|TASK_FAILED|tail -f|EXIT=|/dev/null|BRIEF_CONTENT|REPORT_PATH|DISPATCH" .claude/skills/mission/SKILL.md' in /Users/stuart/.darkfactory/tools/darkfactory-dispatch
+ exited 2 in 0ms:
+rg: .claude/skills/mission/SKILL.md: IO error for operation on .claude/skills/mission/SKILL.md: No such file or directory (os error 2)
+
+exec
+/bin/zsh -lc 'git status --short' in /Users/stuart/.darkfactory/tools/darkfactory-dispatch
+ succeeded in 0ms:
+ M ../../UBIQUITOUS_LANGUAGE.md
+ M ../../openspec/changes/darkfactory-dispatch/mission/handoffs/task-1.md
+?? ../../openspec/changes/darkfactory-dispatch/.openspec.yaml
+?? ../../openspec/changes/darkfactory-dispatch/contract.md
+?? ../../openspec/changes/darkfactory-dispatch/coverage-audit.md
+?? ../../openspec/changes/darkfactory-dispatch/design.md
+?? ../../openspec/changes/darkfactory-dispatch/mission/briefs/
+?? ../../openspec/changes/darkfactory-dispatch/mission/config.yaml
+?? ../../openspec/changes/darkfactory-dispatch/mission/handoffs/task-2.md
+?? ../../openspec/changes/darkfactory-dispatch/mission/handoffs/task-3.md
+?? ../../openspec/changes/darkfactory-dispatch/mission/handoffs/task-4.md
+?? ../../openspec/changes/darkfactory-dispatch/mission/handoffs/task-5.md
+?? ../../openspec/changes/darkfactory-dispatch/mission/handoffs/task-6.md
+?? ../../openspec/changes/darkfactory-dispatch/mission/handoffs/task-6b.md
+?? ../../openspec/changes/darkfactory-dispatch/mission/logs/
+?? ../../openspec/changes/darkfactory-dispatch/mission/progress.md
+?? ../../openspec/changes/darkfactory-dispatch/mission/validations/
+?? ../../openspec/changes/darkfactory-dispatch/proposal.md
+?? ../../openspec/changes/darkfactory-dispatch/specs/
+?? ../../openspec/changes/darkfactory-dispatch/tasks.md
+?? CLAUDE.md
+?? Cargo.lock
+
+codex
+The skill file is not under the tool directory’s `.claude` path. I’m locating it now; the repo status also shows existing unrelated changes outside this task, so I’ll keep the edit scoped to the mission skill and the requested handoff.
+exec
+/bin/zsh -lc pwd in /Users/stuart/.darkfactory/tools/darkfactory-dispatch
+ succeeded in 0ms:
+/Users/stuart/.darkfactory/tools/darkfactory-dispatch
+
+exec
+/bin/zsh -lc "rg --files -g 'SKILL.md' ../.." in /Users/stuart/.darkfactory/tools/darkfactory-dispatch
+ succeeded in 0ms:
+../../.codex/skills/openspec-propose/SKILL.md
+../../.codex/skills/openspec-archive-change/SKILL.md
+../../.codex/skills/openspec-explore/SKILL.md
+../../.claude/skills/openspec-explore/SKILL.md
+../../.codex/skills/openspec-apply-change/SKILL.md
+../../.claude/skills/mission-status/SKILL.md
+../../.claude/skills/darkfactory-init/SKILL.md
+../../.claude/skills/openspec-apply-change/SKILL.md
+../../.claude/skills/openspec-archive-change/SKILL.md
+../../.claude/skills/mission-resume/SKILL.md
+../../.claude/skills/openspec-propose/SKILL.md
+../../.claude/skills/mission/SKILL.md
+
+exec
+/bin/zsh -lc 'git rev-parse --show-toplevel' in /Users/stuart/.darkfactory/tools/darkfactory-dispatch
+ succeeded in 0ms:
+/Users/stuart/.darkfactory
+
+exec
+/bin/zsh -lc "sed -n '700,790p' ../../.claude/skills/mission/SKILL.md" in /Users/stuart/.darkfactory/tools/darkfactory-dispatch
+exec
+/bin/zsh -lc "sed -n '430,540p' ../../.claude/skills/mission/SKILL.md" in /Users/stuart/.darkfactory/tools/darkfactory-dispatch
+ succeeded in 0ms:
+Create a **draft** pull request using `gh pr create --draft`. Never create a ready-for-review PR. Use the PR body template below. The `Closes #<N>` directive in the PR body will auto-close the PRD issue when the PR merges.
+
+#### PR Body Template
+
+Read [templates/pr-body.md](templates/pr-body.md) and fill in the values.
+
+Since the PR is created as a draft, the issue stays open until the developer promotes and merges the PR.
+
+### Dual Adversarial Review
+
+After the draft PR is created, run a final adversarial review that walks every mission commit one at a time, groups findings by task, and does a final cross-task pass. Reviewers do not read the full diff in one go -- that stalls on large missions. The per-commit loop keeps each read bounded.
+
+Run two independent reviewers in parallel:
+- **Reviewer A** (engine from `adversarial_reviewer_a` in config.yaml, default: codex) -- dispatched via Bash with `run_in_background: true`
+- **Reviewer B** (engine from `adversarial_reviewer_b` in config.yaml, default: claude) -- dispatched via Agent tool
+
+Both receive a **pinned base SHA** (the merge-base of `<base-branch>` and HEAD, resolved once up front), the full contract.md, and the report path. The prompt instructs each reviewer to run `git log --reverse --format="%h %s" <base-sha>..HEAD` itself and iterate. Pinning avoids the review scope shifting if `<base-branch>` moves during the review.
+
+Before dispatching either reviewer, compute the base SHA:
+
+```bash
+BASE_SHA=$(git merge-base <base-branch> HEAD)
+if [ -z "$BASE_SHA" ]; then
+  echo "ABORT: could not resolve merge-base for <base-branch>..HEAD"
+  exit 1
+fi
+```
+
+Pass `$BASE_SHA` into both reviewer prompts.
+
+#### Adversarial Reviewer Prompt (used for both A and B)
+
+Read [prompts/adversarial-reviewer.md](prompts/adversarial-reviewer.md) and use it as the subagent prompt. Fill in the base SHA (from `$BASE_SHA` above), the full contract.md content, and the absolute report path.
+
+#### Reviewer A Dispatch Script (codex)
+
+```bash
+REPORT_PATH="<absolute path to mission/validations/adversarial-a.md>"
+LOG_PATH="<absolute path to mission/logs/adversarial-a-codex.log>"
+PROMPT_PATH=$(mktemp /tmp/mission-prompt.XXXXXX)
+
+# Guard mission-prompt* from the stale temp cleanup
+find /tmp -mindepth 1 -maxdepth 1 -user "$(whoami)" -mmin +30 -not -name "claude-*" -not -name "*mission-prompt*" \( -type f -delete -o -type d -exec rm -rf {} + \) 2>/dev/null
+
+# Write the adversarial-reviewer.md prompt content to $PROMPT_PATH with $BASE_SHA, contract.md content, and report path filled in
+
+codex exec \
+  --full-auto \
+  --sandbox workspace-write \
+  -m gpt-5.5 \
+  -c model_reasoning_effort="high" \
+  -o "$REPORT_PATH" \
+  "$(cat "$PROMPT_PATH")" \
+  < /dev/null > "$LOG_PATH" 2>&1
+
+EXIT=$?
+rm -f "$PROMPT_PATH"
+
+if [ $EXIT -eq 0 ] && [ -f "$REPORT_PATH" ]; then
+  echo "REVIEW_COMPLETE: report written"
+else
+  echo "REVIEW_FAILED: codex exited $EXIT; report $([ -f "$REPORT_PATH" ] && echo present || echo missing). Log: $LOG_PATH"
+fi
+```
+
+The Bash tool returns a shell task ID immediately. Reviewer B runs synchronously via the Agent tool. To run them in parallel: **dispatch Reviewer A first** (non-blocking, returns a shell task ID), **then dispatch Reviewer B** (blocks until it returns). When B returns, call BashOutput on A's shell task ID -- if A is done, the final line is `REVIEW_COMPLETE` or `REVIEW_FAILED`; if not, wait for A's completion notification before reading.
+
+**Human visibility:** To watch Reviewer A progress live, run `tail -f <absolute path to mission/logs/adversarial-a-codex.log>` in another terminal.
+
+### Present to Human
+
+Log to progress.md: `<timestamp> -- Draft PR created: <URL>. Adversarial reviews complete.`
+
+Read `mission/fallbacks.log` if it exists. If it contains entries, build the fallback summary section. If the file does not exist or is empty, omit the section entirely.
+
+Present the results to the user:
+
+```
+Mission complete.
+
+Draft PR: <URL>
+
+[Only if mission/fallbacks.log has entries:]
+Codex Fallback Summary:
+- <count> of <total tasks> tasks required Claude fallback:
+  - Task N: <reason> (<task-name>)
+  - Task M: <reason> (<task-name>)
+
+Adversarial Review A (Codex):
+<summary of findings -- count by severity>
+
+
+ succeeded in 0ms:
+Ensure a feature branch. If `git rev-parse --abbrev-ref HEAD` equals `gh api repos/{owner}/{repo} --jq .default_branch` (abort Phase 7 if that gh call fails -- it means no GitHub remote or bad auth), run `git checkout -b mission/<change-name>` -- if that branch already exists, use `mission/<change-name>-$(date +%s)`. Log the checkout to progress.md.
+
+Show the user a summary dashboard:
+1. **Mission overview** -- change name, total tasks (feature + closing), total contract assertions
+2. **Coverage audit result** -- number of PRD requirements covered, any deferred/skipped items
+3. **Engine config** -- which engine runs each role (from config.yaml)
+
+Ask: "Everything has been reviewed. Ready to start the build?"
+
+- If yes: append `<timestamp> -- Plan approved. <N> tasks, <M> assertions in contract.` to progress.md. Update plan status to BUILDING. Post a comment on the PRD issue: `gh issue comment <number> --body "Mission dispatched. <N> tasks, <M> assertions. Draft PR will link back on completion."` Proceed to Phase 8.
+- If the human wants to revisit something: loop back to the specific phase they name. Do not re-review everything.
+
+**Gate -- proceed when:**
+- [ ] Human confirms "ready to start the build"
+- [ ] progress.md updated with approval timestamp and task/assertion counts
+- [ ] Plan status = BUILDING
+
+---
+
+## Phase 8: Build Loop
+
+> **Rules:** 1, 2, 3, 4, 5, 6, 8, 9
+> **Goal:** Build all tasks with per-task validation.
+> **Inputs:** tasks.md, contract.md, design.md, proposal.md, config.yaml, UBIQUITOUS_LANGUAGE.md
+> **Outputs:** Committed code per task, validation reports in mission/validations/. Codebase deltas are internal (populate subsequent task briefs within this phase).
+
+For each unchecked task (`- [ ]`) in tasks.md, run Steps 1-7. Process tasks in order, one at a time (serial execution). Skip tasks marked `- [~]` (skipped) and `- [x]` (complete).
+
+### Step 1: Assemble Brief
+
+Write a brief to `mission/briefs/task-N.md`.
+
+#### Brief Template
+
+Read [templates/worker-brief.md](templates/worker-brief.md).
+
+**The brief NEVER contains contract.md content.** 
+
+### Step 2: Dispatch Worker
+
+Read the engine from `mission/config.yaml`.
+
+#### If engine is `codex`:
+
+Use the Bash tool with `run_in_background: true` to run the worker. Use this exact bash script:
+
+```bash
+BRIEF_PATH="<absolute path to mission/briefs/task-N.md>"
+HANDOFF_PATH="<absolute path to mission/handoffs/task-N.md>"
+LOG_PATH="<absolute path to mission/logs/task-N-codex.log>"
+BRIEF_CONTENT=$(cat "$BRIEF_PATH")
+
+# Clean stale temp files and directories from previous workers to avoid filling /tmp
+find /tmp -mindepth 1 -maxdepth 1 -user "$(whoami)" -mmin +30 -not -name "claude-*" \( -type f -delete -o -type d -exec rm -rf {} + \) 2>/dev/null
+
+# Run Codex, redirect stdout+stderr to log file (agent reads log only on failure; no mid-run output lands in agent context)
+# sandbox_workspace_write.writable_roots=[".git"] lets the worker git commit inside the sandbox (workspace-write blocks .git/ by default)
+codex exec \
+  --full-auto \
+  --sandbox workspace-write \
+  -c 'sandbox_workspace_write.writable_roots=[".git"]' \
+  -m gpt-5.5 \
+  -c model_reasoning_effort="high" \
+  -o "$HANDOFF_PATH" \
+  "$BRIEF_CONTENT" \
+  < /dev/null > "$LOG_PATH" 2>&1
+
+EXIT=$?
+
+if [ $EXIT -eq 0 ] && [ -f "$HANDOFF_PATH" ]; then
+  echo "TASK_COMPLETE: handoff written"
+else
+  echo "TASK_FAILED: codex exited $EXIT; handoff $([ -f "$HANDOFF_PATH" ] && echo present || echo missing). Log: $LOG_PATH"
+fi
+```
+
+The Bash tool returns a shell task ID immediately and notifies you when it completes. On completion, call BashOutput on that shell task ID to retrieve stdout. The only thing on stdout is the single final line -- either `TASK_COMPLETE` or `TASK_FAILED` -- because all codex output was redirected to `$LOG_PATH`.
+
+- `TASK_COMPLETE` -> proceed to Step 3
+- `TASK_FAILED` -> proceed to Step 3 (failure path). Read `$LOG_PATH` for failure context before asking the human.
+
+**Human visibility:** To watch codex progress live, run `tail -f <absolute path to mission/logs/task-N-codex.log>` in another terminal.
+
+**If codex hangs:** There is no hard timeout. If activity in the log stops for several minutes and the background task is still running, the human can kill it manually: `ps aux | grep codex` then `kill <pid>`. The bash process will exit non-zero, which becomes TASK_FAILED.
+
+#### If engine is `claude`:
+
+Use the Agent tool to spawn a subagent. Pass the full brief content as the prompt. Instruct the subagent to write its handoff to the same path (`mission/handoffs/task-N.md`).
+
+### Step 3: Handle Result
+
+Read the handoff file at `mission/handoffs/task-N.md`.
+
+- **TASK_COMPLETE** (handoff exists and contains a commit SHA): Extract the commit SHA. Log to progress.md: `<timestamp> -- Task N: worker completed. Commit: <SHA>`. Proceed to Step 4.
+- **TASK_FAILED** (handoff missing or no commit SHA):
+  1. If engine is `codex` and this is the first failure for this task: log to progress.md: `<timestamp> -- Task N: codex worker failed. Falling back to claude worker.` Append a line to `mission/fallbacks.log`: `task-N|<task-name>|<reason for failure>`. Then dispatch a claude worker (Opus 4.6, extended thinking high) using the existing "If engine is `claude`" dispatch path with the same brief. Wait for the result.
+     - If the claude fallback produces `TASK_COMPLETE`: log to progress.md: `<timestamp> -- Task N: claude fallback succeeded. Commit: <SHA>.` Proceed to Step 4.
+     - If the claude fallback also fails: fall through to the human escalation below.
+  2. Human escalation (reached when: engine is `claude`, engine is `codex` and both attempts failed, or any second failure): log to progress.md: `<timestamp> -- Task N: worker FAILED. <reason>.` Ask the human: retry, skip, or abort. If skip: mark the task as `- [~]` in tasks.md and log `<timestamp> -- Task N: SKIPPED by human.` to progress.md. The build loop ignores `- [~]` tasks.
+  3. On the next task, revert to the configured engine. This fallback is per-task only.
+
+### Step 4: Scrutiny Validation
+
+Spawn a Claude subagent (via the Agent tool) with this prompt:
+
+#### Scrutiny Validator Prompt
+
+Read [prompts/scrutiny-validator.md](prompts/scrutiny-validator.md) and use it as the subagent prompt. Fill in the commit SHA and contract assertions for this task. The prompt runs 11 checks: test presence, build, tests, lint, code review, module depth, code standards, simplify, security (if applicable), contract assertions, behavioral conformance.
+
+Read the validator's report from `mission/validations/task-N-scrutiny.md`.
+
+
+exec
+/bin/zsh -lc "sed -n '540,660p' ../../.claude/skills/mission/SKILL.md" in /Users/stuart/.darkfactory/tools/darkfactory-dispatch
+ succeeded in 0ms:
+
+### Step 5: Handle Scrutiny Validation Result
+
+- **PASS**: Log to progress.md: `<timestamp> -- Task N: scrutiny validation PASSED.` Proceed to Step 6.
+- **FAIL**: Proceed to Step 5a (fix loop).
+
+### Step 5a: Fix Loop
+
+Track the attempt number (starts at 1 for the initial worker, increments on each fix).
+
+1. **Write failure details** to `mission/issues/task-N-v<attempt>.md`:
+
+```markdown
+# Issue: Task N - <name> (Attempt <attempt>)
+
+## Failed Checks
+<list of failed checks from validator report>
+
+## Observed Symptoms
+<describe what went wrong in terms of behavior -- error messages, test failures, unexpected output. Do NOT copy contract assertion text here.>
+
+## Validator Recommendations
+<recommendations from validator>
+```
+
+2. **Circuit breaker check:** If attempt >= 3, stop the loop. Log to progress.md: `<timestamp> -- Task N: circuit breaker triggered after <attempt> attempts.` Update plan status to PAUSED. Ask the human: "Task N has failed validation 3 times. Options: retry (allows one more attempt, counter continues from current value), skip (mark as skipped with `- [~]`, continue to next task), abort (stop the mission)."
+
+   - **Retry:** Increment the attempt counter by 1 (e.g., attempt 3 becomes attempt 4). Allow one more fix attempt. If it fails again, the circuit breaker triggers again at the new count. Retry does NOT reset the counter.
+   - **Skip:** Mark the task as `- [~]` in tasks.md. Log to progress.md: `<timestamp> -- Task N: SKIPPED by human after <attempt> failed attempts.` Continue to the next unchecked task. The build loop ignores `- [~]` tasks (they are neither unchecked nor complete).
+   - **Abort:** Update plan status to PAUSED. Stop the build loop. Close the PRD issue with a reason: `gh issue close <PRD issue number> --reason "not planned" --comment "Mission aborted at task N after <attempt> failed validation attempts."` Report to the human.
+
+3. **Diagnostic triage.** Spawn a lightweight Claude subagent to diagnose the failure. The subagent receives:
+   - The validator report (from `mission/validations/task-N-scrutiny.md` or `task-N-usertest.md` -- whichever triggered this fix loop entry)
+   - The worker's diff (`git show <commit-sha>`)
+
+   The subagent does NOT receive `contract.md`, `proposal.md`, or `design.md`. It describes what the code does wrong, not what the contract expected.
+
+   Subagent prompt: "You are diagnosing a validation failure. Read the validator report and the code diff. For each failure, identify the probable root cause: which file and line, what the code does, and why that causes the observed symptom. Be specific -- name files, lines, variables, and values. Describe what the code does wrong, not what it should do. Write your triage to: `<path to mission/issues/task-N-v<attempt>-triage.md>`"
+
+   The triage output is included in the fix brief (Step 4 below) as an additional "Diagnostic Triage" section. If the triage subagent fails or times out, skip it and proceed with the fix brief without it -- triage is helpful but not blocking.
+
+4. **Write fix brief** to `mission/briefs/task-N-fix-v<attempt+1>.md`:
+
+#### Fix Brief Template
+
+Read [templates/worker-fix-brief.md](templates/worker-fix-brief.md).
+
+**The fix brief NEVER contains contract.md content.** 
+
+5. **Dispatch fix worker** using the same engine and method as Step 2, but with the fix brief.
+
+6. **After fix completes:** Go back to **Step 4** (re-run scrutiny validation with the new commit SHA). Both per-task validators must re-run after every fix (scrutiny and user-test), not just the one that failed.
+
+### Step 6: User-Test Validation
+
+Spawn a Claude subagent (via the Agent tool) with this prompt:
+
+#### User-Test Validator Prompt
+
+Read [prompts/usertest-validator.md](prompts/usertest-validator.md) and use it as the subagent prompt. Fill in the commit SHA and contract assertions for this task.
+
+Read the validator's report from `mission/validations/task-N-usertest.md`.
+
+- **PASS**: Log to progress.md: `<timestamp> -- Task N: user-test validation PASSED.` Proceed to Step 6a (demo video).
+- **FAIL**: Enter the fix loop (Step 5a) with the user-test failure details. After the fix, re-run **both** validators (Step 4, then Step 6).
+- **SKIP** (all assertions skipped): Log to progress.md: `<timestamp> -- Task N: user-test validation SKIPPED (all assertions infrastructure-only).` Proceed to Step 6a (demo video).
+
+### Step 6a: Demo Video (Frontend Only)
+
+The orchestrator decides whether this task has a frontend component by checking the diff. If the task touches UI files (components, pages, styles, templates), it has a frontend component.
+
+**If frontend component exists:**
+
+Spawn a Claude subagent to run `/demo-video`. The subagent should save the recording to `mission/validations/task-N-demo.mp4`.
+
+**Demo failure is non-blocking.** If the demo fails to record:
+- Log to progress.md: `<timestamp> -- Task N: demo video FAILED to record. <reason>. Continuing.`
+- Proceed to Step 7.
+
+**If no frontend component:** Skip this step. Proceed to Step 7.
+
+### Step 7: Track Progress
+
+1. Mark the task complete in `tasks.md`: change `- [ ]` to `- [x]` for this task.
+
+2. **Generate codebase delta for subsequent briefs.** Run `git diff <pre-task-sha>..HEAD` (where pre-task-sha is the commit before this task's first commit, recorded when the worker was dispatched) to extract what this task added. Summarize into a codebase delta entry containing: files created/modified (paths), public function/endpoint signatures, key types, and patterns used. Store this delta in the plan under a `## Codebase Deltas` section. The next task's brief (Step 1) reads accumulated deltas from the plan and writes them into the "What Previous Tasks Built" section.
+
+   **Guard rail:** Generate the delta from `git diff` output only. Never read handoff reports to build this summary. The delta contains facts about what exists in the code, not why or how the worker built it.
+
+3. Append to `progress.md`:
+
+```markdown
+- <timestamp> -- Task N complete.
+  - Commit: <SHA>
+  - Scrutiny: PASS
+  - User-test: PASS | SKIP
+  - Demo: RECORDED | SKIPPED | FAILED
+  - Fix attempts: <number, 0 if first try passed>
+```
+
+4. Update the plan: set Current Task to the next unchecked task, or "none" if all done.
+
+5. **If more tasks remain:** Go back to Step 1 for the next task.
+
+6. **If all tasks are done:** Proceed to Phase 9.
+
+**Gate -- proceed when:**
+- [ ] All tasks in tasks.md are `- [x]` (complete) or `- [~]` (skipped)
+- [ ] No unchecked `- [ ]` tasks remain
+- [ ] Each completed task has passing scrutiny and user-test reports
+- [ ] Plan codebase deltas are current
+
+---
+
+## Phase 9: Mission Completion
+
+> **Rules:** 1, 2, 5, 7
+> **Goal:** Final gates, draft PR, and dual adversarial review.
+> **Inputs:** All committed code (from Phase 8), contract.md, coverage-audit.md, PRD issue number (from plan, for PR linking)
+> **Outputs:** Draft PR, adversarial review reports, plan status = COMPLETE
+
+
+exec
+/bin/zsh -lc 'rg -n "TASK_COMPLETE|TASK_FAILED|REVIEW_COMPLETE|REVIEW_FAILED|codex progress|codex hangs|EXIT=|/dev/null|BRIEF_CONTENT|codex exec|final line|BashOutput|DISPATCH_RESULT|DISPATCH_STATUS" ../../.claude/skills/mission/SKILL.md' in /Users/stuart/.darkfactory/tools/darkfactory-dispatch
+ succeeded in 0ms:
+480:BRIEF_CONTENT=$(cat "$BRIEF_PATH")
+483:find /tmp -mindepth 1 -maxdepth 1 -user "$(whoami)" -mmin +30 -not -name "claude-*" \( -type f -delete -o -type d -exec rm -rf {} + \) 2>/dev/null
+487:codex exec \
+494:  "$BRIEF_CONTENT" \
+495:  < /dev/null > "$LOG_PATH" 2>&1
+497:EXIT=$?
+500:  echo "TASK_COMPLETE: handoff written"
+502:  echo "TASK_FAILED: codex exited $EXIT; handoff $([ -f "$HANDOFF_PATH" ] && echo present || echo missing). Log: $LOG_PATH"
+506:The Bash tool returns a shell task ID immediately and notifies you when it completes. On completion, call BashOutput on that shell task ID to retrieve [... omitted end of long line]
+508:- `TASK_COMPLETE` -> proceed to Step 3
+509:- `TASK_FAILED` -> proceed to Step 3 (failure path). Read `$LOG_PATH` for failure context before asking the human.
+511:**Human visibility:** To watch codex progress live, run `tail -f <absolute path to mission/logs/task-N-codex.log>` in another terminal.
+513:**If codex hangs:** There is no hard timeout. If activity in the log stops for several minutes and the background task is still running, the human can [... omitted end of long line]
+523:- **TASK_COMPLETE** (handoff exists and contains a commit SHA): Extract the commit SHA. Log to progress.md: `<timestamp> -- Task N: worker completed.  [... omitted end of long line]
+524:- **TASK_FAILED** (handoff missing or no commit SHA):
+526:     - If the claude fallback produces `TASK_COMPLETE`: log to progress.md: `<timestamp> -- Task N: claude fallback succeeded. Commit: <SHA>.` Proceed [... omitted end of long line]
+742:find /tmp -mindepth 1 -maxdepth 1 -user "$(whoami)" -mmin +30 -not -name "claude-*" -not -name "*mission-prompt*" \( -type f -delete -o -type d -exec  [... omitted end of long line]
+746:codex exec \
+753:  < /dev/null > "$LOG_PATH" 2>&1
+755:EXIT=$?
+759:  echo "REVIEW_COMPLETE: report written"
+761:  echo "REVIEW_FAILED: codex exited $EXIT; report $([ -f "$REPORT_PATH" ] && echo present || echo missing). Log: $LOG_PATH"
+765:The Bash tool returns a shell task ID immediately. Reviewer B runs synchronously via the Agent tool. To run them in parallel: **dispatch Reviewer A fi [... omitted end of long line]
+
+exec
+/bin/zsh -lc 'git ls-files ../../.claude/skills/mission/SKILL.md ../../openspec/changes/darkfactory-dispatch/mission/handoffs/task-7.md' in /Users/stuart/.darkfactory/tools/darkfactory-dispatch
+ succeeded in 0ms:
+../../.claude/skills/mission/SKILL.md
+
+codex
+I found the relevant sections. The requested snippets have a small tension: the worker replacement still prints `TASK_COMPLETE`/`TASK_FAILED`, but the surrounding instructions should treat dispatcher JSON `status` as the source of truth. I’m applying that narrowly: the bash block parses `.status`, and the prose says `completed` proceeds while `failed`/`timed_out` go through the existing fallback path.
+2026-04-26T01:05:09.780285Z ERROR codex_core::tools::router: error=patch rejected: writing outside of the project; rejected by user approval settings
+codex
+The direct patch tool refused the edit because the target skill lives two levels above the tool directory. I’m going to run the same patch from the git root so the file is inside the active project boundary, then keep the rest of the work scoped.
+2026-04-26T01:05:44.184972Z ERROR codex_core::tools::router: error=patch rejected: writing outside of the project; rejected by user approval settings
+codex
+The patch was blocked again by the sandbox, even from the git root. I can read the mission skill, but this session is only allowed to write under `/Users/stuart/.darkfactory/tools/darkfactory-dispatch` and `.git`; the requested `.claude/skills/mission/SKILL.md` and mission handoff path are outside that writable set.
+exec
+/bin/zsh -lc 'git diff -- .claude/skills/mission/SKILL.md openspec/changes/darkfactory-dispatch/mission/handoffs/task-7.md' in /Users/stuart/.darkfactory
+exec
+/bin/zsh -lc 'git status --short -- .claude/skills/mission/SKILL.md openspec/changes/darkfactory-dispatch/mission/handoffs/task-7.md' in /Users/stuart/.darkfactory
+ succeeded in 0ms:
+/opt/homebrew/Library/Homebrew/cmd/shellenv.sh: line 18: /bin/ps: Operation not permitted
+
+ succeeded in 0ms:
+/opt/homebrew/Library/Homebrew/cmd/shellenv.sh: line 18: /bin/ps: Operation not permitted
+
+codex
+Task: Task 7 - Mission skill integration  
+Commit SHA: not created
+
+I could read the target file at `/Users/stuart/.darkfactory/.claude/skills/mission/SKILL.md`, but the sandbox only permits writes under `/Users/stuart/.darkfactory/tools/darkfactory-dispatch` and `.git`. Both the skill file and requested handoff path are outside that writable set, so the patch tool rejected the edit.
+
+Commands run:
+- `rg ... .claude/skills/mission/SKILL.md` from tool dir: exit 2, file not found there
+- `git status --short`: exit 0
+- `rg --files -g 'SKILL.md' ../..`: exit 0, found `../../.claude/skills/mission/SKILL.md`
+- `sed` reads around both target blocks: exit 0
+- patch attempts: rejected by sandbox as writing outside project
+
+No tests or commit were run because no file changes could be applied. Rerun this worker with `/Users/stuart/.darkfactory` as the writable project root, or add `/Users/stuart/.darkfactory` to writable roots.
+tokens used
+36,169
+Task: Task 7 - Mission skill integration  
+Commit SHA: not created
+
+I could read the target file at `/Users/stuart/.darkfactory/.claude/skills/mission/SKILL.md`, but the sandbox only permits writes under `/Users/stuart/.darkfactory/tools/darkfactory-dispatch` and `.git`. Both the skill file and requested handoff path are outside that writable set, so the patch tool rejected the edit.
+
+Commands run:
+- `rg ... .claude/skills/mission/SKILL.md` from tool dir: exit 2, file not found there
+- `git status --short`: exit 0
+- `rg --files -g 'SKILL.md' ../..`: exit 0, found `../../.claude/skills/mission/SKILL.md`
+- `sed` reads around both target blocks: exit 0
+- patch attempts: rejected by sandbox as writing outside project
+
+No tests or commit were run because no file changes could be applied. Rerun this worker with `/Users/stuart/.darkfactory` as the writable project root, or add `/Users/stuart/.darkfactory` to writable roots.
