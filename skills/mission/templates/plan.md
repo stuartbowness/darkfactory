@@ -28,13 +28,13 @@ Captured so this mission can be reproduced against the exact skill version that 
 Defaults defined in Phase 6 config.yaml. 
 
 ## Skills to Use
-- /grill-me -- alignment interview (planning)
-- /ubiquitous-language -- shared language (planning)
-- /write-a-prd -- structured PRD from grill conversation (planning)
+- /grill -- alignment interview (planning)
+- /language -- shared language (planning)
+- /prd -- structured PRD from grill conversation (planning)
 - openspec CLI -- create artifacts sequentially: proposal, specs, design, tasks (planning)
 - /review -- code review (scrutiny validation)
 - /simplify -- simplify pass (scrutiny validation)
-- /security-review -- security check (scrutiny validation, sensitive tasks only)
+- /security -- security check (scrutiny validation, sensitive tasks only)
 - /tdd -- test-driven development for workers (build phase)
 - /test-app -- browser tests (user-test validation)
 - /demo-video -- frontend demo recording (post-validation)

@@ -1,6 +1,6 @@
 # Darkfactory Design Decisions
 
-Captured from the grill-me session on 2026-04-10.
+Captured from the grill session on 2026-04-10.
 
 ## Vision
 
@@ -34,7 +34,7 @@ Inner loop per task: `spec -> build -> verify -> ship` with repetition on valida
 - Default engine: Codex (configurable in mission/config.yaml)
 
 ### Per-task validators (run sequentially)
-1. **Scrutiny validator** -- test presence gate, build/test/lint, /review, code standards, /simplify, /security-review (conditional), contract assertions. Always runs.
+1. **Scrutiny validator** -- test presence gate, build/test/lint, /review, code standards, /simplify, /security (conditional), contract assertions. Always runs.
 2. **User-test validator** -- decides API tests (HTTP) and/or browser tests (agent-browser) based on what changed. Always runs.
 3. **Demo video** -- recorded after both validators pass, for frontend tasks. Orchestrator decides when.
 
@@ -115,16 +115,16 @@ openspec/changes/<change-name>/mission/
 - Demo video: claude
 
 ## Skills to Use
-- Alignment: /grill-me (during planning, before artifacts are created)
-- Shared language: /ubiquitous-language (during planning, establish terms)
-- PRD: /write-a-prd (turn grill conversation into structured PRD)
+- Alignment: /grill (during planning, before artifacts are created)
+- Shared language: /language (during planning, establish terms)
+- PRD: /prd (turn grill conversation into structured PRD)
 - Planning: /opsx:propose (create proposal, design, tasks from PRD)
 - Task breakdown: each task is a vertical slice through all layers, demoable and verifiable on its own
 - Contract: written by orchestrator after planning, before workers start
 - Worker implementation: /tdd (test-driven development for workers)
 - Worker briefs: assembled from proposal.md + design.md + task description
 - Scrutiny validation: build/test/lint + /review + /simplify against contract
-- Security validation: /security-review (for tasks touching auth/sensitive paths)
+- Security validation: /security (for tasks touching auth/sensitive paths)
 - User-test validation: /test-app (agent-browser) and/or HTTP tests against API
 - Adversarial review: dual Codex + Claude review in parallel, orchestrator synthesizes
 - Demo video: /demo-video (for frontend tasks)

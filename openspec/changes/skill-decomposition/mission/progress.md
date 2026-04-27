@@ -6,3 +6,93 @@ Started: 2026-04-26T00:00:00Z
 
 - 2026-04-26 -- Mission directory created. Awaiting approval.
 - 2026-04-26 -- Contract testability pre-flight: 8 execution, 55 output, 6 inspection (8.7% inspection). PASSED.
+- 2026-04-26 -- Mission resumed in new session. Picking up from task 1. Previously completed: none.
+2026-04-27 -- Task 1: worker completed. Commit: 4f053d0ee9a58890324bae4e9c5a9625ad7b5480
+- 2026-04-27 -- Task 1: scrutiny validation PASSED.
+- 2026-04-27 -- Task 1: user-test validation PASSED.
+- 2026-04-27 -- Task 1 complete.
+  - Commit: 4f053d0ee9a58890324bae4e9c5a9625ad7b5480
+  - Scrutiny: PASS
+  - User-test: PASS
+  - Demo: SKIPPED
+  - Fix attempts: 0
+- 2026-04-27 -- Task 1a: worker completed. Commit: 1b951021c61265b1642e77d0b8fe3a066fc07f61
+- 2026-04-27 -- Task 1a: scrutiny validation FAILED. Assertion 6: /mission-init count = 0 (required ≥1). Root cause: /darkfactory-init was never in SKILL.md — 4th substitution was a no-op. Human decision: add /mission-init call to Phase 0.
+- 2026-04-27 -- Task 1a: fix worker completed. Commit: e14fa34e0d1b377c09ecbee64946d2827f09e20e
+- 2026-04-27 -- Task 1a: scrutiny re-validation PASSED (attempt 2).
+- 2026-04-27 -- Task 1a: user-test validation PASSED.
+- 2026-04-27 -- Task 1a complete.
+  - Commit: e14fa34e0d1b377c09ecbee64946d2827f09e20e (fix on 1b951021)
+  - Scrutiny: PASS (attempt 2)
+  - User-test: PASS
+  - Demo: SKIPPED
+  - Fix attempts: 1
+- 2026-04-27 -- Task 2: worker completed. Commit: 66500d39aa954798f10ddca934360a170d0c4546
+- 2026-04-27 -- Task 2: scrutiny FAILED. Assertion 4: user-invokable: true missing from all three forked skills (not present in source files). Fix: add field to frontmatter.
+- 2026-04-27 -- Task 2: fix worker completed. Commit: 2ad413dfb164a9a2e15acdcca34e958bec9b3994
+- 2026-04-27 -- Task 2: scrutiny re-validation PASSED (attempt 2).
+- 2026-04-27 -- Task 2: user-test validation PASSED.
+- 2026-04-27 -- Task 2 complete.
+  - Commit: 2ad413dfb164a9a2e15acdcca34e958bec9b3994 (fix on 66500d39)
+  - Scrutiny: PASS (attempt 2)
+  - User-test: PASS
+  - Demo: SKIPPED
+  - Fix attempts: 1
+- 2026-04-27 -- Task 3: worker completed. Commit: 8c12e873bd1443fb8e894e4254034f321b9ecc67
+- 2026-04-27 -- Task 3: scrutiny PASSED.
+- 2026-04-27 -- Task 3: user-test PASSED.
+- 2026-04-27 -- Task 3 complete.
+  - Commit: 8c12e873bd1443fb8e894e4254034f321b9ecc67
+  - Scrutiny: PASS
+  - User-test: PASS
+  - Demo: SKIPPED
+  - Fix attempts: 0
+- 2026-04-27 -- Task 4: worker completed. Commit: c06149050e687a8e154186d03665b9e7bd2ca745
+- 2026-04-27 -- Task 4: scrutiny PASSED. User-test PASSED. (Note: duplicate user_invokable/user-invokable fields in frontmatter — harmless.)
+- 2026-04-27 -- Task 4 complete.
+  - Commit: c06149050e687a8e154186d03665b9e7bd2ca745
+  - Scrutiny: PASS
+  - User-test: PASS
+  - Demo: SKIPPED
+  - Fix attempts: 0
+- 2026-04-27 -- Task 5: worker completed. Commit: 4a3ed785a86f7b0871169861ca059a9083627d43
+- 2026-04-27 -- Task 5: scrutiny PASSED. User-test PASSED.
+- 2026-04-27 -- Task 5 complete.
+  - Commit: 4a3ed785a86f7b0871169861ca059a9083627d43
+  - Scrutiny: PASS
+  - User-test: PASS
+  - Demo: SKIPPED
+  - Fix attempts: 0
+- 2026-04-27 -- Task 6: worker completed. Commit: 1ac6f1c791b331fcb85f44e3bd9fdb0104f06a6d
+- 2026-04-27 -- Task 6: scrutiny PASSED. User-test PASSED.
+- 2026-04-27 -- Task 6 complete.
+  - Commit: 1ac6f1c791b331fcb85f44e3bd9fdb0104f06a6d
+  - Scrutiny: PASS
+  - User-test: PASS
+  - Demo: SKIPPED
+  - Fix attempts: 0
+- 2026-04-27 -- Task 7: worker completed. Commit: b639abe1fc02811a48b429d6f5cc324caf48b170
+- 2026-04-27 -- Task 7: scrutiny PASSED. User-test PASSED.
+- 2026-04-27 -- Task 7 complete.
+  - Commit: b639abe1fc02811a48b429d6f5cc324caf48b170
+  - Scrutiny: PASS
+  - User-test: PASS
+  - Demo: SKIPPED
+  - Fix attempts: 0
+- 2026-04-27 -- Task 9: worker completed. Commit: 85ccb17443ddf03bbeb7b126f44ed0ad50f34fd2
+- 2026-04-27 -- Task 9: scrutiny PASSED. User-test PASSED.
+- 2026-04-27 -- Task 9 complete.
+  - Commit: 85ccb17443ddf03bbeb7b126f44ed0ad50f34fd2
+  - Scrutiny: PASS
+  - User-test: PASS
+  - Demo: SKIPPED
+  - Fix attempts: 0
+- 2026-04-27 -- Task 8: worker completed. Commit: 7b1a9b29118157922456b9956e306ba885dba3dc
+- 2026-04-27 -- Task 8: scrutiny fixup applied (POSIX glob guard, empty-dir check). Fixup commit: 2d4e351.
+- 2026-04-27 -- Task 8: scrutiny PASSED. User-test PASSED.
+- 2026-04-27 -- Task 8 complete.
+  - Commit: 7b1a9b29118157922456b9956e306ba885dba3dc + fixup 2d4e351
+  - Scrutiny: PASS
+  - User-test: PASS
+  - Demo: SKIPPED
+  - Fix attempts: 0

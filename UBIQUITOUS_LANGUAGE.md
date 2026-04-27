@@ -109,7 +109,7 @@
 >
 > **Dev:** "At least three -- WebSocket setup, notification delivery, and the UI. Each is a **Vertical slice** cutting through the API and frontend."
 >
-> **Orchestrator:** "That's a good fit. Let me **/grill-me** you on the requirements first, then I'll create the **Change** via **/opsx:propose** and write the **Contract** before any **Workers** start."
+> **Orchestrator:** "That's a good fit. Let me **/grill** you on the requirements first, then I'll create the **Change** via **/opsx:propose** and write the **Contract** before any **Workers** start."
 >
 > **Dev:** "What if the Codex **Worker** hangs during the WebSocket task?"
 >

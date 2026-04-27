@@ -13,10 +13,10 @@ Source: Matt Pocock talk at AI Engineer Europe (April 2026). Skills repo: github
 **Six failure modes and skills to address them:**
 
 1. **Misalignment** -- AI doesn't understand what to build
-   - Skill: `/grill-me` -- adversarial interview (40-100 questions) to reach shared understanding before creating any assets. Better than plan mode which rushes to create.
+   - Skill: `/grill` -- adversarial interview (40-100 questions) to reach shared understanding before creating any assets. Better than plan mode which rushes to create.
 
 2. **Talking across purposes** -- AI too verbose, wrong terminology
-   - Skill: `/ubiquitous-language` -- DDD-inspired glossary scan. Creates UBIQUITOUS_LANGUAGE.md with canonical terms, aliases to avoid, relationships. Improves AI thinking traces and implementation alignment.
+   - Skill: `/language` -- DDD-inspired glossary scan. Creates UBIQUITOUS_LANGUAGE.md with canonical terms, aliases to avoid, relationships. Improves AI thinking traces and implementation alignment.
 
 3. **AI outruns its headlights** -- builds too much before testing
    - Skill: TDD -- forces small steps (write test, make pass, refactor). Rate of feedback = speed limit.

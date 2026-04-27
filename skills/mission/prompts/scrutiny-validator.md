@@ -177,7 +177,7 @@ Run these checks in order. For each, report PASS or FAIL with evidence.
 
 8. **Code simplify:** Run /simplify against the changed files. 
 
-9. **Security review:** If the diff touches auth, secrets, user input, network boundaries, or filesystem trust boundaries (copying/moving/promoting files between directories, extracting archives, sandbox-to-production transfers), run /security-review. Otherwise "N/A."
+9. **Security review:** If the diff touches auth, secrets, user input, network boundaries, or filesystem trust boundaries (copying/moving/promoting files between directories, extracting archives, sandbox-to-production transfers), run /security. Otherwise "N/A."
 
 10. **Contract assertions:** Mark each assertion PASS, FAIL, or SKIP with a one-line explanation. SKIPs for work deferred to later tasks: append to `mission/deferrals.md` as `task N -- <assertion>`.
 
@@ -243,9 +243,9 @@ Run these checks in order. For each, report PASS or FAIL with evidence.
 
     Report success as `diff-coverage | PASS | 85% coverage on changed lines`. Report warnings as `diff-coverage | WARN | 74% coverage on changed lines (target: 80%)`. Report failures as `diff-coverage | FAIL | 55% coverage on changed lines (minimum: 70%)`. Include details listing under-covered files with added-line ranges that lack coverage.
 
-14. **Test quality review:** If the diff contains no test files, report `test-quality-review | SKIP | no test files in diff`.
+14. **Test quality review:** If the diff contains no test files, report `test-quality | SKIP | no test files in diff`.
 
-    Run /test-quality as a subagent against the full diff, following the same delegation pattern as /review, /simplify, and /security-review. Read the skill markdown findings after the subagent completes. Findings are grouped by severity (P0, P1, P2, P3) and include file:line, evidence, and remediation.
+    Run /test-quality as a subagent against the full diff, following the same delegation pattern as /review, /simplify, and /security. Read the skill markdown findings after the subagent completes. Findings are grouped by severity (P0, P1, P2, P3) and include file:line, evidence, and remediation.
 
     Apply this severity-based result behavior:
     - Any P0 finding, including tautological assertions, is a FAIL.
@@ -254,7 +254,7 @@ Run these checks in order. For each, report PASS or FAIL with evidence.
     - P2 and P3 findings only are WARNINGS; include them in the report but do not fail the task.
     - No findings is PASS.
 
-    Report passing output as `test-quality-review | PASS | no findings`. Report warning output as `test-quality-review | WARN | 2 P2, 1 P3 findings`. Report failing output as `test-quality-review | FAIL | 1 P0 finding (tautological assertion in test_list_open)`. Include a summary of findings in the notes column.
+    Report passing output as `test-quality | PASS | no findings`. Report warning output as `test-quality | WARN | 2 P2, 1 P3 findings`. Report failing output as `test-quality | FAIL | 1 P0 finding (tautological assertion in test_list_open)`. Include a summary of findings in the notes column.
 
 ## Output Format
 
