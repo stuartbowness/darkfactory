@@ -243,6 +243,18 @@ Run these checks in order. For each, report PASS or FAIL with evidence.
 
     Report success as `diff-coverage | PASS | 85% coverage on changed lines`. Report warnings as `diff-coverage | WARN | 74% coverage on changed lines (target: 80%)`. Report failures as `diff-coverage | FAIL | 55% coverage on changed lines (minimum: 70%)`. Include details listing under-covered files with added-line ranges that lack coverage.
 
+14. **Test quality review:** If the diff contains no test files, report `test-quality-review | SKIP | no test files in diff`.
+
+    Run /test-quality-review as a subagent against the full diff, following the same delegation pattern as /review, /simplify, and /security-review. Read the skill markdown findings after the subagent completes. Findings are grouped by severity (P0, P1, P2, P3) and include file:line, evidence, and remediation.
+
+    Apply this severity-based result behavior:
+    - Any P0 finding, including tautological assertions, is a FAIL.
+    - 3 or more P1 findings are a FAIL. P1 findings include untested critical branches and behavioral changes without tests.
+    - P2 and P3 findings only are WARNINGS; include them in the report but do not fail the task.
+    - No findings is PASS.
+
+    Report passing output as `test-quality-review | PASS | no findings`. Report warning output as `test-quality-review | WARN | 2 P2, 1 P3 findings`. Report failing output as `test-quality-review | FAIL | 1 P0 finding (tautological assertion in test_list_open)`. Include a summary of findings in the notes column.
+
 ## Output Format
 
 Write your report to: <absolute path to mission/validations/task-N-scrutiny.md>
@@ -270,6 +282,7 @@ Use this format:
 | Behavioral conformance | PASS/FAIL/N/A | ... |
 | Silent skip detection | PASS/FAIL/SKIP | ... |
 | Diff coverage | PASS/WARN/FAIL/SKIP | ... |
+| Test quality review | PASS/WARN/FAIL/SKIP | ... |
 
 ## Contract Assertions
 | # | Assertion | Result | Method | Evidence |

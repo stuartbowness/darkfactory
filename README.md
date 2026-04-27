@@ -100,6 +100,7 @@ After each worker finishes, two validators check the work:
    - Security review (only when the changes touch auth, secrets, user input, network boundaries, or filesystem trust boundaries)
    - Contract check -- does the code do what the contract says it should?
    - Execution check -- actually runs the code to confirm it works, rather than just reading the source
+   - Test health checks -- silent skip detection, diff coverage on changed lines, and test quality review
 
 2. **User-test validator** -- tests the feature the way a user would. It decides whether to hit an API with HTTP requests, drive a browser, or both, based on what the task changed.
 
