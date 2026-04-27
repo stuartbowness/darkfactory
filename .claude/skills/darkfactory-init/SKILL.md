@@ -45,6 +45,7 @@ Check if each required supporting skill exists in `~/.claude/skills/`:
 - `~/.claude/skills/write-a-prd/SKILL.md`
 - `~/.claude/skills/tdd/SKILL.md`
 - `~/.claude/skills/security-review/SKILL.md`
+- `~/.claude/skills/test-quality-review/SKILL.md`
 
 If any are missing, report only the missing ones:
 
@@ -57,6 +58,7 @@ Missing supporting skills. Install them:
   ln -sf ~/.darkfactory-skills/write-a-prd ~/.claude/skills/write-a-prd
   ln -sf ~/.darkfactory-skills/tdd ~/.claude/skills/tdd
   ln -sf ~/.darkfactory-skills/security-review ~/.claude/skills/security-review
+  ln -sf ~/.darkfactory-skills/test-quality-review ~/.claude/skills/test-quality-review
 
 Then restart Claude Code and re-run /darkfactory-init.
 ```
@@ -113,6 +115,24 @@ Install commands if missing:
 - openspec: `npm install -g @fission-ai/openspec`
 - jq: `brew install jq`
 
+### Coverage tool verification
+
+Detect the project language from build files at the project root:
+
+- `Cargo.toml` -> Rust
+- `package.json` -> TypeScript/Node
+- `pyproject.toml` or `requirements.txt` -> Python
+
+Then check the corresponding coverage tool:
+
+- Rust: Run `cargo tarpaulin --version 2>/dev/null || echo "NOT_INSTALLED"`. If missing, suggest `cargo install cargo-tarpaulin`.
+- TypeScript/Node: Check `package.json` for `c8`, `@jest/coverage`, `istanbul`, or `jest` in `dependencies` or `devDependencies`. `jest` has built-in coverage. If no coverage capability is found, suggest `npm install -D c8`.
+- Python: Run `pip show pytest-cov 2>/dev/null || echo "NOT_INSTALLED"`. If missing, suggest `pip install pytest-cov`.
+
+If no `Cargo.toml`, `package.json`, `pyproject.toml`, or `requirements.txt` exists at the project root, report: "No recognized language detected -- coverage tool check skipped."
+
+Implementation note: keep the same exit-0 pattern used by the CLI checks for parallel execution safety, such as `command --version 2>/dev/null || echo "NOT_INSTALLED"`.
+
 ---
 
 ## Step 5: Report status
@@ -135,6 +155,7 @@ Supporting skills:
   [x] /review (built-in)
   [x] /simplify (built-in)
   [x] /security-review
+  [x] /test-quality-review
   [ ] /test-app (optional)
   [ ] /demo-video (optional)
 
@@ -144,6 +165,11 @@ CLI tools:
   [x] gh (authenticated)
   [x] openspec
   [x] jq
+
+Coverage tools:
+  [x] cargo-tarpaulin (Rust detected)
+  [ ] pytest-cov (Python detected, install: pip install pytest-cov)
+  [~] No recognized language detected -- skipped
 
 OpenSpec:
   [x] Initialized
