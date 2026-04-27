@@ -52,7 +52,7 @@ Restart Claude Code, then from any project run:
 /darkfactory-init
 ```
 
-This checks your entire setup and tells you exactly what's missing. It verifies core skills, supporting skills, CLI tools (codex, gh, openspec), and initializes OpenSpec in the current project if needed.
+This checks your entire setup and tells you exactly what's missing. It verifies core skills, supporting skills (including `/test-quality-review` for LLM-based test quality analysis), CLI tools (codex, gh, openspec), coverage tools for your project's language (cargo-tarpaulin for Rust, jest/c8 for TypeScript, pytest-cov for Python), and initializes OpenSpec in the current project if needed.
 
 ### Updating
 
