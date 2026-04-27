@@ -474,7 +474,7 @@ Read the engine from `mission/config.yaml`.
 
 #### If engine is `codex`:
 
-Before dispatching, record the current HEAD SHA with `git rev-parse HEAD`. This is the pre-task SHA used in Step 7.
+Before dispatching, run `git rev-parse HEAD` and store the result as `PRE_TASK_SHA`. This value is used in Step 7 to generate the codebase delta — store it somewhere you can reference after the background worker returns (e.g. in the plan file or a local variable).
 
 Use the Bash tool with `run_in_background: true` to run the worker. Use this exact bash script:
 
@@ -534,7 +534,7 @@ Read the handoff file at `mission/handoffs/task-N.md`.
      - If the claude fallback produces `TASK_COMPLETE`: log to progress.md: `<timestamp> -- Task N: claude fallback succeeded. Commit: <SHA>.` Proceed to Step 4.
      - If the claude fallback also fails: fall through to the human escalation below.
   2. Human escalation (reached when: engine is `claude`, engine is `codex` and both attempts failed, or any second failure): log to progress.md: `<timestamp> -- Task N: worker FAILED. <reason>.` Ask the human: retry, skip, or abort. If skip: mark the task as `- [~]` in tasks.md and log `<timestamp> -- Task N: SKIPPED by human.` to progress.md. The build loop ignores `- [~]` tasks.
-  3. On the next task, revert to the configured engine. This fallback is per-task only. Before starting the next task, re-read `engine` from `mission/config.yaml` so the engine resets to the configured value after any Codex -> Claude fallback.
+  3. On the next task, revert to the configured engine. This fallback is per-task only. Before starting the next task, re-read `engine` from `openspec/changes/<change-name>/mission/config.yaml` so the engine resets to the configured value after any Codex -> Claude fallback.
 
 ### Step 4: Scrutiny Validation
 
@@ -630,7 +630,7 @@ Spawn a Claude subagent to run `/demo-video`. The subagent should save the recor
 
 1. Mark the task complete in `tasks.md`: change `- [ ]` to `- [x]` for this task.
 
-2. **Generate codebase delta for subsequent briefs.** Run `git diff <pre-task-sha>..HEAD` (where pre-task-sha is the commit before this task's first commit, recorded when the worker was dispatched) to extract what this task added. Summarize into a codebase delta entry containing: files created/modified (paths), public function/endpoint signatures, key types, and patterns used. Store this delta in the plan under a `## Codebase Deltas` section. The next task's brief (Step 1) reads accumulated deltas from the plan and writes them into the "What Previous Tasks Built" section.
+2. **Generate codebase delta for subsequent briefs.** Run `git diff $PRE_TASK_SHA..HEAD` (where `PRE_TASK_SHA` is the value recorded in Step 2 before this task was dispatched) to extract what this task added. Summarize into a codebase delta entry containing: files created/modified (paths), public function/endpoint signatures, key types, and patterns used. Store this delta in the plan under a `## Codebase Deltas` section. The next task's brief (Step 1) reads accumulated deltas from the plan and writes them into the "What Previous Tasks Built" section.
 
    **Guard rail:** Generate the delta from `git diff` output only. Never read handoff reports to build this summary. The delta contains facts about what exists in the code, not why or how the worker built it.
 
