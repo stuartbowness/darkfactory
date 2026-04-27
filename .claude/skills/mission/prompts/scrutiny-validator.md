@@ -218,6 +218,31 @@ Run these checks in order. For each, report PASS or FAIL with evidence.
 
     Report failures as `silent-skip-detection | FAIL | N silent skips found`. For each instance, list the file path, line number, test function name, and this remediation guidance: "Either fail explicitly with `panic!("requires X")` or mark as `#[ignore]` / `@skip` so the test runner reports it as skipped, not passed."
 
+13. **Diff coverage:** Use the `Detected language` named fact from the deterministic pre-pass to select the coverage tool. Run coverage for the primary language only. In multi-language projects, use the language with the most production source files in the diff; do not run two coverage tools.
+
+    First identify changed production source files for the selected language. Use the same production source and standalone test exclusions as the file size count:
+    - Rust: include `.rs`; exclude files in `tests/`.
+    - TypeScript/Node: include `.ts`, `.tsx`, `.js`, `.jsx`; exclude `*.test.ts`, `*.spec.ts`, and files in `__tests__/`.
+    - Python: include `.py`; exclude `test_*.py`, `*_test.py`, and files in `tests/`.
+
+    If the diff contains no production source files, report `diff-coverage | SKIP | no production source files in diff`.
+
+    Run the language-appropriate coverage tool:
+    - Rust: run `cargo tarpaulin --out json` first; if that is unavailable or fails because the tool is missing, use `cargo llvm-cov --json` as fallback.
+    - TypeScript/Node: run `npx jest --coverage --json` or `npx c8 --reporter json`.
+    - Python: run `pytest --cov --cov-report json`.
+
+    If the coverage tool is not installed, first report `diff-coverage | SKIP | <tool> not installed` as a WARNING, then attempt auto-install as a fallback. For Rust, attempt `cargo install cargo-tarpaulin` before retrying tarpaulin. For TypeScript/Node and Python, use the project's existing package manager or environment only when that is clearly configured by the repository; otherwise keep the SKIP result and explain the missing tool. If auto-install succeeds, retry the coverage run. If auto-install fails, keep the SKIP result.
+
+    Run `git diff <commit-sha>^ <commit-sha> --name-only` to get changed files. Filter the coverage JSON to those changed files, then count only added lines from `git diff <commit-sha>^ <commit-sha>`. Added lines are lines that appear as additions in the task diff. This is diff coverage: line coverage for new code only, not whole-file or whole-project coverage.
+
+    Apply these thresholds to added-line coverage:
+    - 80% or higher: PASS.
+    - 70-79%: WARN, include it in the report, and do not fail the task.
+    - Below 70%: FAIL and trigger the fix loop.
+
+    Report success as `diff-coverage | PASS | 85% coverage on changed lines`. Report warnings as `diff-coverage | WARN | 74% coverage on changed lines (target: 80%)`. Report failures as `diff-coverage | FAIL | 55% coverage on changed lines (minimum: 70%)`. Include details listing under-covered files with added-line ranges that lack coverage.
+
 ## Output Format
 
 Write your report to: <absolute path to mission/validations/task-N-scrutiny.md>
@@ -244,6 +269,7 @@ Use this format:
 | Contract assertions | PASS/FAIL | ... |
 | Behavioral conformance | PASS/FAIL/N/A | ... |
 | Silent skip detection | PASS/FAIL/SKIP | ... |
+| Diff coverage | PASS/WARN/FAIL/SKIP | ... |
 
 ## Contract Assertions
 | # | Assertion | Result | Method | Evidence |
