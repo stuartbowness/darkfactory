@@ -30,10 +30,8 @@ Clone Darkfactory and symlink its skills into your global Claude Code skills dir
 
 ```bash
 git clone https://github.com/layercodedev/darkfactory.git ~/.darkfactory
-ln -sf ~/.darkfactory/.claude/skills/mission ~/.claude/skills/mission
-ln -sf ~/.darkfactory/.claude/skills/mission-resume ~/.claude/skills/mission-resume
-ln -sf ~/.darkfactory/.claude/skills/mission-status ~/.claude/skills/mission-status
-ln -sf ~/.darkfactory/.claude/skills/darkfactory-init ~/.claude/skills/darkfactory-init
+cd ~/.darkfactory
+./install.sh
 ```
 
 Then build and install the dispatch supervisor:
