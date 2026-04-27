@@ -47,10 +47,10 @@ Symlinks mean the skills always point to your local clone, so updating is just a
 Restart Claude Code, then from any project run:
 
 ```
-/darkfactory-init
+/mission-init
 ```
 
-This checks your entire setup and tells you exactly what's missing. It verifies core skills, supporting skills (including `/test-quality-review` for LLM-based test quality analysis), CLI tools (codex, gh, openspec), coverage tools for your project's language (cargo-tarpaulin for Rust, jest/c8 for TypeScript, pytest-cov for Python), and initializes OpenSpec in the current project if needed.
+This checks your entire setup and tells you exactly what's missing. It verifies all 12 skills are symlinked, CLI tools (codex, gh, openspec, darkfactory-dispatch, jq), coverage tools for your project's language (cargo-tarpaulin for Rust, jest/c8 for TypeScript, pytest-cov for Python), and initializes OpenSpec in the current project if needed.
 
 ### Updating
 
@@ -173,9 +173,17 @@ Darkfactory is controlled through skills -- reusable prompt templates you invoke
 | Skill | Purpose |
 |-------|---------|
 | `/mission` | Start an autonomous mission from scratch. Walks you through planning, dispatches workers, validates, and delivers a draft PR. |
-| `/mission-resume` | Resume a mission that was interrupted (session crash, closed terminal). Detects exactly where it left off -- including tasks that were partially validated or committed but not yet checked -- and continues through to the draft PR and code review. |
+| `/mission-resume` | Resume a mission that was interrupted (session crash, closed terminal). Detects exactly where it left off and continues through to the draft PR and code review. |
 | `/mission-status` | Read-only progress check. Open a second terminal while a mission runs to see which tasks are done, in progress, or queued. |
-| `/darkfactory-init` | Check your project setup. Reports what's installed, what's missing, and gives you the exact commands to fix it. |
+| `/mission-init` | Check your project setup. Verifies all 12 skill symlinks, CLI tools, and coverage tools. Runs `openspec init` if needed. |
+| `/grill` | Alignment interview: asks pointed questions until the goals, constraints, and edge cases are clear. Used in the mission planning phase. |
+| `/prd` | Turns an interview into a structured PRD filed as a GitHub issue. Used in the mission planning phase. |
+| `/language` | Creates a shared glossary (ubiquitous language) so you, the orchestrator, and all workers use the same terms. Used in the mission planning phase. |
+| `/tdd` | Test-driven development guidance. Workers invoke this during the build phase. Companion files cover deep modules, interfaces, mocking, refactoring, and test patterns. |
+| `/test-quality` | LLM-based semantic review of test effectiveness. The scrutiny validator runs this as a subagent after every worker commit. |
+| `/security` | Security review. The scrutiny validator runs this when the diff touches auth, secrets, user input, or network/filesystem boundaries. |
+| `/adversarial` | Dual-agent code review: dispatches a Codex reviewer and a Claude reviewer with identical input, then surfaces disagreements. |
+| `/dispatch` | Run a coding task via `darkfactory-dispatch`. Accepts a task description inline or prompts for one. Presents structured outcome. |
 
 ### Skill structure
 
@@ -187,26 +195,20 @@ Darkfactory is controlled through skills -- reusable prompt templates you invoke
 
 Companion files are read on demand when the skill reaches the step that needs them.
 
-### Required external skills
+### Other skills used by `/mission`
 
-The skills above are bundled in this repo. But `/mission` also calls other skills during execution. Some are built into Claude Code, some need to be installed separately. The table below shows each skill, where it comes from, and when it's used.
+All Darkfactory skills are bundled in this repo. `/mission` also calls two built-in Claude Code skills and accepts two optional project-specific skills:
 
 | Skill | Source | When it's used |
 |-------|--------|---------|
-| `/grill-me` | [layercodedev/skills](https://github.com/layercodedev/skills/tree/main/grill-me) | Planning phase: the alignment interview that figures out what you actually want |
-| `/ubiquitous-language` | [layercodedev/skills](https://github.com/layercodedev/skills/tree/main/ubiquitous-language) | Planning phase: creates a shared glossary so everyone uses the same terms |
-| `/write-a-prd` | [layercodedev/skills](https://github.com/layercodedev/skills/tree/main/write-a-prd) | Planning phase: turns the interview into a structured PRD |
-| `/tdd` | [layercodedev/skills](https://github.com/layercodedev/skills/tree/main/tdd) | Build phase: workers use test-driven development |
 | `/review` | Built-in Claude Code (required) | Scrutiny validator: code review step |
 | `/simplify` | Built-in Claude Code (required) | Scrutiny validator: complexity check step |
-| `/security-review` | Your global Claude skills (conditional) | Scrutiny validator: security audit, only runs when the diff touches auth, secrets, user input, network boundaries, or filesystem trust boundaries |
-| `/test-quality-review` | [layercodedev/skills](https://github.com/layercodedev/skills/tree/main/test-quality-review) | Scrutiny validator: LLM-based semantic review of test effectiveness (assertion quality, implementation coupling, untested branches, edge cases) |
 | `/test-app` | Your project's Claude skills (optional) | User-test validator: browser-based testing |
 | `/demo-video` | Your project's Claude skills (optional) | Records a demo of frontend changes after validation passes |
 | `openspec` CLI | Installed by `npm install -g openspec` | Planning phase: creates the structured artifacts (proposal, specs, design, tasks) |
 | `/opsx:archive` | Bundled with Darkfactory | Post-merge: moves the change's planning files into the OpenSpec archive directory |
 
-`/review` and `/simplify` are mandatory -- the scrutiny validator always runs them. `/security-review` only runs when relevant. `/test-app` and `/demo-video` are optional and project-specific -- you write these yourself for your project if you want browser testing or demo recordings.
+`/review` and `/simplify` are mandatory -- the scrutiny validator always runs them. `/test-app` and `/demo-video` are optional and project-specific -- you write these yourself for your project if you want browser testing or demo recordings.
 
 ### Configuration
 
@@ -276,7 +278,7 @@ The workflow scales naturally to match the size of the work. A small bug fix pro
 
 ## How it was built
 
-The first version was hand-written during a `/grill-me` session that produced the design decisions and shared vocabulary. The second version was built by Darkfactory itself -- Claude workers generated the skills from the specs, and a Codex code review caught issues that a fix worker addressed. Everything since then has been iterative improvement, and the system is still actively evolving.
+The first version was hand-written during a `/grill` session that produced the design decisions and shared vocabulary. The second version was built by Darkfactory itself -- Claude workers generated the skills from the specs, and a Codex code review caught issues that a fix worker addressed. Everything since then has been iterative improvement, and the system is still actively evolving.
 
 ## Key references
 
