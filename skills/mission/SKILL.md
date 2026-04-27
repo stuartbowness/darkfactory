@@ -183,6 +183,20 @@ If a module has a large interface relative to its implementation, ask whether it
 
 When the mission modifies an existing codebase (not greenfield), the design must evaluate the current code structure against the planned architecture. For each module the design touches, read the existing code and assess whether it aligns with the target design. If existing modules are shallow, tightly coupled, or conflict with the planned architecture, the design should call this out explicitly and recommend refactoring as part of the implementation. These refactoring decisions flow naturally into task ordering in Phase 4.4 -- refactoring tasks go before the feature tasks that depend on them.
 
+#### Concern Separation Scan
+
+After generating `design.md` and before presenting it for the Review Pattern, run a concern separation scan. Read `tasks.md` in draft form for this scan; if the final task review has not happened yet, the draft is only used to identify modules and does not count as human-approved tasks. Use LLM judgment, not mechanical grep, to identify multi-task modules: modules or bounded contexts touched by two or more tasks.
+
+For each multi-task module, check whether `design.md` already contains a concern boundary statement for it. A concern boundary names the concerns within the module that should stay in separate files, such as protocol handling, dispatch, action handlers, and tests. Concern boundaries use named concerns only; they do not prescribe specific filenames.
+
+If a multi-task module has no concern boundary, the orchestrator drafts the missing boundary text from the module description and task context, then inserts it into `design.md` before the human review. Do not ask for a separate approval step for these boundaries. The human sees the complete updated `design.md` in one review.
+
+If `design.md` explicitly justifies keeping a multi-task module in one file, such as "intentionally one file because X", accept that justification and do not require a concern boundary for that module.
+
+The human cannot approve `design.md` until every multi-task module has either a concern boundary or an explicit single-file justification. If the orchestrator proposal is rejected or removed and a coverage gap remains, block approval and require the gap to be resolved before Phase 4.4.
+
+Concern boundaries written into `design.md` persist to disk and are available to all subsequent worker briefs.
+
 Present it to the human with a recommendation. If approved, proceed to Phase 4.4.
 
 ### Phase 4.4: Generate and Review Tasks
