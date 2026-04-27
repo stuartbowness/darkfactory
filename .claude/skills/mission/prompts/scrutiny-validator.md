@@ -6,6 +6,106 @@ SHA: <commit-sha>
 ## Contract Assertions for This Task
 <paste the assertions from contract.md for task N>
 
+## Deterministic Pre-passes
+
+Before starting the check sequence, gather deterministic facts from the repository and the task diff. Store the results under the exact named facts below so later checks can reference them by name. Do not inline these facts into individual check descriptions.
+
+### Named facts
+
+- `Detected language: <Rust | TypeScript/Node | Python | Unknown>`
+- `File sizes: <filename>: <lines>, <filename>: <lines>, ...`
+- `Error handling smells: <count> matches in <lines> changed production lines (<N> per KLOC). Locations: <file:line> <pattern>, ...`
+- `Test runner: <passed> passed, <failed> failed, <skipped> skipped (<pass_rate>% pass rate)`
+
+### 1. Language detection
+
+Detect the project's primary language from build files at the repo root:
+
+- `Cargo.toml` -> Rust
+- `package.json` -> TypeScript/Node
+- `pyproject.toml` or `requirements.txt` -> Python
+
+If more than one build file type exists, choose the language with the most touched production source files in the task diff. If no recognized build file exists, store `Detected language: Unknown` and skip language-specific pre-passes with a note.
+
+### 2. File size count
+
+Run `git show <commit-sha> --stat` to identify every file the task touched. For the detected language, count lines with `wc -l` on touched source files:
+
+- Rust: `.rs`
+- TypeScript/Node: `.ts`, `.tsx`, `.js`, `.jsx`
+- Python: `.py`
+
+Exclude standalone test files from this count:
+
+- Rust: files in `tests/`
+- TypeScript/Node: `*.test.ts`, `*.spec.ts`, files in `__tests__/`
+- Python: `test_*.py`, `*_test.py`, files in `tests/`
+
+Do not exclude test modules embedded in production files. `#[cfg(test)]` blocks inside production Rust files count toward the line total.
+
+Store the result as `File sizes: <filename>: <lines>, <filename>: <lines>, ...`. If no touched production source files match the detected language, store `File sizes: none`.
+
+### 3. Error handling smell grep
+
+Count only added production lines from `git diff <commit-sha>^ <commit-sha>`, excluding standalone test files using the same language-specific rules as the file size count. Record each match with the new-file path and line number.
+
+Flag these Rust patterns:
+
+- `.unwrap()`
+- `panic!()`
+- `todo!()`
+- `unimplemented!()`
+- `.expect("")`
+
+Do not flag these Rust safe patterns:
+
+- `.unwrap_or()`
+- `.unwrap_or_default()`
+- `.unwrap_or_else()`
+- `.expect("non-empty message")`
+
+Flag these TypeScript/Node patterns:
+
+- `catch {}`
+- `catch (e) {}`
+- `as any`
+- `// @ts-ignore`
+- `// @ts-expect-error` without explanation
+- `.catch(() => {})`
+
+Do not flag these TypeScript/Node safe patterns:
+
+- `catch` with a handler body
+- `as unknown`
+
+Flag these Python patterns:
+
+- `except: pass`
+- `except Exception: pass`
+- `type: ignore` without a specific code
+- bare `raise` without context
+
+Do not flag this Python safe pattern:
+
+- `except SpecificError:` with a handler
+
+Compute density as `count / (changed_production_lines / 1000)`. Report `0 per KLOC` when there are zero changed production lines.
+
+Store the result as `Error handling smells: <count> matches in <lines> changed production lines (<N> per KLOC). Locations: <file:line> <pattern>, ...`. If there are no matches, use `Locations: none`.
+
+### 4. Test runner output parsing
+
+This named fact is declared before the check sequence, then filled immediately after check 3 runs the project test command. Parse the captured test stdout/stderr summary line using the detected language:
+
+- Rust: `test result: ok. N passed; M failed; P ignored`
+- Jest: `Tests: N passed, M failed, P skipped, Q total`
+- Vitest uses the same `Tests:` summary shape as Jest
+- Pytest: `N passed, M failed, P skipped`
+
+Treat Rust `ignored` as skipped for the named fact. Compute pass rate as `passed / (passed + failed + skipped) * 100`, rounded to one decimal place. If no summary line is found, store `Test runner: unavailable`.
+
+Store the result as `Test runner: <passed> passed, <failed> failed, <skipped> skipped (<pass_rate>% pass rate)`.
+
 ## Check Sequence
 
 Run these checks in order. For each, report PASS or FAIL with evidence.
