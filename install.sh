@@ -16,8 +16,8 @@ for skill_dir in "$SKILLS_DIR"/*/; do
     name=$(basename "$skill_dir")
     target="$CLAUDE_SKILLS/$name"
     rm -f "$target"
-    ln -sf "$skill_dir" "$target"
-    echo "linked: $target -> $skill_dir"
+    ln -sf "${skill_dir%/}" "$target"
+    echo "linked: $target -> ${skill_dir%/}"
     count=$((count + 1))
 done
 
