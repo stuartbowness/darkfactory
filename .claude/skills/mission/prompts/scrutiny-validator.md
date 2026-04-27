@@ -216,7 +216,7 @@ Run these checks in order. For each, report PASS or FAIL with evidence.
 
     Any silent skip found is a FAIL because silent skips give false confidence by hiding missing coverage.
 
-    Report failures as `silent-skip-detection | FAIL | N silent skips found`. For each instance, list the file path, line number, test function name, and this remediation guidance: "Either fail explicitly with `panic!("requires X")` or mark as `#[ignore]` / `@skip` so the test runner reports it as skipped, not passed."
+    Report failures as `silent-skip-detection | FAIL | N silent skips found`. For each instance, list the file path, line number, test function name, and language-appropriate remediation guidance: Rust: "fail explicitly with `panic!("requires X")` or mark with `#[ignore]`"; TypeScript: "throw an error or use `it.skip()`"; Python: "call `pytest.skip("reason")` or use `@pytest.mark.skip`".
 
 13. **Diff coverage:** Use the `Detected language` named fact from the deterministic pre-pass to select the coverage tool. Run coverage for the primary language only. In multi-language projects, use the language with the most production source files in the diff; do not run two coverage tools.
 
@@ -250,6 +250,7 @@ Run these checks in order. For each, report PASS or FAIL with evidence.
     Apply this severity-based result behavior:
     - Any P0 finding, including tautological assertions, is a FAIL.
     - 3 or more P1 findings are a FAIL. P1 findings include untested critical branches and behavioral changes without tests.
+    - 1-2 P1 findings are WARNINGS; include them in the report but do not fail the task.
     - P2 and P3 findings only are WARNINGS; include them in the report but do not fail the task.
     - No findings is PASS.
 

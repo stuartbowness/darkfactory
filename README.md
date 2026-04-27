@@ -202,6 +202,7 @@ The skills above are bundled in this repo. But `/mission` also calls other skill
 | `/review` | Built-in Claude Code (required) | Scrutiny validator: code review step |
 | `/simplify` | Built-in Claude Code (required) | Scrutiny validator: complexity check step |
 | `/security-review` | Your global Claude skills (conditional) | Scrutiny validator: security audit, only runs when the diff touches auth, secrets, user input, network boundaries, or filesystem trust boundaries |
+| `/test-quality-review` | [layercodedev/skills](https://github.com/layercodedev/skills/tree/main/test-quality-review) | Scrutiny validator: LLM-based semantic review of test effectiveness (assertion quality, implementation coupling, untested branches, edge cases) |
 | `/test-app` | Your project's Claude skills (optional) | User-test validator: browser-based testing |
 | `/demo-video` | Your project's Claude skills (optional) | Records a demo of frontend changes after validation passes |
 | `openspec` CLI | Installed by `npm install -g openspec` | Planning phase: creates the structured artifacts (proposal, specs, design, tasks) |
