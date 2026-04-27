@@ -8,6 +8,15 @@ description: Run a dual-agent adversarial code review. Dispatches a Codex review
 
 Run two independent reviewers against the same diff, then compare their reports. This skill is standalone and does not depend on the mission system.
 
+## Startup Config
+
+At startup, read `default_model` from `~/.darkfactory/config.yaml`. If the file or key is absent, use `gpt-5.5`.
+
+```bash
+DEFAULT_MODEL=$(awk -F: '/^[[:space:]]*default_model[[:space:]]*:/ { gsub(/^[[:space:]]+|[[:space:]]+$/, "", $2); print $2; exit }' "$HOME/.darkfactory/config.yaml" 2>/dev/null)
+: "${DEFAULT_MODEL:=gpt-5.5}"
+```
+
 ## Input Modes
 
 Determine the mode from the optional argument:
@@ -22,7 +31,7 @@ Treat an all-digit argument as a PR number. Treat any other non-empty argument a
 
 Before dispatching reviewers, choose report paths:
 
-- If the repo contains a Darkfactory mission directory matching `openspec/changes/*/mission/`, write reports under that mission:
+- If the repo contains a Darkfactory mission directory matching `openspec/changes/*/mission/`, excluding any path that contains `openspec/changes/archive/`, write reports under that mission:
   - `mission/validations/adversarial-codex.md`
   - `mission/validations/adversarial-claude.md`
 - Otherwise, write reports to temp files and tell the user both paths:
@@ -47,7 +56,7 @@ Save the diff content once and pass the identical content to both reviewers.
 
 ## Step 2: Dispatch Codex Reviewer
 
-Start Codex first and do not wait for it before launching Claude. Dispatch with `darkfactory-dispatch --async` and use the Bash tool with `run_in_background: true`.
+Start Codex first and do not wait for it before launching Claude. Dispatch with `darkfactory-dispatch --async` and use the Bash tool with `run_in_background: true`. Capture the `dispatch_id` from the `async_started` JSON on stdout.
 
 Prompt:
 
@@ -67,16 +76,21 @@ You are an adversarial code reviewer. Review the following diff for bugs, logic 
 <diff content>
 PROMPT
 
-darkfactory-dispatch \
+ASYNC_RESULT=$(darkfactory-dispatch \
   --async \
-  --model gpt-5.5 \
+  --model "$DEFAULT_MODEL" \
   --effort high \
   --timeout 900 \
   --sandbox workspace-write \
   --prompt-file "$PROMPT_PATH" \
   --output "<codex-report-path>" \
-  --cwd "$(pwd)" \
-  --json
+  --cwd "$(pwd)")
+
+DISPATCH_ID=$(printf '%s\n' "$ASYNC_RESULT" | jq -r 'select(.kind == "async_started") | .dispatch_id // empty')
+if [ -z "$DISPATCH_ID" ]; then
+  echo "Failed to start Codex reviewer: $ASYNC_RESULT"
+  exit 1
+fi
 ```
 
 ## Step 3: Dispatch Claude Reviewer
@@ -87,7 +101,14 @@ Claude must write its report to `adversarial-claude.md` at the selected report p
 
 ## Step 4: Collect Results
 
-After Claude finishes, wait for the background Codex dispatch to complete. Then read both report files.
+After Claude finishes, run `darkfactory-dispatch wait <dispatch-id>` using the dispatch ID captured in Step 2:
+
+```bash
+darkfactory-dispatch wait "$DISPATCH_ID"
+rm -f "$PROMPT_PATH"
+```
+
+Only read both report files after `darkfactory-dispatch wait <dispatch-id>` completes successfully. If the wait command fails, report the dispatch failure and do not claim the Codex report completed.
 
 For each report, count findings by severity:
 

@@ -21,4 +21,9 @@ for skill_dir in "$SKILLS_DIR"/*/; do
     count=$((count + 1))
 done
 
+if [ "$count" -eq 0 ]; then
+    echo "Error: no skills found in $SKILLS_DIR" >&2
+    exit 1
+fi
+
 echo "Done. $count skills installed."

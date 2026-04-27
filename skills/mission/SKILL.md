@@ -430,7 +430,7 @@ mkdir -p openspec/changes/<change-name>/mission/{briefs,handoffs,validations,iss
 > **Inputs:** tasks.md, contract.md, coverage-audit.md, config.yaml
 > **Outputs:** Human approval, progress.md updated, plan status = BUILDING
 
-Ensure a feature branch. If `git rev-parse --abbrev-ref HEAD` equals `gh api repos/{owner}/{repo} --jq .default_branch` (abort Phase 7 if that gh call fails -- it means no GitHub remote or bad auth), run `git checkout -b mission/<change-name>` -- if that branch already exists, use `mission/<change-name>-$(date +%s)`. Log the checkout to progress.md.
+Ensure a feature branch. If `git rev-parse --abbrev-ref HEAD` equals `gh api repos/{owner}/{repo} --jq .default_branch` (abort Phase 7 if that gh call fails -- it means no GitHub remote or bad auth), run `git checkout -b mission/<change-name>` -- if that branch already exists, use `mission/<change-name>-$(date -u +%Y%m%d%H%M%S)`. Log the checkout to progress.md.
 
 Show the user a summary dashboard:
 1. **Mission overview** -- change name, total tasks (feature + closing), total contract assertions
@@ -474,12 +474,15 @@ Read the engine from `mission/config.yaml`.
 
 #### If engine is `codex`:
 
+Before dispatching, record the current HEAD SHA with `git rev-parse HEAD`. This is the pre-task SHA used in Step 7.
+
 Use the Bash tool with `run_in_background: true` to run the worker. Use this exact bash script:
 
 ```bash
 BRIEF_PATH="<absolute path to mission/briefs/task-N.md>"
 HANDOFF_PATH="<absolute path to mission/handoffs/task-N.md>"
 LOG_PATH="<absolute path to mission/logs/task-N-codex.log>"
+PRE_TASK_SHA=$(git rev-parse HEAD)
 # Clean stale temp files and directories from previous workers to avoid filling /tmp
 find /tmp -mindepth 1 -maxdepth 1 -user "$(whoami)" -mmin +30 -not -name "claude-*" \( -type f -delete -o -type d -exec rm -rf {} + \) 2>/dev/null
 
@@ -531,7 +534,7 @@ Read the handoff file at `mission/handoffs/task-N.md`.
      - If the claude fallback produces `TASK_COMPLETE`: log to progress.md: `<timestamp> -- Task N: claude fallback succeeded. Commit: <SHA>.` Proceed to Step 4.
      - If the claude fallback also fails: fall through to the human escalation below.
   2. Human escalation (reached when: engine is `claude`, engine is `codex` and both attempts failed, or any second failure): log to progress.md: `<timestamp> -- Task N: worker FAILED. <reason>.` Ask the human: retry, skip, or abort. If skip: mark the task as `- [~]` in tasks.md and log `<timestamp> -- Task N: SKIPPED by human.` to progress.md. The build loop ignores `- [~]` tasks.
-  3. On the next task, revert to the configured engine. This fallback is per-task only.
+  3. On the next task, revert to the configured engine. This fallback is per-task only. Before starting the next task, re-read `engine` from `mission/config.yaml` so the engine resets to the configured value after any Codex -> Claude fallback.
 
 ### Step 4: Scrutiny Validation
 
@@ -720,12 +723,17 @@ Run two independent reviewers in parallel:
 
 Both receive a **pinned base SHA** (the merge-base of `<base-branch>` and HEAD, resolved once up front), the full contract.md, and the report path. The prompt instructs each reviewer to run `git log --reverse --format="%h %s" <base-sha>..HEAD` itself and iterate. Pinning avoids the review scope shifting if `<base-branch>` moves during the review.
 
-Before dispatching either reviewer, compute the base SHA:
+Before dispatching either reviewer, read `base_branch` from `openspec/changes/<change-name>/mission/config.yaml` and use it in place of `<base-branch>`. Then compute the base SHA:
 
 ```bash
-BASE_SHA=$(git merge-base <base-branch> HEAD)
+BASE_BRANCH=$(awk -F: '/^[[:space:]]*base_branch[[:space:]]*:/ { gsub(/^[[:space:]]+|[[:space:]]+$/, "", $2); print $2; exit }' openspec/changes/<change-name>/mission/config.yaml)
+if [ -z "$BASE_BRANCH" ]; then
+  echo "ABORT: base_branch missing from openspec/changes/<change-name>/mission/config.yaml"
+  exit 1
+fi
+BASE_SHA=$(git merge-base "$BASE_BRANCH" HEAD)
 if [ -z "$BASE_SHA" ]; then
-  echo "ABORT: could not resolve merge-base for <base-branch>..HEAD"
+  echo "ABORT: could not resolve merge-base for $BASE_BRANCH..HEAD"
   exit 1
 fi
 ```

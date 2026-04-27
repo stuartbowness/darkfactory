@@ -4,6 +4,7 @@
 # or are now owned by this repo, then re-runs install.sh.
 
 CLAUDE_SKILLS="$HOME/.claude/skills"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 OLD_SKILLS="
 darkfactory-init
@@ -21,6 +22,8 @@ for name in $OLD_SKILLS; do
         rm "$target"
         echo "removed: $target"
         removed=$((removed + 1))
+    elif [ -e "$target" ]; then
+        echo "warning: $target exists and is not a symlink -- skipping"
     fi
 done
 
@@ -32,7 +35,7 @@ fi
 
 echo ""
 echo "Running install.sh..."
-"$(dirname "$0")/install.sh"
+"$SCRIPT_DIR/install.sh"
 
 echo ""
 echo "Manual step: if you have a local clone of layercodedev/skills, you can now delete it."

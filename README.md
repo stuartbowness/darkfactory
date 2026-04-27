@@ -17,7 +17,7 @@ Inspired by [Factory's Missions architecture](https://www.factory.ai/) and [Matt
 ### Prerequisites
 
 - [Claude Code](https://docs.anthropic.com/en/docs/claude-code) installed and authenticated
-- [OpenSpec CLI](https://github.com/Fission-AI/OpenSpec) installed (`npm install -g openspec`)
+- [OpenSpec CLI](https://github.com/Fission-AI/OpenSpec) installed (`npm install -g @fission-ai/openspec`)
 - [Codex CLI](https://github.com/openai/codex) installed (`npm install -g @openai/codex`) and authenticated (`codex login`)
 - [GitHub CLI](https://cli.github.com/) installed and authenticated (`gh auth login`) -- used for filing the PRD as a GitHub issue and creating draft PRs
 - [jq](https://jqlang.github.io/jq/) installed (`brew install jq`) -- used for parsing dispatch results
@@ -205,12 +205,20 @@ All Darkfactory skills are bundled in this repo. `/mission` also calls two built
 | `/simplify` | Built-in Claude Code (required) | Scrutiny validator: complexity check step |
 | `/test-app` | Your project's Claude skills (optional) | User-test validator: browser-based testing |
 | `/demo-video` | Your project's Claude skills (optional) | Records a demo of frontend changes after validation passes |
-| `openspec` CLI | Installed by `npm install -g openspec` | Planning phase: creates the structured artifacts (proposal, specs, design, tasks) |
+| `openspec` CLI | Installed by `npm install -g @fission-ai/openspec` | Planning phase: creates the structured artifacts (proposal, specs, design, tasks) |
 | `/opsx:archive` | Bundled with Darkfactory | Post-merge: moves the change's planning files into the OpenSpec archive directory |
 
 `/review` and `/simplify` are mandatory -- the scrutiny validator always runs them. `/test-app` and `/demo-video` are optional and project-specific -- you write these yourself for your project if you want browser testing or demo recordings.
 
 ### Configuration
+
+Darkfactory reads global defaults from `~/.darkfactory/config.yaml`:
+
+```yaml
+default_model: gpt-5.5
+```
+
+The `/dispatch` and `/adversarial` skills use `default_model` for Codex dispatches. If the file or key is missing, they fall back to `gpt-5.5`.
 
 Each mission creates a `config.yaml` that controls which AI engine handles each role. You can change these before approving the plan:
 
