@@ -114,7 +114,13 @@ Run these checks in order. For each, report PASS or FAIL with evidence.
 
 2. **Build:** Run the project's build command. Does it pass?
 
-3. **Tests:** Run the project's test command. Do all tests pass?
+3. **Tests:** Run the project's test command. Capture stdout/stderr and the exit code. After the command finishes, fill the `Test runner` named fact by parsing the captured summary line as described in the deterministic pre-pass.
+
+   Report the Tests row using structured counts from `Test runner`, for example `tests | FAIL | 49 passed, 46 failed, 2 ignored (51.5% pass rate)` or `tests | PASS | 234 passed, 0 failed, 0 ignored (100% pass rate)`. If the parser stored `skipped`, use the test runner's native term in the report (`ignored` for Rust, `skipped` for Jest/Vitest/Pytest). If no summary line is found, report `Test runner: unavailable` and include the raw command exit status plus the most relevant summary text you can find.
+
+   If the test command exits non-zero, mark Tests as FAIL. If tests fail, group failures that share the same error message or failure signature. Include the group count and likely cause when the output makes it clear, for example: `46 failures in 1 group: 'connection refused to 127.0.0.1:5432' -- infrastructure-dependent tests running without infrastructure.`
+
+   If the test command exits 0 but fewer than 90% of discovered tests actually ran, keep Tests as PASS and add a WARNING note: `Only N of M tests actually ran. The rest were skipped/ignored.` Actual run rate is `(passed + failed) / (passed + failed + skipped_or_ignored) * 100`.
 
 4. **Lint:** Run the project's lint command. Are there any violations?
 
@@ -182,7 +188,7 @@ Use this format:
 |-------|--------|-------|
 | Test presence | PASS/FAIL | ... |
 | Build | PASS/FAIL | ... |
-| Tests | PASS/FAIL | ... |
+| Tests | PASS/FAIL | `<passed> passed, <failed> failed, <skipped_or_ignored> skipped/ignored (<pass_rate>% pass rate)`; include failure groups when failing and WARNING when actual run rate is below 90% |
 | Lint | PASS/FAIL | ... |
 | Code review | PASS/FAIL | ... |
 | Module depth | PASS/FAIL | ... |
