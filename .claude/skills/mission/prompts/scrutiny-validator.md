@@ -193,6 +193,31 @@ Run these checks in order. For each, report PASS or FAIL with evidence.
     
     Report each assertion's verification method (execution or inspection) in the contract assertions table.
 
+12. **Silent skip detection:** Grep test files in the diff for language-specific patterns that cause tests to report PASS while testing nothing. Use the `Detected language` named fact from the deterministic pre-pass to choose the primary language-specific scan, and also inspect file extensions in the diff so mixed-language projects are covered.
+
+    Test file detection uses the same language-specific patterns as the file size count exclusions: Rust files in `tests/` or files containing `#[test]`; TypeScript/Node `*.test.ts`, `*.spec.ts`, or files in `__tests__/`; Python `test_*.py`, `*_test.py`, or files in `tests/`.
+
+    If the diff contains no test files, report `silent-skip-detection | SKIP | no test files in diff`.
+
+    Flag these Rust silent skip patterns:
+    - Flag `else { return; }` or `else { return }` inside functions annotated with `#[test]` or `#[tokio::test]`.
+    - Flag `if env::var("X").is_err() { return; }` or similar top-of-test conditional returns based on environment variables.
+    - Do not flag Rust test functions marked with `#[ignore]`.
+
+    Flag these TypeScript/Node silent skip patterns:
+    - Flag `if (!process.env.X) return` inside `it()`, `test()`, or `describe()` blocks.
+    - Flag `if (!process.env.X) { return; }` inside `it()`, `test()`, or `describe()` blocks.
+    - Do not flag `it.skip()`, `describe.skip()`, or `@jest.skip`.
+
+    Flag these Python silent skip patterns:
+    - Flag `if not os.environ.get("X"): return` inside `test_` functions.
+    - Flag bare `return` at the top of `test_` functions when it is conditional on environment variables.
+    - Do not flag `@pytest.mark.skip` or `pytest.skip("reason")` with an explicit message.
+
+    Any silent skip found is a FAIL because silent skips give false confidence by hiding missing coverage.
+
+    Report failures as `silent-skip-detection | FAIL | N silent skips found`. For each instance, list the file path, line number, test function name, and this remediation guidance: "Either fail explicitly with `panic!("requires X")` or mark as `#[ignore]` / `@skip` so the test runner reports it as skipped, not passed."
+
 ## Output Format
 
 Write your report to: <absolute path to mission/validations/task-N-scrutiny.md>
@@ -218,6 +243,7 @@ Use this format:
 | Security review | PASS/FAIL/N/A | ... |
 | Contract assertions | PASS/FAIL | ... |
 | Behavioral conformance | PASS/FAIL/N/A | ... |
+| Silent skip detection | PASS/FAIL/SKIP | ... |
 
 ## Contract Assertions
 | # | Assertion | Result | Method | Evidence |
