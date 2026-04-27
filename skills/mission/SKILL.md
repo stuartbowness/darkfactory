@@ -68,7 +68,7 @@ Check if `UBIQUITOUS_LANGUAGE.md` exists in the repo root. If it does, read it n
 > **Inputs:** User's idea (from conversation)
 > **Outputs:** Grill conversation (in context, used by Phases 2 and 3), key decisions summarized in plan
 
-Run `/grill-me` to interview the user about their idea. The grill session should drive toward shared understanding of what is being built, why, and what "done" looks like.
+Run `/grill` to interview the user about their idea. The grill session should drive toward shared understanding of what is being built, why, and what "done" looks like.
 
 If the user says "skip":
 - Warn: "Skipping the grill means the contract will be based on whatever I can infer. Contract quality depends on alignment quality. Are you sure?"
@@ -89,7 +89,7 @@ After the grill completes, summarize the key decisions in the plan.
 > **Inputs:** Grill conversation (from Phase 1, in context), UBIQUITOUS_LANGUAGE.md (if exists from Phase 0 check)
 > **Outputs:** UBIQUITOUS_LANGUAGE.md (created or updated)
 
-Run `/ubiquitous-language` to create or update `UBIQUITOUS_LANGUAGE.md`.
+Run `/language` to create or update `UBIQUITOUS_LANGUAGE.md`.
 
 - If the file already existed and was read in Phase 0, this phase updates it with any new terms from the grill session.
 - If the file did not exist, this phase creates it. Read the file after creation so all subsequent phases use the terms.
@@ -106,7 +106,7 @@ Run `/ubiquitous-language` to create or update `UBIQUITOUS_LANGUAGE.md`.
 > **Inputs:** Grill conversation (from Phase 1, in context), UBIQUITOUS_LANGUAGE.md
 > **Outputs:** GitHub issue (PRD), issue URL + number recorded in plan
 
-Run `/write-a-prd` to turn the grill conversation into a structured product requirements document. Use terms from `UBIQUITOUS_LANGUAGE.md` consistently throughout the PRD. The PRD captures: problem statement, solution, user stories, implementation decisions, testing decisions, and out-of-scope items.
+Run `/prd` to turn the grill conversation into a structured product requirements document. Use terms from `UBIQUITOUS_LANGUAGE.md` consistently throughout the PRD. The PRD captures: problem statement, solution, user stories, implementation decisions, testing decisions, and out-of-scope items.
 
 After the issue is created, record both the issue URL and the issue number in the plan (under Spec Coverage Audit). The issue number is needed in Phase 9 to link the draft PR back to the issue.
 
