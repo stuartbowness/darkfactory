@@ -86,10 +86,10 @@ TEST
 }
 
 fill_prompt() {
-  commit_sha=$1
-  output_file=$2
+  fp_sha=$1
+  fp_dest=$2
 
-  awk -v sha="$commit_sha" '
+  awk -v sha="$fp_sha" '
     $0 == "SHA: <commit-sha>" {
       print "SHA: " sha
       next
@@ -99,7 +99,7 @@ fill_prompt() {
       next
     }
     { print }
-  ' "$validator_prompt" > "$output_file"
+  ' "$validator_prompt" > "$fp_dest"
 }
 
 run_validator() {
@@ -145,7 +145,6 @@ assert_module_depth_fail() {
 
 require_command git
 require_command node
-require_command npm
 require_command claude
 [ -f "$validator_prompt" ] || fail "missing scrutiny validator prompt: $validator_prompt"
 
