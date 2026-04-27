@@ -42,6 +42,8 @@ flow: align -> spec -> contract -> build -> validate -> ship
 > **Inputs:** User's idea (from conversation), UBIQUITOUS_LANGUAGE.md (if exists)
 > **Outputs:** Plan (in plan mode), UBIQUITOUS_LANGUAGE.md confirmed read or noted absent
 
+Run `/mission-init` to verify that all Darkfactory skills are installed and required CLI tools are available. If `/mission-init` reports any issues, resolve them before proceeding.
+
 Enter plan mode immediately. Write a durable operating manual as the plan. This plan survives context compaction and is the orchestrator's source of truth.
 
 ### Plan Template
@@ -55,6 +57,7 @@ To fill in the **Darkfactory SHA** field, run `git -C ~/.darkfactory rev-parse H
 Check if `UBIQUITOUS_LANGUAGE.md` exists in the repo root. If it does, read it now so all phases use consistent terminology.
 
 **Gate -- proceed when:**
+- [ ] `/mission-init` passed (all skills symlinked, CLI tools present)
 - [ ] Plan is written and active in plan mode
 - [ ] Darkfactory SHA captured in plan
 - [ ] UBIQUITOUS_LANGUAGE.md checked (read if exists, noted if absent)
