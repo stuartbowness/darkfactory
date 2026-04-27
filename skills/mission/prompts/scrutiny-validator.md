@@ -245,7 +245,7 @@ Run these checks in order. For each, report PASS or FAIL with evidence.
 
 14. **Test quality review:** If the diff contains no test files, report `test-quality-review | SKIP | no test files in diff`.
 
-    Run /test-quality-review as a subagent against the full diff, following the same delegation pattern as /review, /simplify, and /security-review. Read the skill markdown findings after the subagent completes. Findings are grouped by severity (P0, P1, P2, P3) and include file:line, evidence, and remediation.
+    Run /test-quality as a subagent against the full diff, following the same delegation pattern as /review, /simplify, and /security-review. Read the skill markdown findings after the subagent completes. Findings are grouped by severity (P0, P1, P2, P3) and include file:line, evidence, and remediation.
 
     Apply this severity-based result behavior:
     - Any P0 finding, including tautological assertions, is a FAIL.
