@@ -159,6 +159,16 @@ Run these checks in order. For each, report PASS or FAIL with evidence.
    Report: write one bullet per individual finding instance; state which symbol or boundary is affected and why it matters for depth. If nothing flagged, write 'No module depth issues.'
 
 7. **Code standards check:** Review the diff for these specific anti-patterns. Flag any found:
+   Before reviewing code standards, read the `Error handling smells` named fact from the deterministic pre-pass.
+
+   Error handling smell density:
+   - Use the smell count, changed production line count, per-KLOC density, and locations in the Code standards result.
+   - Under 5 per KLOC: PASS for the error handling smell density component.
+   - 5-10 per KLOC: WARNING for the error handling smell density component.
+   - Over 10 per KLOC: FAIL for the error handling smell density component.
+   - Standalone test files are excluded from the smell count by the pre-pass; confirm that exclusion and do not double-count test files.
+   - Examine each flagged smell location and report file:line references with specific remediation guidance. For example: Replace `.unwrap()` at store.rs:42 with `.context("failed to open connection pool")?` or `.expect("pool initialized in main")`.
+
    - Backwards-compatibility code: old code paths kept "just in case" (renamed `_` variables, re-exports of removed types, `// removed` comments, deprecated shims). If unused, it should be deleted.
    - Fallback lookups: code that tries one path and falls back to another. There should be exactly one lookup path. If it fails, throw an error.
    - Belt-and-suspenders: redundant validation that duplicates what the framework, DB, or upstream already guarantees (re-checking auth after middleware, null-checking non-null TypeScript values, re-validating input that a validator already checked).
