@@ -25,13 +25,25 @@
 
 | Term | Definition | Aliases to avoid |
 | --- | --- | --- |
-| **Scrutiny validator** | The first validator type that runs build, test, lint, code review, and code simplify checks against the contract | Code reviewer, linter, static validator |
+| **Scrutiny validator** | The first validator type that runs build, test, lint, code review, code simplify, and test health checks against the contract | Code reviewer, linter, static validator |
 | **User-test validator** | The second validator type that tests behavior by hitting the API (HTTP tests) or driving a browser (agent-browser) | QA, E2E tester, integration tester |
 | **Behavioral conformance** | A scrutiny validator check (check 11) that verifies observable behavior by writing and executing a test script rather than reading the code. Falls back to "verified by inspection" if execution is inconclusive. | Behavioral test, execution test, runtime check |
 | **Final gates** | Whole-repo build, test, lint, and format checks run after the last task completes but before PR creation. Catches regressions introduced by later tasks (e.g., documentation or CI tasks) after the cleanup task ran. | Final checks, post-build gates, repo gates |
 | **Demo video** | A recording of frontend functionality captured after both validators pass, created for human review | Screencast, screen recording |
 | **Fix loop** | The cycle where a validation failure spawns a fix worker, then both validators re-run, up to 3 attempts before asking the human | Retry, repair cycle |
 | **Circuit breaker** | The rule that stops the fix loop after 3 failed attempts on the same task and asks the human for guidance | Retry limit, fail-safe |
+
+## Test health
+
+| Term | Definition | Aliases to avoid |
+| --- | --- | --- |
+| **Silent skip** | A test that conditionally returns early without testing anything but reports PASS to the test runner, hiding missing coverage | Conditional skip, soft skip, hidden skip |
+| **Diff coverage** | Line coverage measured only on added lines in a task's git diff, not the entire codebase | New code coverage, incremental coverage |
+| **Error handling smell** | A language-specific anti-pattern in error handling code (e.g., `.unwrap()` in Rust, `catch {}` in TypeScript, `except: pass` in Python) counted per KLOC of changed code | Code smell, anti-pattern, bad practice |
+| **File size pre-pass** | A deterministic line count on touched files injected into the module depth review, ensuring the LLM reviewer cannot overlook large files | Line count check, size gate |
+| **Test quality review** | An LLM-based semantic review (separate skill) that evaluates whether tests verify meaningful behavior, checking for tautological assertions, implementation coupling, untested branches, and missing edge cases | Test review, test audit, test assessment |
+| **Tautological assertion** | A test assertion that passes regardless of whether the code works correctly (e.g., `assert!(true)`, `expect(x).toBeDefined()` without checking the value) | Empty assertion, no-op test, fake test |
+| **Self-gating check** | A scrutiny check that naturally skips itself when the diff contains no relevant files, requiring no explicit closing-task exemption | Auto-skip, conditional check |
 
 ## Execution model
 
@@ -84,6 +96,10 @@
 - A **Fix loop** produces versioned **Handoffs** (task-N-fix-v2.md) and re-runs both **Validators**
 - The **Circuit breaker** halts the **Fix loop** and returns control to the human
 - The **Dispatch store** is independent of the **Mission directory** -- it holds dispatcher metadata, not mission state
+- The **Scrutiny validator** runs deterministic checks (build, lint, **Silent skip** detection, **Diff coverage**, **Error handling smell** density, **File size pre-pass**) and LLM checks (code review, module depth, **Test quality review**)
+- **Diff coverage** measures added lines only -- a worker is responsible for covering the code they wrote, not backfilling pre-existing debt
+- The **Test quality review** is a separate skill invoked by the **Scrutiny validator** as a subagent, following the same pattern as `/review` and `/simplify`
+- A **Tautological assertion** is worse than no test because it gives false confidence -- the **Scrutiny validator** treats it as a hard FAIL
 
 ## Example dialogue
 
@@ -103,8 +119,24 @@
 >
 > **Orchestrator:** "Yes -- tail the **Dispatcher's** log for **Heartbeat** events, read the **Progress log** directly, or run **/mission-status** in another session for a formatted summary."
 
+## Example dialogue (test health)
+
+> **Dev:** "The benchmark shows irontodo-v2 has 97 tests but only 49 actually run. What happened?"
+>
+> **Orchestrator:** "Two tests are **Silent skips** -- they check for a database URL and `return` early if it's missing, reporting PASS while testing nothing. The other 46 panic on missing PostgreSQL. The **Scrutiny validator** would now catch the **Silent skips** with a deterministic grep and flag them as FAIL."
+>
+> **Dev:** "What about coverage? The tests that do run might not even cover the new code."
+>
+> **Orchestrator:** "That's what **Diff coverage** checks. It runs the language-appropriate coverage tool and measures only the added lines in the task's diff. Below 70% is a FAIL. Below 80% is a WARNING."
+>
+> **Dev:** "And what if the tests do cover the code but the assertions are meaningless?"
+>
+> **Orchestrator:** "The **Test quality review** catches that. It's an LLM subagent that reads the test diff alongside the production diff and flags **Tautological assertions** -- tests that pass regardless of correctness. A P0 finding like `assert!(true)` is a hard FAIL."
+
 ## Resolved ambiguities
 
 - **"task"** was used early in the conversation to mean both a micro-step within a feature and a vertical slice of work. **Resolved:** keep "task" as the standard term. The guidance is that each task should follow the **Vertical slice** best practice (thin, end-to-end, demoable), but the term "task" is unchanged from OpenSpec. "Slice" is not a standalone noun -- it's a quality standard for tasks.
 - **"spec"** was used to mean both SDD spec files and the planning phase of the mission flow. **Resolved:** SDD specs are not part of Darkfactory's vocabulary. In Darkfactory, **Spec** refers exclusively to the planning phase (`align -> spec -> contract -> build -> validate -> ship`) where the orchestrator creates OpenSpec artifacts and the contract. SDD is a separate workflow for documenting existing code after the fact.
 - **"validation"** was used for both the contract assertions and the act of running validators. **Resolved:** the **Contract** contains **Assertions**. **Validation** is the act of a **Validator** checking those assertions against the code. Be consistent: don't use "validation" to refer to the contract itself.
+- **"coverage"** could mean line coverage (percentage of lines executed during tests) or spec coverage (percentage of PRD requirements mapped to tasks). **Resolved:** **Diff coverage** means line coverage on added lines in a git diff. **Coverage audit** means the spec-to-task mapping in Phase 4a. Don't use "coverage" without the qualifier.
+- **"check"** could mean a scrutiny validator step or a contract assertion. **Resolved:** a **Check** is a step in the scrutiny validator's sequence (e.g., check 3: tests, check 12: silent skip detection). An **Assertion** is a statement in the contract. Don't use "check" to refer to contract assertions.

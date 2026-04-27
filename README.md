@@ -52,7 +52,7 @@ Restart Claude Code, then from any project run:
 /darkfactory-init
 ```
 
-This checks your entire setup and tells you exactly what's missing. It verifies core skills, supporting skills, CLI tools (codex, gh, openspec), and initializes OpenSpec in the current project if needed.
+This checks your entire setup and tells you exactly what's missing. It verifies core skills, supporting skills (including `/test-quality-review` for LLM-based test quality analysis), CLI tools (codex, gh, openspec), coverage tools for your project's language (cargo-tarpaulin for Rust, jest/c8 for TypeScript, pytest-cov for Python), and initializes OpenSpec in the current project if needed.
 
 ### Updating
 
@@ -100,6 +100,7 @@ After each worker finishes, two validators check the work:
    - Security review (only when the changes touch auth, secrets, user input, network boundaries, or filesystem trust boundaries)
    - Contract check -- does the code do what the contract says it should?
    - Execution check -- actually runs the code to confirm it works, rather than just reading the source
+   - Test health checks -- silent skip detection, diff coverage on changed lines, and test quality review
 
 2. **User-test validator** -- tests the feature the way a user would. It decides whether to hit an API with HTTP requests, drive a browser, or both, based on what the task changed.
 
@@ -201,6 +202,7 @@ The skills above are bundled in this repo. But `/mission` also calls other skill
 | `/review` | Built-in Claude Code (required) | Scrutiny validator: code review step |
 | `/simplify` | Built-in Claude Code (required) | Scrutiny validator: complexity check step |
 | `/security-review` | Your global Claude skills (conditional) | Scrutiny validator: security audit, only runs when the diff touches auth, secrets, user input, network boundaries, or filesystem trust boundaries |
+| `/test-quality-review` | [layercodedev/skills](https://github.com/layercodedev/skills/tree/main/test-quality-review) | Scrutiny validator: LLM-based semantic review of test effectiveness (assertion quality, implementation coupling, untested branches, edge cases) |
 | `/test-app` | Your project's Claude skills (optional) | User-test validator: browser-based testing |
 | `/demo-video` | Your project's Claude skills (optional) | Records a demo of frontend changes after validation passes |
 | `openspec` CLI | Installed by `npm install -g openspec` | Planning phase: creates the structured artifacts (proposal, specs, design, tasks) |
