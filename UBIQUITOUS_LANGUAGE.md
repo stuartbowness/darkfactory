@@ -41,7 +41,7 @@
 | **Diff coverage** | Line coverage measured only on added lines in a task's git diff, not the entire codebase | New code coverage, incremental coverage |
 | **Error handling smell** | A language-specific anti-pattern in error handling code (e.g., `.unwrap()` in Rust, `catch {}` in TypeScript, `except: pass` in Python) counted per KLOC of changed code | Code smell, anti-pattern, bad practice |
 | **File size pre-pass** | A deterministic line count on touched files injected into the module depth review, ensuring the LLM reviewer cannot overlook large files | Line count check, size gate |
-| **Test quality review** | An LLM-based semantic review (separate skill) that evaluates whether tests verify meaningful behavior, checking for tautological assertions, implementation coupling, untested branches, and missing edge cases | Test review, test audit, test assessment |
+| **Test quality review** | An LLM-based semantic review (owned skill: `/test-quality`) that evaluates whether tests verify meaningful behavior, checking for tautological assertions, implementation coupling, untested branches, and missing edge cases | Test review, test audit, test assessment |
 | **Tautological assertion** | A test assertion that passes regardless of whether the code works correctly (e.g., `assert!(true)`, `expect(x).toBeDefined()` without checking the value) | Empty assertion, no-op test, fake test |
 | **Self-gating check** | A scrutiny check that naturally skips itself when the diff contains no relevant files, requiring no explicit closing-task exemption | Auto-skip, conditional check |
 
@@ -98,7 +98,7 @@
 - The **Dispatch store** is independent of the **Mission directory** -- it holds dispatcher metadata, not mission state
 - The **Scrutiny validator** runs deterministic checks (build, lint, **Silent skip** detection, **Diff coverage**, **Error handling smell** density, **File size pre-pass**) and LLM checks (code review, module depth, **Test quality review**)
 - **Diff coverage** measures added lines only -- a worker is responsible for covering the code they wrote, not backfilling pre-existing debt
-- The **Test quality review** is a separate skill invoked by the **Scrutiny validator** as a subagent, following the same pattern as `/review` and `/simplify`
+- The **Test quality review** (`/test-quality`) is an owned skill invoked by the **Scrutiny validator** as a subagent, following the same pattern as `/review` and `/simplify`
 - A **Tautological assertion** is worse than no test because it gives false confidence -- the **Scrutiny validator** treats it as a hard FAIL
 
 ## Example dialogue
