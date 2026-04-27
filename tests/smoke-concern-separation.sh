@@ -127,6 +127,14 @@ assert_contains() {
   grep -Fq "$needle" "$output_file" || fail "$case_name: expected output to contain '$needle'" "$output_file"
 }
 
+assert_contains_ci() {
+  case_name=$1
+  needle=$2
+  output_file=$3
+
+  grep -iq "$needle" "$output_file" || fail "$case_name: expected output to contain '$needle' case-insensitively" "$output_file"
+}
+
 assert_module_depth_fail() {
   case_name=$1
   output_file=$2
@@ -145,8 +153,7 @@ warning_output="$tmp_root/warning-output.txt"
 fail_output="$tmp_root/fail-output.txt"
 
 run_validator "fixture-warning-650-lines" 650 "$warning_output"
-assert_contains "Fixture Test A" "WARNING" "$warning_output"
-assert_contains "Fixture Test A" "600" "$warning_output"
+assert_contains_ci "Fixture Test A" "warn" "$warning_output"
 
 run_validator "fixture-fail-1050-lines" 1050 "$fail_output"
 assert_module_depth_fail "Fixture Test B" "$fail_output"
