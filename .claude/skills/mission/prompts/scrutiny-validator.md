@@ -133,6 +133,17 @@ Run these checks in order. For each, report PASS or FAIL with evidence.
 
 6. **Module depth review:** Evaluate whether the PR changes module depth in a healthy direction. Deep modules (narrow interface, rich hidden behaviour) are the design ideal. Shallow modules (wide interface relative to what they hide) are the design liability.
 
+   Before evaluating module depth, read the `File sizes` named fact from the deterministic pre-pass.
+
+   File size context:
+   - If any touched production source file in `File sizes` exceeds 900 lines, name that file and its line count in the module depth evaluation.
+   - Cross-reference `design.md` for concern boundaries for that module.
+   - If `design.md` specifies concern boundaries that the implementation did not follow, flag Module depth as FAIL.
+   - If `design.md` says this module is intentionally one file because of a specific reason, accept that file size as PASS.
+   - If `design.md` does not address concern boundaries for that module, flag Module depth as FAIL for a design gap.
+   - Exclude standalone test files from the 900-line check: files in `tests/` directories, `*.test.ts`, `*.spec.ts`, `test_*.py`, and `*_test.py`.
+   - Rust `#[cfg(test)]` blocks inside production files count toward the 900-line threshold.
+
    Flag any of the following:
 
    - **Interface widening:** A module gains new public methods, exported symbols, or required parameters without a commensurate increase in hidden complexity. Each new surface point is a coupling tax on every caller; justify it. If removing the new export would force callers to duplicate 3+ branches or non-inlineable control flow, it is deep; if callers could inline it in one line, it is shallow. Facade and adapter modules, and idiomatic or framework-required patterns where thin delegation is the convention — for example, TypeScript barrel re-exports (`index.ts`), Python `__init__.py` re-exports, Next.js route handlers, or Rust trait impls — are not shallow-module violations.
