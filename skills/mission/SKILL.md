@@ -569,22 +569,15 @@ Spawn a Claude subagent (via the Agent tool) with this prompt:
 
 #### Scrutiny Validator Prompt
 
-Read [prompts/scrutiny-validator.md](prompts/scrutiny-validator.md) and use it as the subagent prompt. Fill in three placeholders before dispatching:
-
-1. `<commit-sha>` — the task's commit SHA.
-2. `<paste the assertions from contract.md for task N>` — the contract assertions for this task.
-3. `<concern-boundaries>` — read `design.md` and extract all concern boundary statements (the prose lines that name which concerns within a module belong in separate files). Paste them here, one per line. If `design.md` contains no concern boundary statements, write `None specified.`
-
-The validator never reads `design.md` directly. The orchestrator acts as gatekeeper and injects only the concern boundaries into the prompt.
-
-The prompt runs 11 checks: test presence, build, tests, lint, code review, module depth, code standards, simplify, security (if applicable), contract assertions, behavioral conformance.
+Read [prompts/scrutiny-validator.md](prompts/scrutiny-validator.md) and use it as the subagent prompt. Fill in the commit SHA and contract assertions for this task. The prompt runs 11 checks: test presence, build, tests, lint, code review, module depth, code standards, simplify, security (if applicable), contract assertions, behavioral conformance.
 
 Read the validator's report from `mission/validations/task-N-scrutiny.md`.
 
 ### Step 5: Handle Scrutiny Validation Result
 
 - **PASS**: Log to progress.md: `<timestamp> -- Task N: scrutiny validation PASSED.` Proceed to Step 6.
-- **FAIL**: Proceed to Step 5a (fix loop).
+- **FAIL due to Module depth file size only:** Before entering the fix loop, read `design.md`. If it contains an explicit single-file justification for the flagged module (e.g., "intentionally one file because X"), log the override to progress.md (`<timestamp> -- Task N: Module depth FAIL overridden — design.md justifies single-file for <module>.`) and proceed as PASS. If no justification exists, proceed to Step 5a.
+- **FAIL (any other reason)**: Proceed to Step 5a (fix loop).
 
 ### Step 5a: Fix Loop
 
