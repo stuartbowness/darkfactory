@@ -177,7 +177,7 @@ Darkfactory is controlled through skills -- reusable prompt templates you invoke
 | `/mission` | Start an autonomous mission from scratch. Walks you through planning, dispatches workers, validates, and delivers a draft PR. |
 | `/mission-resume` | Resume a mission that was interrupted (session crash, closed terminal). Detects exactly where it left off and continues through to the draft PR and code review. |
 | `/mission-status` | Read-only progress check. Open a second terminal while a mission runs to see which tasks are done, in progress, or queued. |
-| `/mission-init` | Check your project setup. Verifies all 12 skill symlinks, CLI tools, and coverage tools. Runs `openspec init` if needed. |
+| `/mission-init` | Check your project setup. Verifies all 17 skill symlinks, CLI tools, and coverage tools. Runs `openspec init` if needed. |
 | `/grill` | Alignment interview: asks pointed questions until the goals, constraints, and edge cases are clear. Used in the mission planning phase. |
 | `/prd` | Turns an interview into a structured PRD filed as a GitHub issue. Used in the mission planning phase. |
 | `/language` | Creates a shared glossary (ubiquitous language) so you, the orchestrator, and all workers use the same terms. Used in the mission planning phase. |

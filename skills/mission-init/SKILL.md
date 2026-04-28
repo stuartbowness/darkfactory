@@ -10,10 +10,10 @@ Verify the current project is ready to run `/mission`. Check skill symlinks, ini
 
 ## Step 1: Check Skill Symlinks
 
-Check these 12 owned skills:
+Check these 17 owned skills:
 
 ```bash
-mission mission-resume mission-status mission-init grill prd language tdd test-quality security adversarial dispatch
+mission mission-resume mission-status mission-init grill prd language tdd test-quality security adversarial dispatch qa module-design domain-model arch-review write-a-skill
 ```
 
 For each skill, verify:
@@ -34,7 +34,7 @@ Use this status format:
 Use a Bash pattern that always exits 0:
 
 ```bash
-for skill in mission mission-resume mission-status mission-init grill prd language tdd test-quality security adversarial dispatch; do
+for skill in mission mission-resume mission-status mission-init grill prd language tdd test-quality security adversarial dispatch qa module-design domain-model arch-review write-a-skill; do
   link="$HOME/.claude/skills/$skill"
   expected="$HOME/.darkfactory/skills/$skill"
 
@@ -61,10 +61,10 @@ If any required skill is missing, broken, or points to the wrong target, instruc
 
 Then tell them to restart Claude Code and re-run `/mission-init`. Stop after reporting the missing skill fixes.
 
-If all 12 skills are present and resolve correctly, report:
+If all 17 skills are present and resolve correctly, report:
 
 ```text
-All 12 skills: OK
+All 17 skills: OK
 ```
 
 Then continue.
@@ -193,6 +193,11 @@ Skills (via ~/.claude/skills/ symlinks):
   [x] /security
   [x] /adversarial
   [x] /dispatch
+  [x] /qa
+  [x] /module-design
+  [x] /domain-model
+  [x] /arch-review
+  [x] /write-a-skill
 
 Optional project skills:
   [ ] /test-app (optional - project-specific)
