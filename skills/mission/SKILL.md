@@ -447,6 +447,17 @@ Ask: "Everything has been reviewed. Ready to start the build?"
 - [ ] progress.md updated with approval timestamp and task/assertion counts
 - [ ] Plan status = BUILDING
 
+### Proactive Compaction: Planning-to-Build
+
+Before proceeding to Phase 8:
+
+1. Verify the plan is fully up-to-date: all Phase 1-7 decisions recorded, artifact paths set, and status = BUILDING.
+2. Append to progress.md: `<timestamp> -- [compact] planning-to-build. Shedding planning phase context before build loop.`
+3. Run `/compact`. The compaction summary must include: the plan file path (from the plan's State Directory field), plan status (BUILDING), and total task count. The summary must NOT include: grill conversation details, proposal/design review iteration history, concern separation scan reasoning, or coverage audit generation steps. These are on disk in the final artifacts if ever needed.
+4. After compaction, re-read these files to reconstruct working state: the plan file, `mission/progress.md` (mission state and decision log), `mission/config.yaml` (for engine selection), `tasks.md` (to iterate unchecked tasks), `UBIQUITOUS_LANGUAGE.md` (Phase 8 input), `contract.md` (for validator assertions), `design.md` (for worker briefs), and `proposal.md` (for worker briefs).
+
+This sheds the planning phase review and iteration history, not the final artifact files. All artifacts remain on disk and are re-read after compaction.
+
 ---
 
 ## Phase 8: Build Loop
@@ -656,6 +667,15 @@ Spawn a Claude subagent to run `/demo-video`. The subagent should save the recor
 - [ ] No unchecked `- [ ]` tasks remain
 - [ ] Each completed task has passing scrutiny and user-test reports
 - [ ] Plan codebase deltas are current
+
+### Proactive Compaction: Build-to-Completion
+
+Before proceeding to Phase 9:
+
+1. Verify the plan is fully up-to-date: all codebase deltas recorded, Current Task = "none", and all tasks marked complete or skipped.
+2. Append to progress.md: `<timestamp> -- [compact] build-to-completion. Shedding build loop context before final gates.`
+3. Run `/compact`. The compaction summary must include: the plan file path, total tasks completed, total tasks skipped, and a reminder to re-read `mission/config.yaml` for `base_branch` and to check `mission/deferrals.md` and `mission/fallbacks.log`. The summary must NOT include: validation report details, git diff content, fix loop history, test runner output, or worker dispatch logs.
+4. After compaction, re-read these files to reconstruct working state: the plan file, `mission/progress.md` (per-task outcomes, fix attempt counts, decision log), `tasks.md` (task names and statuses for PR body), `mission/config.yaml` (for `base_branch` and engine config), `contract.md` (for spec delta check and adversarial review), `coverage-audit.md` (for spec delta check), `design.md` and `proposal.md` (needed if spec delta check spawns a fix task), `mission/deferrals.md` (if it exists, checked in Final Gates), and `mission/fallbacks.log` (if it exists, for the final summary).
 
 ---
 
