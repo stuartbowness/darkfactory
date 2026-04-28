@@ -185,8 +185,6 @@ When the mission modifies an existing codebase (not greenfield), the design must
 
 Present it to the human with a recommendation. If approved, proceed to Phase 4.4.
 
-**Note:** Phase 4.4's concern separation scan may add concern boundaries to `design.md` for multi-task modules found in `tasks.md`. The human sees the final updated `design.md` during the Phase 4.4 review.
-
 ### Phase 4.4: Generate and Review Tasks
 
 Generate `tasks.md` (ordered checklist of implementation tasks).
@@ -218,20 +216,6 @@ Every mission's tasks.md MUST include these closing tasks after all feature task
 5. **CI configuration task (optional).** Add or update CI/CD pipeline configuration. The orchestrator recommends whether to include this based on the change scope. The human decides during this review.
 
 If the design (Phase 4.3) identified refactoring needed for existing code, those tasks go before the feature tasks in tasks.md.
-
-#### Concern Separation Scan
-
-After generating `tasks.md` and before presenting it for review, run a concern separation scan. Read the newly generated `tasks.md` to identify multi-task modules. Use LLM judgment, not mechanical grep, to identify multi-task modules: modules or bounded contexts touched by two or more tasks. When it is unclear whether two or more tasks genuinely share a module, treat them as sharing one.
-
-For each multi-task module, check whether `design.md` already contains a concern boundary statement for it. A concern boundary names the concerns within the module that should stay in separate files, such as protocol handling, dispatch, action handlers, and tests. Concern boundaries use named concerns only; they do not prescribe specific filenames.
-
-If a multi-task module has no concern boundary, the orchestrator drafts the missing boundary text from the module description and task context, then inserts it into `design.md` before the human review. Do not ask for a separate approval step for these boundaries. The human sees the complete updated `design.md` and `tasks.md` in one review.
-
-If `design.md` explicitly justifies keeping a multi-task module in one file, such as "intentionally one file because X", accept that justification and do not require a concern boundary for that module.
-
-The human cannot approve `tasks.md` until every multi-task module has either a concern boundary or an explicit single-file justification. If the orchestrator proposal is rejected or removed and a coverage gap remains, block approval and require the gap to be resolved.
-
-Concern boundaries written into `design.md` persist to disk and are available to all subsequent worker briefs.
 
 Present the full task list (including closing tasks) to the human with a recommendation. If approved, proceed to Phase 4a.
 
@@ -463,17 +447,6 @@ Ask: "Everything has been reviewed. Ready to start the build?"
 - [ ] progress.md updated with approval timestamp and task/assertion counts
 - [ ] Plan status = BUILDING
 
-### Proactive Compaction: Planning-to-Build
-
-Before proceeding to Phase 8:
-
-1. Verify the plan is fully up-to-date: all Phase 1-7 decisions recorded, artifact paths set, and status = BUILDING.
-2. Append to progress.md: `<timestamp> -- [compact] planning-to-build. Shedding planning phase context before build loop.`
-3. Run `/compact`. The compaction summary must include: the plan file path (from the plan's State Directory field), plan status (BUILDING), and total task count. The summary must NOT include: grill conversation details, proposal/design review iteration history, concern separation scan reasoning, or coverage audit generation steps. These are on disk in the final artifacts if ever needed.
-4. After compaction, re-read these files to reconstruct working state: the plan file, `mission/progress.md` (mission state and decision log), `mission/config.yaml` (for engine selection), `tasks.md` (to iterate unchecked tasks), `UBIQUITOUS_LANGUAGE.md` (Phase 8 input), `contract.md` (for validator assertions), `design.md` (for worker briefs), and `proposal.md` (for worker briefs).
-
-This sheds the planning phase review and iteration history, not the final artifact files. All artifacts remain on disk and are re-read after compaction.
-
 ---
 
 ## Phase 8: Build Loop
@@ -576,8 +549,7 @@ Read the validator's report from `mission/validations/task-N-scrutiny.md`.
 ### Step 5: Handle Scrutiny Validation Result
 
 - **PASS**: Log to progress.md: `<timestamp> -- Task N: scrutiny validation PASSED.` Proceed to Step 6.
-- **FAIL due to Module depth file size only:** Before entering the fix loop, read `design.md`. If it contains an explicit single-file justification for the flagged module (e.g., "intentionally one file because X"), log the override to progress.md (`<timestamp> -- Task N: Module depth FAIL overridden — design.md justifies single-file for <module>.`) and proceed as PASS. If no justification exists, proceed to Step 5a.
-- **FAIL (any other reason)**: Proceed to Step 5a (fix loop).
+- **FAIL**: Proceed to Step 5a (fix loop).
 
 ### Step 5a: Fix Loop
 
@@ -684,15 +656,6 @@ Spawn a Claude subagent to run `/demo-video`. The subagent should save the recor
 - [ ] No unchecked `- [ ]` tasks remain
 - [ ] Each completed task has passing scrutiny and user-test reports
 - [ ] Plan codebase deltas are current
-
-### Proactive Compaction: Build-to-Completion
-
-Before proceeding to Phase 9:
-
-1. Verify the plan is fully up-to-date: all codebase deltas recorded, Current Task = "none", and all tasks marked complete or skipped.
-2. Append to progress.md: `<timestamp> -- [compact] build-to-completion. Shedding build loop context before final gates.`
-3. Run `/compact`. The compaction summary must include: the plan file path, total tasks completed, total tasks skipped, and a reminder to re-read `mission/config.yaml` for `base_branch` and to check `mission/deferrals.md` and `mission/fallbacks.log`. The summary must NOT include: validation report details, git diff content, fix loop history, test runner output, or worker dispatch logs.
-4. After compaction, re-read these files to reconstruct working state: the plan file, `mission/progress.md` (per-task outcomes, fix attempt counts, decision log), `tasks.md` (task names and statuses for PR body), `mission/config.yaml` (for `base_branch` and engine config), `contract.md` (for spec delta check and adversarial review), `coverage-audit.md` (for spec delta check), `design.md` and `proposal.md` (needed if spec delta check spawns a fix task), `mission/deferrals.md` (if it exists, checked in Final Gates), and `mission/fallbacks.log` (if it exists, for the final summary).
 
 ---
 

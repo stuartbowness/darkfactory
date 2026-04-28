@@ -2,7 +2,6 @@
 name: security
 user-invokable: true
 description: Complete a security review of the pending changes on the current branch
-globs: []
 ---
 
 # Security Review
