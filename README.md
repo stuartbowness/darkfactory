@@ -146,7 +146,7 @@ The **circuit breaker** stops this from going forever. After 3 total attempts (t
 
 ### File-backed state
 
-All mission state lives in files on disk, not in memory. This has two practical benefits: if your Claude Code session crashes or you close the terminal, you can resume the mission from where it left off. And you can open a second terminal to check progress while a mission is running. Because all state lives on disk, the orchestrator can safely compact context at two phase boundaries (planning-to-build and build-to-completion) and reconstruct working state by re-reading the plan file and mission artifacts.
+All mission state lives in files on disk, not in memory. This has two practical benefits: if your Claude Code session crashes or you close the terminal, you can resume the mission from where it left off. And you can open a second terminal to check progress while a mission is running.
 
 ```
 openspec/changes/<change-name>/

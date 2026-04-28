@@ -52,9 +52,6 @@
 | **Serial execution** | The rule that only one worker runs at a time to prevent conflicts | Sequential, single-threaded |
 | **Engine** | The configurable AI model/tool used for a given role (e.g. Codex for workers, Claude for validators) | Model, provider, backend |
 | **Plan mode** | The Claude Code plan that serves as the orchestrator's durable operating manual, guaranteed to survive context compaction | System prompt, instructions |
-| **Proactive compaction** | A `/compact` step the orchestrator runs at phase boundaries to shed intermediate tool output (validation reports, git diffs, fix loop history) while the plan file and progress.md carry forward as compacted state. Fires at two points: planning-to-build transition and build-to-completion transition. | Auto-compact, context cleanup |
-| **Smart zone** | The portion of the context window (roughly under 40% utilisation) where LLM decision quality remains high. The orchestrator aims to stay here by compacting proactively. | Safe zone, green zone |
-| **Dumb zone** | The portion of the context window (roughly above 40% utilisation) where accumulated noise degrades LLM decision quality. Automatic compaction at 80-95% is too late -- quality has already degraded for several tasks. | Danger zone, red zone |
 
 ## File artifacts
 
