@@ -136,13 +136,10 @@ Run these checks in order. For each, report PASS or FAIL with evidence.
    Before evaluating module depth, read the `File sizes` named fact from the deterministic pre-pass.
 
    File size context:
-   - If any touched production source file in `File sizes` exceeds 900 lines, name that file and its line count in the module depth evaluation.
-   - Cross-reference `design.md` for concern boundaries for that module.
-   - If `design.md` specifies concern boundaries that the implementation did not follow, flag Module depth as FAIL.
-   - If `design.md` says this module is intentionally one file because of a specific reason, accept that file size as PASS.
-   - If `design.md` does not address concern boundaries for that module, flag Module depth as FAIL for a design gap.
-   - Exclude standalone test files from the 900-line check: files in `tests/` directories, `*.test.ts`, `*.spec.ts`, `test_*.py`, and `*_test.py`.
-   - Rust `#[cfg(test)]` blocks inside production files count toward the 900-line threshold.
+   - If any touched production source file in `File sizes` is between 600 and 999 lines, name that file and its line count in the module depth evaluation and flag Module depth as WARN with a WARNING note. This is non-blocking and does not trigger the fix loop. Say the file is growing toward the danger zone and recommend verifying that `design.md` specifies concern boundaries for this module before the next task adds to it. If another module depth issue is also present (interface widening, information leaking, premature splitting, or overgrown shallow module), FAIL takes precedence over this WARN.
+   - If any touched production source file in `File sizes` is 1000 lines or more, flag Module depth as FAIL. Name that file and its line count in the module depth evaluation.
+   - Exclude standalone test files from both file-size thresholds: files in `tests/` or `__tests__/` directories, `*.test.ts`, `*.spec.ts`, `*.test.js`, `*.spec.js`, `test_*.py`, and `*_test.py`.
+   - Rust `#[cfg(test)]` blocks inside production files count toward the line total for both thresholds.
 
    Flag any of the following:
 
@@ -154,6 +151,7 @@ Run these checks in order. For each, report PASS or FAIL with evidence.
 
    Verdict guidance:
    - PASS when any interface addition is minor, justified by hidden complexity, or required by an idiomatic/framework pattern; when module boundaries stay stable or become narrower; and when any split modules have independent callers or clear domain boundaries.
+   - WARN when the only module-depth issue is a touched production source file between 600 and 999 lines and the 1000-line hard-fail threshold is not reached.
    - FAIL when the diff creates systematic interface widening, leaks implementation details into public interfaces or callers, splits one coherent abstraction into files without independent callers or domain boundaries, or adds surface area to an already shallow module without proportional hidden complexity.
 
    Report: write one bullet per individual finding instance; state which symbol or boundary is affected and why it matters for depth. If nothing flagged, write 'No module depth issues.'
@@ -265,7 +263,9 @@ Use this format:
 ```markdown
 # Scrutiny Validation: Task N
 
-## Result: PASS | FAIL
+## Result: PASS | WARN | FAIL
+
+(WARN when every check is PASS or WARN and no check is FAIL. The orchestrator treats WARN the same as PASS and does not enter the fix loop.)
 
 ## Check Results
 | Check | Result | Notes |
@@ -275,7 +275,7 @@ Use this format:
 | Tests | PASS/FAIL | `<passed> passed, <failed> failed, <skipped_or_ignored> skipped/ignored (<pass_rate>% pass rate)`; include failure groups when failing and WARNING when actual run rate is below 90% |
 | Lint | PASS/FAIL | ... |
 | Code review | PASS/FAIL | ... |
-| Module depth | PASS/FAIL | ... |
+| Module depth | PASS/WARN/FAIL | ... |
 | Code standards | PASS/FAIL | ... |
 | Code simplify | PASS/FAIL | ... |
 | Security review | PASS/FAIL/N/A | ... |
@@ -298,4 +298,4 @@ Use this format:
 <specific guidance for fixing the failures>
 ```
 
-IMPORTANT: The overall result is FAIL if ANY check fails or ANY contract assertion fails. Be strict. A near-miss is still a FAIL.
+IMPORTANT: The overall result is FAIL if ANY check fails or ANY contract assertion fails. Be strict. A near-miss is still a FAIL. A WARN in any individual check does not cause the overall result to be FAIL.
