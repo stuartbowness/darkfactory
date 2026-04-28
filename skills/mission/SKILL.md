@@ -26,6 +26,7 @@ flow: align -> spec -> contract -> build -> validate -> ship
 2. **Establish Shared Language** -- create/update UBIQUITOUS_LANGUAGE.md
 3. **Write a PRD** -- file requirements as a GitHub issue
 4. **Create and Review OpenSpec Artifacts** -- proposal, specs, design, tasks (human-approved)
+4.2b. **Explore Module Design Alternatives** -- opt-in `/module-design` for modules with non-obvious interfaces
 4a. **Spec Coverage Audit** -- verify every PRD requirement maps to a task
 5. **Write Contract** -- validation assertions workers never see
 6. **Create Mission Directory** -- set up mission/ state directory
@@ -160,7 +161,23 @@ Generate `specs/<capability>/spec.md` files (one per capability listed in the pr
 
 Present all spec files to the human with a recommendation. Specs are the formal requirements that flow into tasks and the contract. Missing or vague specs are the primary cause of missed requirements in the final build.
 
-If approved, proceed to Phase 4.3.
+If approved, proceed to Phase 4.2b.
+
+### Phase 4.2b: Explore Module Design Alternatives (Opt-In)
+
+Before writing `design.md`, assess whether any modules would benefit from exploring multiple interface shapes. A module is a candidate when:
+
+- It has multiple plausible API shapes (e.g., single entrypoint vs. fine-grained methods)
+- It sits at a boundary between two subsystems with different concerns
+- The proposal names it as a core abstraction but the interface is not obvious from the specs
+
+If no modules qualify, skip to Phase 4.3.
+
+If one or two modules qualify, offer: "The [module name] module has multiple plausible interface shapes. Want me to run `/module-design` before writing design.md?" If the human declines, skip to Phase 4.3.
+
+If the human accepts, run `/module-design` for each candidate module. Pass the proposal capabilities and spec requirements as input. After the human picks a direction for each module, carry those decisions into Phase 4.3 -- the chosen interface shapes inform the Module Depth section of `design.md`.
+
+Do not run `/module-design` on more than 2 modules per mission. If more than 2 qualify, pick the 2 with the least obvious boundaries and note the others in the design review.
 
 ### Phase 4.3: Generate and Review Design
 
