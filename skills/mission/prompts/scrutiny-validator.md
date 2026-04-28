@@ -136,7 +136,7 @@ Run these checks in order. For each, report PASS or FAIL with evidence.
    Before evaluating module depth, read the `File sizes` named fact from the deterministic pre-pass.
 
    File size context:
-   - If any touched production source file in `File sizes` is between 600 and 999 lines, name that file and its line count in the module depth evaluation and flag Module depth as WARN with a WARNING note. This is non-blocking and does not trigger the fix loop. Say the file is growing toward the danger zone and recommend verifying that `design.md` specifies concern boundaries for this module before the next task adds to it.
+   - If any touched production source file in `File sizes` is between 600 and 999 lines, name that file and its line count in the module depth evaluation and flag Module depth as WARN with a WARNING note. This is non-blocking and does not trigger the fix loop. Say the file is growing toward the danger zone and recommend verifying that `design.md` specifies concern boundaries for this module before the next task adds to it. If another module depth issue is also present (interface widening, information leaking, premature splitting, or overgrown shallow module), FAIL takes precedence over this WARN.
    - If any touched production source file in `File sizes` is 1000 lines or more, apply the 1000-line hard-fail threshold and name that file and its line count in the module depth evaluation.
    - For files at or above the 1000-line hard-fail threshold, cross-reference `design.md` for concern boundaries for that module.
    - If `design.md` specifies concern boundaries that the implementation did not follow, flag Module depth as FAIL.
