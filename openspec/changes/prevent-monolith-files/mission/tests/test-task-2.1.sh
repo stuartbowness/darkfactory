@@ -17,13 +17,13 @@ contains() {
 
 phase="$(
   awk '
-    /^### Phase 4\.3: Generate and Review Design/ { in_phase = 1 }
+    /^### Phase 4\.4: Generate and Review Tasks/ { in_phase = 1 }
     in_phase { print }
-    /^### Phase 4\.4: Generate and Review Tasks/ { exit }
+    /^### Phase 4a: Spec Coverage Audit/ { exit }
   ' "$skill"
 )"
 
-[[ -n "$phase" ]] || fail "missing Phase 4.3 section"
+[[ -n "$phase" ]] || fail "missing Phase 4.4 section"
 
 contains "#### Concern Separation Scan" "$phase"
 contains "multi-task module" "$phase"
@@ -32,18 +32,15 @@ contains "named concerns" "$phase"
 contains "do not prescribe specific filenames" "$phase"
 contains "orchestrator drafts" "$phase"
 
-design_line="$(awk 'index($0, "Generate `design.md`") { print NR; exit }' <<<"$phase")"
-existing_line="$(awk 'index($0, "#### Existing Codebases") { print NR; exit }' <<<"$phase")"
+closing_line="$(awk 'index($0, "#### Mandatory Closing Tasks") { print NR; exit }' <<<"$phase")"
 concern_line="$(awk 'index($0, "#### Concern Separation Scan") { print NR; exit }' <<<"$phase")"
-review_line="$(awk 'index($0, "Present it to the human with a recommendation") { print NR; exit }' <<<"$phase")"
+review_line="$(awk 'index($0, "Present the full task list") { print NR; exit }' <<<"$phase")"
 
-[[ -n "$design_line" ]] || fail "missing design.md generation line"
-[[ -n "$existing_line" ]] || fail "missing Existing Codebases section"
+[[ -n "$closing_line" ]] || fail "missing Mandatory Closing Tasks section"
 [[ -n "$concern_line" ]] || fail "missing Concern Separation Scan section"
-[[ -n "$review_line" ]] || fail "missing Phase 4.3 review handoff"
+[[ -n "$review_line" ]] || fail "missing Phase 4.4 review handoff"
 
-(( design_line < concern_line )) || fail "concern scan must come after design.md generation"
-(( existing_line < concern_line )) || fail "concern scan must come after Existing Codebases"
+(( closing_line < concern_line )) || fail "concern scan must come after Mandatory Closing Tasks"
 (( concern_line < review_line )) || fail "concern scan must come before review handoff"
 
-printf 'PASS: Phase 4.3 includes concern separation scan gate before design review\n'
+printf 'PASS: Phase 4.4 includes concern separation scan gate before tasks review\n'
