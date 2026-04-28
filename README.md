@@ -95,7 +95,7 @@ After each worker finishes, two validators check the work:
    - Do tests exist? (auto-fails the task if not)
    - Does the project build, do the tests pass, does the linter pass?
    - Code review and code standards check
-   - Module depth review -- did the change make modules shallower or leak internal details? This includes the **graduated file size threshold**: WARNING at 600 lines for a touched production source file growing toward the danger zone, which is non-blocking, and hard FAIL at 1000 lines for a confirmed large module. At 1000 lines, the outcome depends on `design.md`: concern boundaries specified but not followed means FAIL, no concern boundaries means FAIL for a design gap that goes back to design, and an explicit single-file justification means PASS.
+   - Module depth review -- did the change make modules shallower or leak internal details? This includes the **graduated file size threshold**: WARNING at 600 lines for a touched production source file growing toward the danger zone (non-blocking), and hard FAIL at 1000 lines. If a 1000-line FAIL fires, the orchestrator checks `design.md` for a single-file justification before entering the fix loop.
    - Complexity check -- is the code more complex than it needs to be?
    - Security review (only when the changes touch auth, secrets, user input, network boundaries, or filesystem trust boundaries)
    - Contract check -- does the code do what the contract says it should?

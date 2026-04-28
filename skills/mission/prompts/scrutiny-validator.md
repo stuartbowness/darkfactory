@@ -138,7 +138,7 @@ Run these checks in order. For each, report PASS or FAIL with evidence.
    File size context:
    - If any touched production source file in `File sizes` is between 600 and 999 lines, name that file and its line count in the module depth evaluation and flag Module depth as WARN with a WARNING note. This is non-blocking and does not trigger the fix loop. Say the file is growing toward the danger zone and recommend verifying that `design.md` specifies concern boundaries for this module before the next task adds to it. If another module depth issue is also present (interface widening, information leaking, premature splitting, or overgrown shallow module), FAIL takes precedence over this WARN.
    - If any touched production source file in `File sizes` is 1000 lines or more, flag Module depth as FAIL. Name that file and its line count in the module depth evaluation.
-   - Exclude standalone test files from both file-size thresholds: files in `tests/` directories, `*.test.ts`, `*.spec.ts`, `test_*.py`, and `*_test.py`.
+   - Exclude standalone test files from both file-size thresholds: files in `tests/` or `__tests__/` directories, `*.test.ts`, `*.spec.ts`, `*.test.js`, `*.spec.js`, `test_*.py`, and `*_test.py`.
    - Rust `#[cfg(test)]` blocks inside production files count toward the line total for both thresholds.
 
    Flag any of the following:
