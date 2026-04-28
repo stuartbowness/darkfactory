@@ -64,8 +64,11 @@ JSON
     cat > design.md <<'DESIGN'
 # Design
 
-This fixture intentionally leaves implementation module boundaries unspecified.
+This fixture does not specify implementation module boundaries.
 DESIGN
+
+    git add package.json design.md
+    git commit -q -m "project setup for $case_name"
 
     write_source_file "$line_count" src/index.js
 
@@ -79,8 +82,8 @@ test('main returns fixture value', () => {
 });
 TEST
 
-    git add .
-    git commit -q -m "fixture for $case_name"
+    git add src/index.js __tests__/index.test.js
+    git commit -q -m "add source for $case_name"
     git rev-parse HEAD
   )
 }
@@ -153,6 +156,7 @@ fail_output="$tmp_root/fail-output.txt"
 
 run_validator "fixture-warning-650-lines" 650 "$warning_output"
 assert_contains_ci "Fixture Test A" "warn" "$warning_output"
+assert_contains_ci "Fixture Test A" "600" "$warning_output"
 
 run_validator "fixture-fail-1050-lines" 1050 "$fail_output"
 assert_module_depth_fail "Fixture Test B" "$fail_output"
