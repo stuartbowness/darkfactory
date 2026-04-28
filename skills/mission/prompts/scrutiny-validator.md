@@ -263,7 +263,9 @@ Use this format:
 ```markdown
 # Scrutiny Validation: Task N
 
-## Result: PASS | FAIL
+## Result: PASS | WARN | FAIL
+
+(WARN when every check is PASS or WARN and no check is FAIL. The orchestrator treats WARN the same as PASS and does not enter the fix loop.)
 
 ## Check Results
 | Check | Result | Notes |
