@@ -20,9 +20,6 @@
 | **Vertical slice** | A best practice for how to write good tasks -- each task should be a thin tracer-bullet path through all layers (schema, API, UI, tests) that delivers narrow but complete functionality | Horizontal slice, layer |
 | **Deviation classification** | Categorization of spec deviations during the coverage audit as Interpretation (ambiguous spec, reasonable reading), Substitution (replacing specified approach with a different one), or Removal (not implementing a specified feature). Substitutions and removals require explicit human approval. | Deviation type, deviation level |
 | **Spec delta check** | A post-build verification step (Phase 9) where a Claude subagent checks that every item marked COVERED in the coverage audit is actually present in the built codebase. APPROVED-DEVIATION items are listed but not re-litigated. | Final spec check, compliance check, coverage verification |
-| **Concern boundary** | A prose statement in design.md naming which concerns within a module belong in separate files (e.g., "The JSON-RPC module separates protocol handling, dispatch, action handlers, and tests into distinct files"). Named concerns only — no prescribed filenames. | File boundary, separation rule, module split |
-| **Multi-task module** | A module or file referenced by two or more tasks in tasks.md, which requires at least one concern boundary in design.md before the design can be approved. | Shared module, hot module |
-| **Concern separation scan** | The orchestrator step in Phase 4.4 that reads the newly generated tasks.md, identifies multi-task modules, and either proposes concern boundaries or blocks tasks.md approval until they are added. | Design review, module scan, boundary check |
 
 ## Validation
 
@@ -44,7 +41,6 @@
 | **Diff coverage** | Line coverage measured only on added lines in a task's git diff, not the entire codebase | New code coverage, incremental coverage |
 | **Error handling smell** | A language-specific anti-pattern in error handling code (e.g., `.unwrap()` in Rust, `catch {}` in TypeScript, `except: pass` in Python) counted per KLOC of changed code | Code smell, anti-pattern, bad practice |
 | **File size pre-pass** | A deterministic line count on touched files injected into the module depth review, ensuring the LLM reviewer cannot overlook large files | Line count check, size gate |
-| **Graduated file size threshold** | The two-level file size check in Check 6 of the scrutiny validator: WARNING at 600 lines (module growing toward danger zone), hard FAIL at 1000 lines (unconditional — the validator does not read design.md; the orchestrator reads design.md after the FAIL and may override to PASS if a single-file justification exists) | Size threshold, line limit, file size gate |
 | **Test quality review** | An LLM-based semantic review (owned skill: `/test-quality`) that evaluates whether tests verify meaningful behavior, checking for tautological assertions, implementation coupling, untested branches, and missing edge cases | Test review, test audit, test assessment |
 | **Tautological assertion** | A test assertion that passes regardless of whether the code works correctly (e.g., `assert!(true)`, `expect(x).toBeDefined()` without checking the value) | Empty assertion, no-op test, fake test |
 | **Self-gating check** | A scrutiny check that naturally skips itself when the diff contains no relevant files, requiring no explicit closing-task exemption | Auto-skip, conditional check |
@@ -107,8 +103,6 @@
 - **Diff coverage** measures added lines only -- a worker is responsible for covering the code they wrote, not backfilling pre-existing debt
 - The **Test quality review** (`/test-quality`) is an owned skill invoked by the **Scrutiny validator** as a subagent, following the same pattern as `/review` and `/simplify`
 - A **Tautological assertion** is worse than no test because it gives false confidence -- the **Scrutiny validator** treats it as a hard FAIL
-- A **Multi-task module** requires at least one **Concern boundary** in design.md; the **Concern separation scan** enforces this as a blocking gate during Phase 4.4
-- The **Graduated file size threshold** is the runtime enforcement of **Concern boundaries**: a WARNING at 600 lines prompts verification; a FAIL at 1000 lines is unconditional — the orchestrator then checks design.md for a single-file justification and may override to PASS
 
 ## Example dialogue
 
@@ -141,20 +135,6 @@
 > **Dev:** "And what if the tests do cover the code but the assertions are meaningless?"
 >
 > **Orchestrator:** "The **Test quality review** catches that. It's an LLM subagent that reads the test diff alongside the production diff and flags **Tautological assertions** -- tests that pass regardless of correctness. A P0 finding like `assert!(true)` is a hard FAIL."
-
-## Example dialogue (concern separation)
-
-> **Dev:** "Three tasks all touch the JSON-RPC module. Will that cause problems?"
->
-> **Orchestrator:** "It makes it a **Multi-task module**. Before I let you approve tasks.md, I'll run the **Concern separation scan** and require at least one **Concern boundary** for it -- something like 'The JSON-RPC module separates protocol handling, dispatch, action handlers, and tests into distinct files.'"
->
-> **Dev:** "What if a worker ignores that and puts everything in one file anyway?"
->
-> **Orchestrator:** "The **Graduated file size threshold** catches it. At 600 lines the **Scrutiny validator** emits a WARNING -- module growing toward the danger zone. At 1000 lines it's an unconditional FAIL. After that fires, I check design.md: if there's a single-file justification I override to PASS; otherwise it goes to the fix loop."
->
-> **Dev:** "Can I intentionally keep it as one file?"
->
-> **Orchestrator:** "Yes -- write a one-line justification in design.md: 'intentionally one file because X.' The validator accepts that as a PASS."
 
 ## Resolved ambiguities
 

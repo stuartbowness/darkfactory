@@ -77,8 +77,6 @@ Next, it creates a series of planning documents using [OpenSpec](https://github.
 - **Design** -- architecture decisions and technical approach
 - **Tasks** -- an ordered checklist of implementation work
 
-After `tasks.md` is generated, the orchestrator runs a **concern separation scan** against it. It identifies each **multi-task module** (a module referenced by two or more tasks), checks whether `design.md` already contains a **concern boundary** for that module, and drafts concern boundary text and writes it to `design.md` where any module lacks one. You cannot approve `tasks.md` until every multi-task module has either a concern boundary or an explicit single-file justification, such as "intentionally one file because X"; this prevents workers from producing monolith files across tasks.
-
 Every tasks.md ends with a set of **mandatory closing tasks** that run after the feature work: a smoke test (one end-to-end test through the primary user flow against real dependencies), a cleanup task (remove dead code, unused deps, and leftover scaffolding), a module shape re-check (catch drift between design.md and what the code actually exposes -- required once a mission has 5+ feature tasks), and a documentation task. A CI configuration task is optional and added when relevant.
 
 After the tasks are defined, the orchestrator runs a **coverage audit**. This maps every requirement from the PRD to one or more tasks. If anything is missing, it flags it. If a requirement was intentionally changed or dropped, you approve that decision explicitly. For substitutions, the orchestrator also checks that the replacement approach is fully covered by existing tasks -- if the substitution drops something important, it's flagged as a gap. Nothing falls through the cracks by accident.
@@ -95,7 +93,7 @@ After each worker finishes, two validators check the work:
    - Do tests exist? (auto-fails the task if not)
    - Does the project build, do the tests pass, does the linter pass?
    - Code review and code standards check
-   - Module depth review -- did the change make modules shallower or leak internal details? This includes the **graduated file size threshold**: WARNING at 600 lines for a touched production source file growing toward the danger zone (non-blocking), and hard FAIL at 1000 lines. If a 1000-line FAIL fires, the orchestrator checks `design.md` for a single-file justification before entering the fix loop.
+   - Module depth review -- did the change make modules shallower or leak internal details?
    - Complexity check -- is the code more complex than it needs to be?
    - Security review (only when the changes touch auth, secrets, user input, network boundaries, or filesystem trust boundaries)
    - Contract check -- does the code do what the contract says it should?
