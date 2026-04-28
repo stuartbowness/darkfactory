@@ -50,7 +50,7 @@ Restart Claude Code, then from any project run:
 /mission-init
 ```
 
-This checks your entire setup and tells you exactly what's missing. It verifies all 12 skills are symlinked, CLI tools (codex, gh, openspec, darkfactory-dispatch, jq), coverage tools for your project's language (cargo-tarpaulin for Rust, jest/c8 for TypeScript, pytest-cov for Python), and initializes OpenSpec in the current project if needed.
+This checks your entire setup and tells you exactly what's missing. It verifies all 17 skills are symlinked, CLI tools (codex, gh, openspec, darkfactory-dispatch, jq), coverage tools for your project's language (cargo-tarpaulin for Rust, jest/c8 for TypeScript, pytest-cov for Python), and initializes OpenSpec in the current project if needed.
 
 ### Updating
 
@@ -186,6 +186,11 @@ Darkfactory is controlled through skills -- reusable prompt templates you invoke
 | `/security` | Security review. The scrutiny validator runs this when the diff touches auth, secrets, user input, or network/filesystem boundaries. |
 | `/adversarial` | Dual-agent code review: dispatches a Codex reviewer and a Claude reviewer with identical input, then surfaces disagreements. |
 | `/dispatch` | Run a coding task via `darkfactory-dispatch`. Accepts a task description inline or prompts for one. Presents structured outcome. |
+| `/qa` | Interactive QA session: user reports bugs conversationally, agent files GitHub issues with domain language and reproduction steps. |
+| `/module-design` | Generate multiple radically different interface designs for a module ("design it twice"), compare trade-offs, and synthesize. |
+| `/domain-model` | Stress-test a plan against the project's domain model. Maintains CONTEXT.md and ADR documentation. |
+| `/arch-review` | Find deepening opportunities in a codebase -- shallow modules, leaked internals, refactoring candidates. |
+| `/write-a-skill` | Meta-skill for authoring new agent skills. Covers directory structure, SKILL.md template, and review checklist. |
 
 ### Skill structure
 
