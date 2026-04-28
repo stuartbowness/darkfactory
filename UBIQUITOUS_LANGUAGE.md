@@ -22,7 +22,7 @@
 | **Spec delta check** | A post-build verification step (Phase 9) where a Claude subagent checks that every item marked COVERED in the coverage audit is actually present in the built codebase. APPROVED-DEVIATION items are listed but not re-litigated. | Final spec check, compliance check, coverage verification |
 | **Concern boundary** | A prose statement in design.md naming which concerns within a module belong in separate files (e.g., "The JSON-RPC module separates protocol handling, dispatch, action handlers, and tests into distinct files"). Named concerns only — no prescribed filenames. | File boundary, separation rule, module split |
 | **Multi-task module** | A module or file referenced by two or more tasks in tasks.md, which requires at least one concern boundary in design.md before the design can be approved. | Shared module, hot module |
-| **Concern separation scan** | The orchestrator step in Phase 4.3 that reads tasks.md after design.md is generated, identifies multi-task modules, and either proposes concern boundaries or blocks design approval until they are added. | Design review, module scan, boundary check |
+| **Concern separation scan** | The orchestrator step in Phase 4.4 that reads the newly generated tasks.md, identifies multi-task modules, and either proposes concern boundaries or blocks tasks.md approval until they are added. | Design review, module scan, boundary check |
 
 ## Validation
 
@@ -107,7 +107,7 @@
 - **Diff coverage** measures added lines only -- a worker is responsible for covering the code they wrote, not backfilling pre-existing debt
 - The **Test quality review** (`/test-quality`) is an owned skill invoked by the **Scrutiny validator** as a subagent, following the same pattern as `/review` and `/simplify`
 - A **Tautological assertion** is worse than no test because it gives false confidence -- the **Scrutiny validator** treats it as a hard FAIL
-- A **Multi-task module** requires at least one **Concern boundary** in design.md; the **Concern separation scan** enforces this as a blocking gate during Phase 4.3
+- A **Multi-task module** requires at least one **Concern boundary** in design.md; the **Concern separation scan** enforces this as a blocking gate during Phase 4.4
 - The **Graduated file size threshold** is the runtime enforcement of **Concern boundaries**: a WARNING at 600 lines prompts verification; a FAIL at 1000 lines halts the task if no concern boundaries are specified in design.md
 
 ## Example dialogue
@@ -146,7 +146,7 @@
 
 > **Dev:** "Three tasks all touch the JSON-RPC module. Will that cause problems?"
 >
-> **Orchestrator:** "It makes it a **Multi-task module**. Before I let you approve design.md, I'll run the **Concern separation scan** and require at least one **Concern boundary** for it -- something like 'The JSON-RPC module separates protocol handling, dispatch, action handlers, and tests into distinct files.'"
+> **Orchestrator:** "It makes it a **Multi-task module**. Before I let you approve tasks.md, I'll run the **Concern separation scan** and require at least one **Concern boundary** for it -- something like 'The JSON-RPC module separates protocol handling, dispatch, action handlers, and tests into distinct files.'"
 >
 > **Dev:** "What if a worker ignores that and puts everything in one file anyway?"
 >

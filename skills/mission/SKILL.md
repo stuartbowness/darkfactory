@@ -185,6 +185,8 @@ When the mission modifies an existing codebase (not greenfield), the design must
 
 Present it to the human with a recommendation. If approved, proceed to Phase 4.4.
 
+**Note:** Phase 4.4's concern separation scan may add concern boundaries to `design.md` for multi-task modules found in `tasks.md`. The human sees the final updated `design.md` during the Phase 4.4 review.
+
 ### Phase 4.4: Generate and Review Tasks
 
 Generate `tasks.md` (ordered checklist of implementation tasks).
@@ -219,7 +221,7 @@ If the design (Phase 4.3) identified refactoring needed for existing code, those
 
 #### Concern Separation Scan
 
-After generating `tasks.md` and before presenting it for review, run a concern separation scan. Read the newly generated `tasks.md` to identify multi-task modules. Use LLM judgment, not mechanical grep, to identify multi-task modules: modules or bounded contexts touched by two or more tasks.
+After generating `tasks.md` and before presenting it for review, run a concern separation scan. Read the newly generated `tasks.md` to identify multi-task modules. Use LLM judgment, not mechanical grep, to identify multi-task modules: modules or bounded contexts touched by two or more tasks. When it is unclear whether two or more tasks genuinely share a module, treat them as sharing one.
 
 For each multi-task module, check whether `design.md` already contains a concern boundary statement for it. A concern boundary names the concerns within the module that should stay in separate files, such as protocol handling, dispatch, action handlers, and tests. Concern boundaries use named concerns only; they do not prescribe specific filenames.
 
@@ -567,7 +569,15 @@ Spawn a Claude subagent (via the Agent tool) with this prompt:
 
 #### Scrutiny Validator Prompt
 
-Read [prompts/scrutiny-validator.md](prompts/scrutiny-validator.md) and use it as the subagent prompt. Fill in the commit SHA and contract assertions for this task. The prompt runs 11 checks: test presence, build, tests, lint, code review, module depth, code standards, simplify, security (if applicable), contract assertions, behavioral conformance.
+Read [prompts/scrutiny-validator.md](prompts/scrutiny-validator.md) and use it as the subagent prompt. Fill in three placeholders before dispatching:
+
+1. `<commit-sha>` — the task's commit SHA.
+2. `<paste the assertions from contract.md for task N>` — the contract assertions for this task.
+3. `<concern-boundaries>` — read `design.md` and extract all concern boundary statements (the prose lines that name which concerns within a module belong in separate files). Paste them here, one per line. If `design.md` contains no concern boundary statements, write `None specified.`
+
+The validator never reads `design.md` directly. The orchestrator acts as gatekeeper and injects only the concern boundaries into the prompt.
+
+The prompt runs 11 checks: test presence, build, tests, lint, code review, module depth, code standards, simplify, security (if applicable), contract assertions, behavioral conformance.
 
 Read the validator's report from `mission/validations/task-N-scrutiny.md`.
 

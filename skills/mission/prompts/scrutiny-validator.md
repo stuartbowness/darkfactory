@@ -6,6 +6,9 @@ SHA: <commit-sha>
 ## Contract Assertions for This Task
 <paste the assertions from contract.md for task N>
 
+## Concern Boundaries
+<concern-boundaries>
+
 ## Deterministic Pre-passes
 
 Before starting the check sequence, gather deterministic facts from the repository and the task diff. Store the results under the exact named facts below so later checks can reference them by name. Do not inline these facts into individual check descriptions.
@@ -138,10 +141,10 @@ Run these checks in order. For each, report PASS or FAIL with evidence.
    File size context:
    - If any touched production source file in `File sizes` is between 600 and 999 lines, name that file and its line count in the module depth evaluation and flag Module depth as WARN with a WARNING note. This is non-blocking and does not trigger the fix loop. Say the file is growing toward the danger zone and recommend verifying that `design.md` specifies concern boundaries for this module before the next task adds to it. If another module depth issue is also present (interface widening, information leaking, premature splitting, or overgrown shallow module), FAIL takes precedence over this WARN.
    - If any touched production source file in `File sizes` is 1000 lines or more, apply the 1000-line hard-fail threshold and name that file and its line count in the module depth evaluation.
-   - For files at or above the 1000-line hard-fail threshold, cross-reference `design.md` for concern boundaries for that module.
-   - If `design.md` specifies concern boundaries that the implementation did not follow, flag Module depth as FAIL.
-   - If `design.md` says this module is intentionally one file because of a specific reason, accept that file size as PASS.
-   - If `design.md` does not address concern boundaries for that module, flag Module depth as FAIL for a design gap.
+   - For files at or above the 1000-line hard-fail threshold, cross-reference the **Concern Boundaries** section above for that module.
+   - If the concern boundaries specify how that module's concerns should be separated but the implementation did not follow them, flag Module depth as FAIL.
+   - If the concern boundaries explicitly justify keeping that module in one file (e.g., "intentionally one file because X"), accept that file size as PASS.
+   - If the concern boundaries do not address that module, flag Module depth as FAIL for a design gap.
    - Exclude standalone test files from both file-size thresholds: files in `tests/` directories, `*.test.ts`, `*.spec.ts`, `test_*.py`, and `*_test.py`.
    - Rust `#[cfg(test)]` blocks inside production files count toward the line total for both thresholds.
 
@@ -300,4 +303,4 @@ Use this format:
 <specific guidance for fixing the failures>
 ```
 
-IMPORTANT: The overall result is FAIL if ANY check fails or ANY contract assertion fails. Be strict. A near-miss is still a FAIL.
+IMPORTANT: The overall result is FAIL if ANY check fails or ANY contract assertion fails. Be strict. A near-miss is still a FAIL. A WARN in any individual check does not cause the overall result to be FAIL.
