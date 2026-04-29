@@ -353,7 +353,7 @@ Create `contract.md` in the change directory (`openspec/changes/<change-name>/co
 
 ### Cross-Referencing Specs
 
-For each task, use the coverage audit from Phase 4a to find which spec capability/scenario identifiers map to it. Write assertions that capture the specific details from those scenarios -- not generic behavioral checks, but assertions that would fail if the specific scenario were not implemented. Each assertion must trace back to a specific spec capability and scenario number.
+For each task, use the coverage audit from Phase 4a to find which spec capabilities map to it. Then read the actual spec files to identify specific scenarios. Write assertions that capture the specific details from those scenarios -- not generic behavioral checks, but assertions that would fail if the specific scenario were not implemented. Each assertion must trace back to a specific spec capability and scenario number (e.g., `add-todo/1`).
 
 **Process for each task:**
 1. Look up the spec capabilities mapped to this task in the coverage table (e.g., `add-todo`, `search`).
