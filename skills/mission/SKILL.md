@@ -349,7 +349,7 @@ Create `contract.md` in the change directory (`openspec/changes/<change-name>/co
 3. Do NOT reference implementation details (function names, variable names, internal data structures).
 4. Be specific and unambiguous. A validator reading only the contract and the diff should be able to check every assertion without guessing.
 5. Workers never see this file.
-6. **Write the minimum set of assertions needed to verify the task is complete and correct.** Each assertion should trace to a specific spec capability/scenario identifier, including error behaviors specified in the PRD or specs. Do not add assertions for edge cases, nice-to-haves, or defensive behaviors unless the PRD explicitly requires them. If an assertion would not cause you to reject the task when it fails, do not include it. Place assertions on the earliest task where they become verifiable -- if a behavior spans multiple tasks, put the assertion on the task where it can first be checked, not where the work begins.
+6. **Write the minimum set of assertions needed to verify the task is complete and correct.** Each assertion should trace to a specific spec scenario (e.g., `add-todo/1`), including error behaviors specified in the specs. Do not add assertions for edge cases, nice-to-haves, or defensive behaviors unless the PRD explicitly requires them. If an assertion would not cause you to reject the task when it fails, do not include it. Place assertions on the earliest task where they become verifiable -- if a behavior spans multiple tasks, put the assertion on the task where it can first be checked, not where the work begins.
 
 ### Cross-Referencing Specs
 
@@ -381,7 +381,7 @@ When a spec scenario traces to an APPROVED-DEVIATION item in the coverage audit,
 After writing the contract, present it to the human following the standard review pattern: AI presents, AI recommends, human decides.
 
 For each task section, highlight:
-- Which spec capability/scenario identifiers the assertions trace to
+- Which spec scenarios (e.g., `add-todo/1`, `search/3`) the assertions trace to
 - Whether the assertion count feels right (too many suggests over-specification; too few suggests gaps)
 - Any spec scenarios that were hard to express as observable assertions
 
