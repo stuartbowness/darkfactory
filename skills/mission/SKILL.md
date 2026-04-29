@@ -695,6 +695,23 @@ Spawn a Claude subagent to run `/demo-video`. The subagent should save the recor
 
 4. Update the plan: set Current Task to the next unchecked task, or "none" if all done.
 
+4a. **Foundation audit (after task 1 only).** If this is task 1 and it passed both validators, run a foundation check before proceeding to task 2:
+
+   - Read task 1's Produces field from its topology metadata in tasks.md
+   - Extract module names from the Produces field. Look up those modules in design.md's Module Inventory. Verify that corresponding directories or files exist in the committed code with matching names.
+   - Extract type names from the Produces field. Look up those types in design.md's Type Catalog. Verify that corresponding type definitions exist in the committed code with matching names.
+
+   If drift is detected (module structure or type names do not match the design for items task 1 declared it would produce):
+   - Generate a corrective task 1a
+   - Insert it in tasks.md between task 1 and task 2
+   - Add assertions for it to contract.md
+   - Present both to the human for approval
+   - The corrective task goes through the normal build loop before task 2 starts
+
+   If no drift: log to progress.md: `<timestamp> -- Foundation audit PASSED. Module structure and type names confirmed for task 1 produces.`
+
+   This audit runs only after task 1. It does not run after any other task.
+
 5. **If more tasks remain:** Go back to Step 1 for the next task.
 
 6. **If all tasks are done:** Proceed to Phase 9.
