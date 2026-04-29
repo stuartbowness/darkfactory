@@ -91,7 +91,8 @@
 | **Task Independence** | A scoring dimension measuring how well an architecture allows tasks to be completed without cross-task coordination on conventions | Worker task-ability, decomposability |
 | **Task Topology** | Per-task metadata declaring which prior tasks it depends on, which surfaces it consumes, which surfaces it produces, and which architectural layers it touches | Task graph, dependency map |
 | **Foundation Audit** | A one-time check after task 1 passes validation, verifying that committed code matches the design's module inventory and type catalog for task 1's declared produces | Post-task-1 check, foundation check |
-| **Type Catalog** | A design.md section listing domain types with name, purpose, and owning module -- no field-level detail | Type registry, type list, types.md |
+| **Type Catalog** | A design.md section listing domain types with name, purpose, and owning module -- no field-level detail. Type names are drawn from this glossary when a matching term exists; types not in the glossary are named by the worker | Type registry, type list, types.md |
+| **Domain type** | A type that models the problem space. Excludes technical helpers (CLI parsers, test fixtures, generic containers) unless they are public compatibility surfaces | Helper type, utility type, internal type |
 | **Module Inventory** | A design.md section listing modules with interface width, what they hide, and why the boundary exists | Module table, module list |
 | **Design Template** | A reference document defining mandatory design.md sections and scoring rubrics, used by the orchestrator alongside openspec config rules | Design spec, design schema |
 | **Spec Reference** | A capability/scenario identifier (e.g., add-todo/1) used to trace contract assertions back to formal spec requirements | REQ-ID, requirement ID, spec ID |
@@ -115,6 +116,7 @@
 - The **Test quality review** (`/test-quality`) is an owned skill invoked by the **Scrutiny validator** as a subagent, following the same pattern as `/review` and `/simplify`
 - A **Tautological assertion** is worse than no test because it gives false confidence -- the **Scrutiny validator** treats it as a hard FAIL
 - **Deterministic Anchors** are populated from design.md during Phase 4.3 and stored in the **Plan** -- they reference the **Type Catalog**, **Module Inventory**, and **Architecture Candidate Scoring** results
+- The **Type Catalog** draws **Domain type** names from this glossary. **Worker briefs** list relevant **Type Catalog** entries as exact names to use in code. The **Foundation Audit** checks task 1 names against the **Type Catalog**. The module shape re-check verifies all **Type Catalog** names at the end
 - The **Foundation Audit** runs once after task 1, comparing committed code against the **Module Inventory** and **Type Catalog** from design.md
 - **Spec References** in the **Contract** trace back to specific **Spec** capability/scenario pairs (e.g., add-todo/1), replacing arbitrary row numbers
 - **Task Topology** metadata is written per task in tasks.md and reviewed during Phase 4.4 -- tasks touching more than 2 architectural layers are flagged for human review
@@ -146,7 +148,7 @@
 >
 > **Dev:** "What stops the design from using different type names each run?"
 >
-> **Orchestrator:** "The **Type Catalog** in design.md names every domain type using terms from the ubiquitous language. The **Foundation Audit** checks after task 1 that the committed code actually uses those names. If it drifts, I generate a corrective task before task 2 starts."
+> **Orchestrator:** "The **Type Catalog** in design.md names every **Domain type** using terms from the ubiquitous language. The **Worker brief** lists the relevant **Type Catalog** entries so the worker uses exact names. The **Foundation Audit** checks after task 1 that the committed code matches. At the end, the module shape re-check verifies all **Type Catalog** names again."
 >
 > **Dev:** "And if context compacts mid-mission and you lose the design details?"
 >
