@@ -314,17 +314,17 @@ Create `contract.md` in the change directory (`openspec/changes/<change-name>/co
 3. Do NOT reference implementation details (function names, variable names, internal data structures).
 4. Be specific and unambiguous. A validator reading only the contract and the diff should be able to check every assertion without guessing.
 5. Workers never see this file.
-6. **Write the minimum set of assertions needed to verify the task is complete and correct.** Each assertion should trace to a specific PRD requirement, including error behaviors specified in the PRD or specs. Do not add assertions for edge cases, nice-to-haves, or defensive behaviors unless the PRD explicitly requires them. If an assertion would not cause you to reject the task when it fails, do not include it. Place assertions on the earliest task where they become verifiable -- if a behavior spans multiple tasks, put the assertion on the task where it can first be checked, not where the work begins.
+6. **Write the minimum set of assertions needed to verify the task is complete and correct.** Each assertion should trace to a specific spec capability/scenario identifier, including error behaviors specified in the PRD or specs. Do not add assertions for edge cases, nice-to-haves, or defensive behaviors unless the PRD explicitly requires them. If an assertion would not cause you to reject the task when it fails, do not include it. Place assertions on the earliest task where they become verifiable -- if a behavior spans multiple tasks, put the assertion on the task where it can first be checked, not where the work begins.
 
-### Cross-Referencing the PRD
+### Cross-Referencing Specs
 
-For each task, use the coverage audit from Phase 4a to find which PRD requirements map to it. Write assertions that capture the specific details from those requirements -- not generic behavioral checks, but assertions that would fail if the specific requirement were not implemented.
+For each task, use the coverage audit from Phase 4a to find which spec capability/scenario identifiers map to it. Write assertions that capture the specific details from those scenarios -- not generic behavioral checks, but assertions that would fail if the specific scenario were not implemented. Each assertion must trace back to a specific spec capability and scenario number.
 
 **Process for each task:**
-1. Look up the PRD requirements mapped to this task in the coverage table.
+1. Look up the spec capability/scenario identifiers mapped to this task in the coverage table.
 2. Read the corresponding spec requirements (WHEN/THEN scenarios) for precise behavioral expectations.
 3. Write assertions that verify those specific behaviors with specific values, endpoints, messages, or states from the PRD and specs.
-4. If a PRD requirement mentions specific constraints (limits, formats, error messages, status codes), those constraints must appear in the assertions verbatim.
+4. If the source PRD or spec mentions specific constraints (limits, formats, error messages, status codes), those constraints must appear in the assertions verbatim.
 
 ### Contract Template
 
@@ -337,16 +337,18 @@ Cap `[inspection]` assertions at **20% of total per task**. If more than 20% req
 
 Use the format in [templates/contract.md](templates/contract.md).
 
-When a PRD requirement traces to an APPROVED-DEVIATION item in the coverage audit, mark it with `(DEVIATED)` in the PRD Requirements comment. The assertion itself describes the actual implemented behavior (the deviation), not the original spec requirement. This gives the human visibility during contract review into which assertions exist because of an approved deviation.
+Reference spec coverage with a `<!-- Specs: capability/N, capability/M -->` comment, where `capability` is the spec folder name and `N` is the scenario number within that spec file.
+
+When a spec scenario traces to an APPROVED-DEVIATION item in the coverage audit, mark it with `(DEVIATED)` in the Specs comment. The assertion itself describes the actual implemented behavior (the deviation), not the original spec requirement. This gives the human visibility during contract review into which assertions exist because of an approved deviation.
 
 ### Contract Review
 
 After writing the contract, present it to the human following the standard review pattern: AI presents, AI recommends, human decides.
 
 For each task section, highlight:
-- Which PRD requirements the assertions trace to
+- Which spec capability/scenario identifiers the assertions trace to
 - Whether the assertion count feels right (too many suggests over-specification; too few suggests gaps)
-- Any PRD requirements that were hard to express as observable assertions
+- Any spec scenarios that were hard to express as observable assertions
 
 If the human requests changes, revise and re-present.
 
