@@ -1,6 +1,6 @@
 # Design Template
 
-Use this template for every `design.md`. Include all five mandatory sections below.
+Use this template for every `design.md`. Include all six mandatory sections below.
 
 ## Architecture Decision
 
