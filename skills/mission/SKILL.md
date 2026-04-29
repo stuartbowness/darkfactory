@@ -194,6 +194,8 @@ Before presenting it, run the Phase 4.3 design gate:
 - Enforce the hard floor: no recommended candidate can score 0 on any scoring dimension. If a candidate scores 0 on any dimension, flag it and recommend against it.
 - If candidates tie on total score, present the tied candidates to the human for discussion and selection. Do not apply an arbitrary tie-breaker.
 
+After the human approves design.md, populate 5 of the 6 Deterministic Anchors in the plan: workspace layout, primary domain types, error handling strategy, test strategy, and chosen architecture. Source values from design.md's Architecture Decision, Type Catalog, and Error Strategy sections. Each anchor is a one-liner pointer with a source reference. The sixth anchor (task decomposition strategy) is populated in Phase 4.3a after the human approves the task strategy.
+
 If approved, proceed to Phase 4.4.
 
 ### Phase 4.4: Generate and Review Tasks
