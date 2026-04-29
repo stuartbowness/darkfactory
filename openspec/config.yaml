@@ -14,6 +14,12 @@ context: |
   for full architecture and terminology.
 
 rules:
+  design:
+    - design.md must include a section heading for Architecture Decision
+    - design.md must include a section heading for Module Inventory
+    - design.md must include a section heading for Type Catalog
+    - design.md must include a section heading for Error Strategy
+    - design.md must include a section heading for Integration Points
   tasks:
     - Each task should be a vertical slice -- a thin but complete path through all layers that is demoable and verifiable on its own
     - One task = one worker = one commit = one validation cycle

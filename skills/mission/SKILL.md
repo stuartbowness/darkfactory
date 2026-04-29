@@ -168,6 +168,8 @@ Generate `design.md` (how -- architecture decisions, alternatives considered, ri
 
 Design is required for every mission. The build loop and worker briefs depend on design.md existing -- skipping it would break downstream phases.
 
+Follow the required structure in `templates/design-template.md`. The design must include these five section headings: Architecture Decision, Module Inventory, Type Catalog, Error Strategy, and Integration Points.
+
 #### Module Depth
 
 For each major component or module in the design, consider its depth. A deep module has a small interface hiding significant implementation. A shallow module has a large interface with thin logic behind it. Prefer deep modules -- they are more testable at the boundary, easier for workers to implement in a single task, and easier for subsequent workers to use correctly.
@@ -183,7 +185,16 @@ If a module has a large interface relative to its implementation, ask whether it
 
 When the mission modifies an existing codebase (not greenfield), the design must evaluate the current code structure against the planned architecture. For each module the design touches, read the existing code and assess whether it aligns with the target design. If existing modules are shallow, tightly coupled, or conflict with the planned architecture, the design should call this out explicitly and recommend refactoring as part of the implementation. These refactoring decisions flow naturally into task ordering in Phase 4.4 -- refactoring tasks go before the feature tasks that depend on them.
 
-Present it to the human with a recommendation. If approved, proceed to Phase 4.4.
+Present it to the human with a recommendation.
+
+Before presenting it, run the Phase 4.3 design gate:
+- Verify `design.md` contains all five required section headings from `templates/design-template.md`: Architecture Decision, Module Inventory, Type Catalog, Error Strategy, and Integration Points. If any are missing, regenerate `design.md` before human review.
+- For greenfield missions or missions with explicit architecture changes, verify the Architecture Decision section contains 2-3 scored architecture candidates using the template rubric.
+- For existing codebase missions without architecture changes, scoring is not required. Verify the Architecture Decision section documents the current architecture and explains how the planned changes fit.
+- Enforce the hard floor: no recommended candidate can score 0 on any scoring dimension. If a candidate scores 0 on any dimension, flag it and recommend against it.
+- If candidates tie on total score, present the tied candidates to the human for discussion and selection. Do not apply an arbitrary tie-breaker.
+
+If approved, proceed to Phase 4.4.
 
 ### Phase 4.4: Generate and Review Tasks
 
