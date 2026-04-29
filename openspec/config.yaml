@@ -20,6 +20,7 @@ rules:
     - design.md must include a section heading for Type Catalog
     - design.md must include a section heading for Error Strategy
     - design.md must include a section heading for Integration Points
+    - design.md must include a section heading for Test Strategy
   tasks:
     - Each task must produce a concrete, testable output. When the approved strategy is vertical, tasks cross all layers. When layered or hybrid, tasks may be scoped to a single layer with a clear done state and test surface.
     - One task = one worker = one commit = one validation cycle

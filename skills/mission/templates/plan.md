@@ -28,7 +28,7 @@ Captured so this mission can be reproduced against the exact skill version that 
 Defaults defined in Phase 6 config.yaml. 
 
 ## Deterministic Anchors
-Filled during Phase 4.3 (5 anchors) and Phase 4.3a (task strategy anchor). Every worker brief references these. They survive context compaction.
+Filled during Phase 4.3 (5 anchors) and Phase 4.3a (task strategy anchor). The orchestrator references these when populating worker briefs and making phase decisions.
 
 - Workspace layout: <e.g., "two-crate workspace: core lib + cli binary" (see design.md Architecture Decision)>
 - Task decomposition strategy: <e.g., "layered, 7 feature tasks + 5 closing" (see Phase 4.3a approval)>

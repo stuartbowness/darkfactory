@@ -86,3 +86,15 @@ Describe how modules call each other. Use this table format:
 | Caller | Callee | Method/interface | Direction |
 |--------|--------|------------------|-----------|
 | `<module>` | `<module>` | Function, command, event, adapter, or interface name | Inbound, outbound, or internal |
+
+## Test Strategy
+
+Define:
+- Test framework and runner
+- Where tests live (colocated, separate directory, by module)
+- Which modules get unit tests vs integration tests and why
+- What needs real external dependencies (database, network) vs mocks/stubs
+- Any special setup (serial execution, test database, environment variables)
+- Coverage approach (which code paths are critical to cover, which are low-value)
+
+Keep it brief. This section captures decisions that affect every worker, not a full test plan.
