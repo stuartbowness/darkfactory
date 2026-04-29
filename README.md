@@ -74,18 +74,22 @@ Next, it creates a series of planning documents using [OpenSpec](https://github.
 
 - **Proposal** -- what you're building and why
 - **Specs** -- detailed requirements written as WHEN/THEN rules (e.g. "WHEN a user submits the login form with wrong credentials, THEN show an error message")
-- **Design** -- architecture decisions and technical approach
-- **Tasks** -- an ordered checklist of implementation work
+- **Design** -- architecture decisions and technical approach. The design evaluates 2-3 architecture candidates against a four-dimension rubric (separation of concerns, testability, task independence, module depth) and picks the highest-scoring option. A mandatory gate verifies the design includes an architecture decision, module inventory, type catalog, error strategy, and integration points.
+- **Tasks** -- an ordered checklist of implementation work. Before generating tasks, the orchestrator presents a decomposition strategy (layered, vertical, or hybrid) with a target task count for your approval. Each task includes topology metadata -- which prior tasks it depends on, what it consumes, and what it produces.
 
-Every tasks.md ends with a set of **mandatory closing tasks** that run after the feature work: a smoke test (one end-to-end test through the primary user flow against real dependencies), a cleanup task (remove dead code, unused deps, and leftover scaffolding), a module shape re-check (catch drift between design.md and what the code actually exposes -- required once a mission has 5+ feature tasks), and a documentation task. A CI configuration task is optional and added when relevant.
+Every tasks.md ends with a set of **mandatory closing tasks** that run after the feature work: a smoke test (one end-to-end test through the primary user flow against real dependencies), a cleanup task (remove dead code, unused deps, and leftover scaffolding), a module shape re-check (catch drift between design.md and what the code actually exposes -- required once a mission has 5+ feature tasks), a documentation task, and a CLAUDE.md + ARCH.md generation task (creates project convention files if they don't already exist). A CI configuration task is optional and added when relevant.
 
 After the tasks are defined, the orchestrator runs a **coverage audit**. This maps every requirement from the PRD to one or more tasks. If anything is missing, it flags it. If a requirement was intentionally changed or dropped, you approve that decision explicitly. For substitutions, the orchestrator also checks that the replacement approach is fully covered by existing tasks -- if the substitution drops something important, it's flagged as a gap. Nothing falls through the cracks by accident.
+
+Contract assertions trace back to specific spec capability and scenario identifiers for end-to-end traceability.
 
 Finally, it writes a **contract** -- a checklist of things the finished code should do, written so they can be tested from the outside (by running the code, not by reading the source). For example: "the login endpoint returns a 401 when given wrong credentials." Each item traces back to a PRD requirement and is tagged with how it should be verified (by executing the code, checking its output, or inspecting the source). Before moving on, the orchestrator runs a testability check to catch any vague or untestable items early. You review the contract, confirm which AI models handle each role (see [Configuration](#configuration)), and approve launch.
 
 ### Stage 2: The orchestrator builds and validates autonomously
 
 For each task, the orchestrator sends a worker (Codex or Claude, your choice) a brief describing what to build. The worker writes the code, commits its changes, and writes a handoff report. Workers never see the contract -- this is intentional, and explained in [information walls](#information-walls) below.
+
+After the first task passes validation, the orchestrator runs a foundation audit -- checking that the committed code's module structure and type names match the design. This catches naming drift before it cascades into subsequent tasks.
 
 After each worker finishes, two validators check the work:
 
@@ -190,7 +194,7 @@ Darkfactory is controlled through skills -- reusable prompt templates you invoke
 `/mission` is split across files so only the control flow is always in context:
 
 - `SKILL.md` -- control flow, rules, phase gates (auto-loaded)
-- `templates/` -- artifacts the orchestrator fills in: `plan.md`, `coverage-audit.md`, `contract.md`, `worker-brief.md`, `worker-fix-brief.md`, `pr-body.md`
+- `templates/` -- artifacts the orchestrator fills in: `plan.md`, `coverage-audit.md`, `contract.md`, `worker-brief.md`, `worker-fix-brief.md`, `pr-body.md`, `design-template.md`, `claude-md.md`
 - `prompts/` -- prompts handed to subagents: `scrutiny-validator.md`, `usertest-validator.md`, `spec-delta-checker.md`, `adversarial-reviewer.md`
 
 Companion files are read on demand when the skill reaches the step that needs them.
