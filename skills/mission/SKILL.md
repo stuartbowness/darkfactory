@@ -26,6 +26,7 @@ flow: align -> spec -> contract -> build -> validate -> ship
 2. **Establish Shared Language** -- create/update UBIQUITOUS_LANGUAGE.md
 3. **Write a PRD** -- file requirements as a GitHub issue
 4. **Create and Review OpenSpec Artifacts** -- proposal, specs, design, tasks (human-approved)
+4.3a. **Task Strategy Approval** -- approve decomposition approach before generating tasks
 4a. **Spec Coverage Audit** -- verify every PRD requirement maps to a task
 5. **Write Contract** -- validation assertions workers never see
 6. **Create Mission Directory** -- set up mission/ state directory
@@ -168,6 +169,8 @@ Generate `design.md` (how -- architecture decisions, alternatives considered, ri
 
 Design is required for every mission. The build loop and worker briefs depend on design.md existing -- skipping it would break downstream phases.
 
+Follow the required structure in `templates/design-template.md`. The design must include these six section headings: Architecture Decision, Module Inventory, Type Catalog, Error Strategy, Integration Points, and Test Strategy.
+
 #### Module Depth
 
 For each major component or module in the design, consider its depth. A deep module has a small interface hiding significant implementation. A shallow module has a large interface with thin logic behind it. Prefer deep modules -- they are more testable at the boundary, easier for workers to implement in a single task, and easier for subsequent workers to use correctly.
@@ -183,7 +186,32 @@ If a module has a large interface relative to its implementation, ask whether it
 
 When the mission modifies an existing codebase (not greenfield), the design must evaluate the current code structure against the planned architecture. For each module the design touches, read the existing code and assess whether it aligns with the target design. If existing modules are shallow, tightly coupled, or conflict with the planned architecture, the design should call this out explicitly and recommend refactoring as part of the implementation. These refactoring decisions flow naturally into task ordering in Phase 4.4 -- refactoring tasks go before the feature tasks that depend on them.
 
-Present it to the human with a recommendation. If approved, proceed to Phase 4.4.
+Present it to the human with a recommendation.
+
+Before presenting it, run the Phase 4.3 design gate:
+- Verify `design.md` contains all six required section headings from `templates/design-template.md`: Architecture Decision, Module Inventory, Type Catalog, Error Strategy, Integration Points, and Test Strategy. If any are missing, regenerate `design.md` before human review.
+- For greenfield missions or missions with explicit architecture changes, verify the Architecture Decision section contains 2-3 scored architecture candidates using the template rubric.
+- For existing codebase missions without architecture changes, scoring is not required. Verify the Architecture Decision section documents the current architecture and explains how the planned changes fit.
+- Enforce the hard floor: no recommended candidate can score 0 on any scoring dimension. If a candidate scores 0 on any dimension, flag it and recommend against it.
+- If candidates tie on total score, present the tied candidates to the human for discussion and selection. Do not apply an arbitrary tie-breaker.
+
+After the human approves design.md, populate 5 of the 6 Deterministic Anchors in the plan: workspace layout, primary domain types, error handling strategy, test strategy, and chosen architecture. Source values from design.md's Architecture Decision, Type Catalog, Error Strategy, and Test Strategy sections. Each anchor is a one-liner pointer with a source reference. The sixth anchor (task decomposition strategy) is populated in Phase 4.3a after the human approves the task strategy.
+
+If approved, proceed to Phase 4.3a.
+
+### Phase 4.3a: Task Strategy Approval
+
+Before generating tasks.md, present a task decomposition strategy for human approval:
+
+1. **Decomposition approach:** layered (types and domain logic first, then transport/CLI), vertical (each task cuts end-to-end through all layers), or hybrid (foundation layer first, then vertical slices). State which and why.
+2. **Target task count range:** e.g., "6-8 feature tasks + 4-5 closing tasks." Justify the range based on the module inventory from design.md.
+3. **Dependency ordering rationale:** which tasks must come first and why (e.g., "Task 1 defines core types that all subsequent tasks import").
+
+The human approves this strategy before tasks.md is generated. If rejected, revise and re-present.
+
+After approval, populate the task decomposition strategy anchor in the plan's Deterministic Anchors section.
+
+If approved, proceed to Phase 4.4.
 
 ### Phase 4.4: Generate and Review Tasks
 
@@ -191,11 +219,27 @@ Generate `tasks.md` (ordered checklist of implementation tasks).
 
 #### Task Quality Standard
 
-Each task must be a **vertical slice**: a thin end-to-end path through all layers (schema, API, UI, tests) that delivers narrow but complete functionality.
+Each task must produce a concrete, testable output. When the approved strategy (Phase 4.3a) is vertical, tasks cross all layers. When the strategy is layered or hybrid, tasks may be scoped to a single layer, provided each task still has a clear done state and a test surface.
 
 **One task = one worker = one commit = one validation cycle.**
 
 A task is good if you can demo it and verify it independently after it lands.
+
+#### Task Topology
+
+Each task in tasks.md must include topology metadata in this fixed format:
+
+```markdown
+- [ ] Task N: <name>
+  Depends on: <prior task numbers, or "none">
+  Consumes: <surfaces from prior tasks -- types, interfaces, endpoints>
+  Produces: <surfaces this task creates -- types, modules, interfaces, endpoints>
+  Layers: <logical architectural layers touched, e.g. domain, transport, storage>
+```
+
+Layers are logical groupings of modules (domain, transport, storage, configuration, etc.) defined in the design narrative, not columns from the Module Inventory table.
+
+When the approved strategy (Phase 4.3a) is layered or hybrid and a task's Layers field lists more than 2 architectural layers, flag the task for human review with a recommendation to split or approve as-is. When the approved strategy is vertical, the layer count flag does not apply since vertical tasks are expected to cross all layers.
 
 When a task adds public surface area to a module (new exports, API endpoints, CLI flags), include the implementation behind that surface in the same task. Do not split a module's interface from its implementation across tasks -- the per-task validator judges depth from a single diff and will flag an interface without the work behind it.
 
@@ -211,9 +255,11 @@ Every mission's tasks.md MUST include these closing tasks after all feature task
 
    Write the findings to `mission/validations/module-shape-audit.md` -- a short free-form note listing each module, whether drift was found, and what was done about it ("no drift," "design.md updated," or "refactored"). No required format; the file exists as a record that the check happened.
 
-4. **Documentation task (mandatory).** Write or update documentation for what was built. The orchestrator recommends the documentation scope based on what the feature tasks produce -- this varies by mission type. Not every mission needs install instructions, architecture diagrams, or API docs. Use terms from `UBIQUITOUS_LANGUAGE.md` consistently. Any commands shown in docs must be executed against the built artifacts and the actual output pasted -- don't show output that wasn't produced. If unsure what documentation is needed, ask the human during this review.
+4. **CLAUDE.md + ARCH.md generation (mandatory).** If the project root does not have a CLAUDE.md, create one from [templates/claude-md.md](templates/claude-md.md) using the actual built codebase (real commands, real repo structure, real conventions). If a CLAUDE.md already exists, do not modify it. Similarly, if no ARCH.md exists, create one from design.md's architecture decisions as a living document. If ARCH.md already exists, do not modify it.
 
-5. **CI configuration task (optional).** Add or update CI/CD pipeline configuration. The orchestrator recommends whether to include this based on the change scope. The human decides during this review.
+5. **Documentation task (mandatory).** Write or update documentation for what was built. The orchestrator recommends the documentation scope based on what the feature tasks produce -- this varies by mission type. Not every mission needs install instructions, architecture diagrams, or API docs. Use terms from `UBIQUITOUS_LANGUAGE.md` consistently. Any commands shown in docs must be executed against the built artifacts and the actual output pasted -- don't show output that wasn't produced. If unsure what documentation is needed, ask the human during this review.
+
+6. **CI configuration task (optional).** Add or update CI/CD pipeline configuration. The orchestrator recommends whether to include this based on the change scope. The human decides during this review.
 
 If the design (Phase 4.3) identified refactoring needed for existing code, those tasks go before the feature tasks in tasks.md.
 
@@ -225,6 +271,7 @@ After all artifacts are reviewed and approved, update the plan with the actual a
 - [ ] proposal.md human-approved
 - [ ] All specs/<capability>/spec.md files human-approved
 - [ ] design.md human-approved
+- [ ] Task strategy approved by human (Phase 4.3a)
 - [ ] tasks.md (with closing tasks) human-approved
 - [ ] Plan updated with actual artifact paths
 
@@ -303,17 +350,17 @@ Create `contract.md` in the change directory (`openspec/changes/<change-name>/co
 3. Do NOT reference implementation details (function names, variable names, internal data structures).
 4. Be specific and unambiguous. A validator reading only the contract and the diff should be able to check every assertion without guessing.
 5. Workers never see this file.
-6. **Write the minimum set of assertions needed to verify the task is complete and correct.** Each assertion should trace to a specific PRD requirement, including error behaviors specified in the PRD or specs. Do not add assertions for edge cases, nice-to-haves, or defensive behaviors unless the PRD explicitly requires them. If an assertion would not cause you to reject the task when it fails, do not include it. Place assertions on the earliest task where they become verifiable -- if a behavior spans multiple tasks, put the assertion on the task where it can first be checked, not where the work begins.
+6. **Write the minimum set of assertions needed to verify the task is complete and correct.** Each assertion should trace to a specific spec scenario (e.g., `add-todo/1`), including error behaviors specified in the specs. Do not add assertions for edge cases, nice-to-haves, or defensive behaviors unless the PRD explicitly requires them. If an assertion would not cause you to reject the task when it fails, do not include it. Place assertions on the earliest task where they become verifiable -- if a behavior spans multiple tasks, put the assertion on the task where it can first be checked, not where the work begins.
 
-### Cross-Referencing the PRD
+### Cross-Referencing Specs
 
-For each task, use the coverage audit from Phase 4a to find which PRD requirements map to it. Write assertions that capture the specific details from those requirements -- not generic behavioral checks, but assertions that would fail if the specific requirement were not implemented.
+For each task, use the coverage audit from Phase 4a to find which spec capabilities map to it. Then read the actual spec files to identify specific scenarios. Write assertions that capture the specific details from those scenarios -- not generic behavioral checks, but assertions that would fail if the specific scenario were not implemented. Each assertion must trace back to a specific spec capability and scenario number (e.g., `add-todo/1`).
 
 **Process for each task:**
-1. Look up the PRD requirements mapped to this task in the coverage table.
-2. Read the corresponding spec requirements (WHEN/THEN scenarios) for precise behavioral expectations.
-3. Write assertions that verify those specific behaviors with specific values, endpoints, messages, or states from the PRD and specs.
-4. If a PRD requirement mentions specific constraints (limits, formats, error messages, status codes), those constraints must appear in the assertions verbatim.
+1. Look up the spec capabilities mapped to this task in the coverage table (e.g., `add-todo`, `search`).
+2. Read the actual spec files for those capabilities (`specs/<capability>/spec.md`). Identify which specific WHEN/THEN scenarios are relevant to this task. Number the scenarios within each spec file (1, 2, 3...) to form the `capability/N` identifiers used in contract comments.
+3. Write assertions that verify those specific behaviors with specific values, endpoints, messages, or states from the specs.
+4. If the spec mentions specific constraints (limits, formats, error messages, status codes), those constraints must appear in the assertions verbatim.
 
 ### Contract Template
 
@@ -326,16 +373,18 @@ Cap `[inspection]` assertions at **20% of total per task**. If more than 20% req
 
 Use the format in [templates/contract.md](templates/contract.md).
 
-When a PRD requirement traces to an APPROVED-DEVIATION item in the coverage audit, mark it with `(DEVIATED)` in the PRD Requirements comment. The assertion itself describes the actual implemented behavior (the deviation), not the original spec requirement. This gives the human visibility during contract review into which assertions exist because of an approved deviation.
+Reference spec coverage with a `<!-- Specs: capability/N, capability/M -->` comment, where `capability` is the spec folder name and `N` is the scenario number within that spec file.
+
+When a spec scenario traces to an APPROVED-DEVIATION item in the coverage audit, mark it with `(DEVIATED)` in the Specs comment. The assertion itself describes the actual implemented behavior (the deviation), not the original spec requirement. This gives the human visibility during contract review into which assertions exist because of an approved deviation.
 
 ### Contract Review
 
 After writing the contract, present it to the human following the standard review pattern: AI presents, AI recommends, human decides.
 
 For each task section, highlight:
-- Which PRD requirements the assertions trace to
+- Which spec scenarios (e.g., `add-todo/1`, `search/3`) the assertions trace to
 - Whether the assertion count feels right (too many suggests over-specification; too few suggests gaps)
-- Any PRD requirements that were hard to express as observable assertions
+- Any spec scenarios that were hard to express as observable assertions
 
 If the human requests changes, revise and re-present.
 
@@ -646,6 +695,23 @@ Spawn a Claude subagent to run `/demo-video`. The subagent should save the recor
 ```
 
 4. Update the plan: set Current Task to the next unchecked task, or "none" if all done.
+
+4a. **Foundation audit (after task 1 only).** If this is task 1 and it passed both validators, run a foundation check before proceeding to task 2:
+
+   - Read task 1's Produces field from its topology metadata in tasks.md
+   - Extract module names from the Produces field. Look up those modules in design.md's Module Inventory. Verify that corresponding directories or files exist in the committed code with matching names.
+   - Extract type names from the Produces field. Look up those types in design.md's Type Catalog. Verify that corresponding type definitions exist in the committed code with matching names.
+
+   If drift is detected (module structure or type names do not match the design for items task 1 declared it would produce):
+   - Generate a corrective task 1a
+   - Insert it in tasks.md between task 1 and task 2
+   - Add assertions for it to contract.md
+   - Present both to the human for approval
+   - The corrective task goes through the normal build loop before task 2 starts
+
+   If no drift: log to progress.md: `<timestamp> -- Foundation audit PASSED. Module structure and type names confirmed for task 1 produces.`
+
+   This audit runs only after task 1. It does not run after any other task.
 
 5. **If more tasks remain:** Go back to Step 1 for the next task.
 

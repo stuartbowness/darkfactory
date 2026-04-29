@@ -1,11 +1,11 @@
 # Contract
 
 ## Task 1: <name>
-<!-- PRD Requirements: #1, #3 -->
-- [ ] [execution] <assertion capturing specific PRD/spec requirement detail>
-- [ ] [output] <assertion capturing specific PRD/spec requirement detail>
+<!-- Specs: capability/1, capability/3 -->
+- [ ] [execution] <assertion capturing specific spec scenario detail>
+- [ ] [output] <assertion capturing specific spec scenario detail>
 
 ## Task 2: <name>
-<!-- PRD Requirements: #2, #4 (DEVIATED) -->
-- [ ] [execution] <assertion capturing specific PRD/spec requirement detail>
+<!-- Specs: capability/2, capability/4 (DEVIATED) -->
+- [ ] [execution] <assertion capturing specific spec scenario detail>
 - [ ] [inspection] <assertion capturing the deviated behavior as actually implemented>

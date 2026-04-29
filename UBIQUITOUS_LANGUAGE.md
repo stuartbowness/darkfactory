@@ -17,7 +17,7 @@
 | **Assertion** | A single verifiable statement in a contract that a validator can check from outside the code | Test case, requirement, check |
 | **Brief** | A self-contained markdown file the orchestrator writes for a worker, containing the task description, project context, and procedures | Prompt, instructions, spec |
 | **Handoff** | A structured report a worker writes to disk after completing a task, including the commit SHA, approach taken, and any concerns | Report, summary, output |
-| **Vertical slice** | A best practice for how to write good tasks -- each task should be a thin tracer-bullet path through all layers (schema, API, UI, tests) that delivers narrow but complete functionality | Horizontal slice, layer |
+| **Vertical slice** | The default task quality standard. Each task must produce a concrete, testable output. When the approved strategy is vertical, tasks cross all layers. When layered or hybrid, tasks may be scoped to a single layer with a clear done state and test surface. | Horizontal slice, layer |
 | **Deviation classification** | Categorization of spec deviations during the coverage audit as Interpretation (ambiguous spec, reasonable reading), Substitution (replacing specified approach with a different one), or Removal (not implementing a specified feature). Substitutions and removals require explicit human approval. | Deviation type, deviation level |
 | **Spec delta check** | A post-build verification step (Phase 9) where a Claude subagent checks that every item marked COVERED in the coverage audit is actually present in the built codebase. APPROVED-DEVIATION items are listed but not re-litigated. | Final spec check, compliance check, coverage verification |
 
@@ -68,7 +68,7 @@
 | **Change** | An OpenSpec unit of work with its own proposal, design, tasks, and now contract and mission directory | Feature, epic, project |
 | **Proposal** | The OpenSpec artifact describing what is being built and why | PRD, requirements doc |
 | **Design** | The OpenSpec artifact describing how it will be built (architecture decisions) | Architecture doc, technical spec |
-| **Tasks** | The OpenSpec artifact listing tasks as checkboxes, each representing one worker's worth of work (should follow the vertical slice best practice) | Checklist, todo list, backlog |
+| **Tasks** | The OpenSpec artifact listing tasks as checkboxes, each representing one worker's worth of work (should follow the approved task quality standard) | Checklist, todo list, backlog |
 
 ## Dispatch
 
@@ -81,6 +81,20 @@
 | **Process group** | An OS-level grouping (via `setpgid`) that ensures killing the Codex process also kills any grandchild processes it spawned | Process tree, child processes |
 | **Dispatch store** | A minimal filesystem directory at `~/.darkfactory/dispatches/<ulid>/` holding `status.json`, `result.json`, `host.pid`, and `events.jsonl` for async dispatch lifecycle management | State directory, result store |
 | **Dispatch result** | A structured JSON object emitted on stdout when a dispatch completes, containing status, exit code, signal, duration, output path, token usage, and activity | Result, outcome, response |
+
+## Planning determinism
+
+| Term | Definition | Aliases to avoid |
+| --- | --- | --- |
+| **Deterministic Anchors** | One-liner pointers in the plan to the six highest-leverage design decisions, positioned to survive context compaction | Anchors, plan summary, design cache |
+| **Architecture Candidate Scoring** | Evaluating 2-3 architecture options against a four-dimension rubric (separation of concerns, testability, task independence, module depth) to select an architecture deterministically | Architecture review, arch comparison |
+| **Task Independence** | A scoring dimension measuring how well an architecture allows tasks to be completed without cross-task coordination on conventions | Worker task-ability, decomposability |
+| **Task Topology** | Per-task metadata declaring which prior tasks it depends on, which surfaces it consumes, which surfaces it produces, and which architectural layers it touches | Task graph, dependency map |
+| **Foundation Audit** | A one-time check after task 1 passes validation, verifying that committed code matches the design's module inventory and type catalog for task 1's declared produces | Post-task-1 check, foundation check |
+| **Type Catalog** | A design.md section listing domain types with name, purpose, and owning module -- no field-level detail | Type registry, type list, types.md |
+| **Module Inventory** | A design.md section listing modules with interface width, what they hide, and why the boundary exists | Module table, module list |
+| **Design Template** | A reference document defining mandatory design.md sections and scoring rubrics, used by the orchestrator alongside openspec config rules | Design spec, design schema |
+| **Spec Reference** | A capability/scenario identifier (e.g., add-todo/1) used to trace contract assertions back to formal spec requirements | REQ-ID, requirement ID, spec ID |
 
 ## Relationships
 
@@ -100,6 +114,11 @@
 - **Diff coverage** measures added lines only -- a worker is responsible for covering the code they wrote, not backfilling pre-existing debt
 - The **Test quality review** (`/test-quality`) is an owned skill invoked by the **Scrutiny validator** as a subagent, following the same pattern as `/review` and `/simplify`
 - A **Tautological assertion** is worse than no test because it gives false confidence -- the **Scrutiny validator** treats it as a hard FAIL
+- **Deterministic Anchors** are populated from design.md during Phase 4.3 and stored in the **Plan** -- they reference the **Type Catalog**, **Module Inventory**, and **Architecture Candidate Scoring** results
+- The **Foundation Audit** runs once after task 1, comparing committed code against the **Module Inventory** and **Type Catalog** from design.md
+- **Spec References** in the **Contract** trace back to specific **Spec** capability/scenario pairs (e.g., add-todo/1), replacing arbitrary row numbers
+- **Task Topology** metadata is written per task in tasks.md and reviewed during Phase 4.4 -- tasks touching more than 2 architectural layers are flagged for human review
+- The **Design Template** is a reference document in `templates/` -- the actual design.md generation is driven by openspec config rules that require the same sections
 
 ## Example dialogue
 
@@ -119,6 +138,20 @@
 >
 > **Orchestrator:** "Yes -- tail the **Dispatcher's** log for **Heartbeat** events, read the **Progress log** directly, or run **/mission-status** in another session for a formatted summary."
 
+## Example dialogue (planning determinism)
+
+> **Dev:** "Two missions against the same PRD produced completely different architectures. How do we prevent that?"
+>
+> **Orchestrator:** "The **Design Template** now requires **Architecture Candidate Scoring**. I evaluate 2-3 options on four dimensions -- separation of concerns, testability, **Task Independence**, and module depth -- each scored 0-3. No candidate can score 0 on any dimension. If two tie, you pick."
+>
+> **Dev:** "What stops the design from using different type names each run?"
+>
+> **Orchestrator:** "The **Type Catalog** in design.md names every domain type using terms from the ubiquitous language. The **Foundation Audit** checks after task 1 that the committed code actually uses those names. If it drifts, I generate a corrective task before task 2 starts."
+>
+> **Dev:** "And if context compacts mid-mission and you lose the design details?"
+>
+> **Orchestrator:** "The **Deterministic Anchors** in the plan survive compaction. They're one-liner pointers to the six key decisions -- workspace layout, task strategy, domain types, error handling, test strategy, and chosen architecture. I can re-read design.md if I need the full detail, but the anchors tell me what to look for."
+
 ## Example dialogue (test health)
 
 > **Dev:** "The benchmark shows irontodo-v2 has 97 tests but only 49 actually run. What happened?"
@@ -133,9 +166,13 @@
 >
 > **Orchestrator:** "The **Test quality review** catches that. It's an LLM subagent that reads the test diff alongside the production diff and flags **Tautological assertions** -- tests that pass regardless of correctness. A P0 finding like `assert!(true)` is a hard FAIL."
 
+## Flagged ambiguities
+
+- **"template"** is used for two different things in the mission skill: the **Design Template** (a reference document defining mandatory design.md sections and scoring rubrics) and the **CLAUDE.md template** (a fill-in-the-blanks document for the closing task). Both live in `templates/` but serve different purposes. **Resolved:** use the full name ("design template" or "CLAUDE.md template") when context is ambiguous. The file names distinguish them: `design-template.md` vs `claude-md.md`.
+
 ## Resolved ambiguities
 
-- **"task"** was used early in the conversation to mean both a micro-step within a feature and a vertical slice of work. **Resolved:** keep "task" as the standard term. The guidance is that each task should follow the **Vertical slice** best practice (thin, end-to-end, demoable), but the term "task" is unchanged from OpenSpec. "Slice" is not a standalone noun -- it's a quality standard for tasks.
+- **"task"** was used early in the conversation to mean both a micro-step within a feature and a bounded unit of worker work. **Resolved:** keep "task" as the standard term. The guidance is that each task should follow the approved task quality standard, but the term "task" is unchanged from OpenSpec. "Slice" is not a standalone noun -- it's a quality standard for tasks.
 - **"spec"** was used to mean both SDD spec files and the planning phase of the mission flow. **Resolved:** SDD specs are not part of Darkfactory's vocabulary. In Darkfactory, **Spec** refers exclusively to the planning phase (`align -> spec -> contract -> build -> validate -> ship`) where the orchestrator creates OpenSpec artifacts and the contract. SDD is a separate workflow for documenting existing code after the fact.
 - **"validation"** was used for both the contract assertions and the act of running validators. **Resolved:** the **Contract** contains **Assertions**. **Validation** is the act of a **Validator** checking those assertions against the code. Be consistent: don't use "validation" to refer to the contract itself.
 - **"coverage"** could mean line coverage (percentage of lines executed during tests) or spec coverage (percentage of PRD requirements mapped to tasks). **Resolved:** **Diff coverage** means line coverage on added lines in a git diff. **Coverage audit** means the spec-to-task mapping in Phase 4a. Don't use "coverage" without the qualifier.

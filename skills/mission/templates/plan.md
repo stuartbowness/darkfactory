@@ -27,6 +27,16 @@ Captured so this mission can be reproduced against the exact skill version that 
 ## Engine Config
 Defaults defined in Phase 6 config.yaml. 
 
+## Deterministic Anchors
+Filled during Phase 4.3 (5 anchors) and Phase 4.3a (task strategy anchor). The orchestrator references these when populating worker briefs and making phase decisions.
+
+- Workspace layout: <e.g., "two-crate workspace: core lib + cli binary" (see design.md Architecture Decision)>
+- Task decomposition strategy: <e.g., "layered, 7 feature tasks + 5 closing" (see Phase 4.3a approval)>
+- Primary domain types: <e.g., "Todo, TodoStatus, IronTodoError" (see design.md Type Catalog)>
+- Error handling strategy: <e.g., "thiserror in core, never anyhow" (see design.md Error Strategy)>
+- Test strategy: <e.g., "unit + integration, serial with DB" (see design.md)>
+- Chosen architecture: <e.g., "workspace-with-lib-and-bin, scored 10/12" (see design.md Architecture Decision)>
+
 ## Skills to Use
 - /grill -- alignment interview (planning)
 - /language -- shared language (planning)
