@@ -356,10 +356,10 @@ Create `contract.md` in the change directory (`openspec/changes/<change-name>/co
 For each task, use the coverage audit from Phase 4a to find which spec capability/scenario identifiers map to it. Write assertions that capture the specific details from those scenarios -- not generic behavioral checks, but assertions that would fail if the specific scenario were not implemented. Each assertion must trace back to a specific spec capability and scenario number.
 
 **Process for each task:**
-1. Look up the spec capability/scenario identifiers mapped to this task in the coverage table.
-2. Read the corresponding spec requirements (WHEN/THEN scenarios) for precise behavioral expectations.
-3. Write assertions that verify those specific behaviors with specific values, endpoints, messages, or states from the PRD and specs.
-4. If the source PRD or spec mentions specific constraints (limits, formats, error messages, status codes), those constraints must appear in the assertions verbatim.
+1. Look up the spec capabilities mapped to this task in the coverage table (e.g., `add-todo`, `search`).
+2. Read the actual spec files for those capabilities (`specs/<capability>/spec.md`). Identify which specific WHEN/THEN scenarios are relevant to this task. Number the scenarios within each spec file (1, 2, 3...) to form the `capability/N` identifiers used in contract comments.
+3. Write assertions that verify those specific behaviors with specific values, endpoints, messages, or states from the specs.
+4. If the spec mentions specific constraints (limits, formats, error messages, status codes), those constraints must appear in the assertions verbatim.
 
 ### Contract Template
 
