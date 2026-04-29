@@ -255,9 +255,11 @@ Every mission's tasks.md MUST include these closing tasks after all feature task
 
    Write the findings to `mission/validations/module-shape-audit.md` -- a short free-form note listing each module, whether drift was found, and what was done about it ("no drift," "design.md updated," or "refactored"). No required format; the file exists as a record that the check happened.
 
-4. **Documentation task (mandatory).** Write or update documentation for what was built. The orchestrator recommends the documentation scope based on what the feature tasks produce -- this varies by mission type. Not every mission needs install instructions, architecture diagrams, or API docs. Use terms from `UBIQUITOUS_LANGUAGE.md` consistently. Any commands shown in docs must be executed against the built artifacts and the actual output pasted -- don't show output that wasn't produced. If unsure what documentation is needed, ask the human during this review.
+4. **CLAUDE.md + ARCH.md generation (mandatory).** If the project root does not have a CLAUDE.md, create one from [templates/claude-md.md](templates/claude-md.md) using the actual built codebase (real commands, real repo structure, real conventions). If a CLAUDE.md already exists, do not modify it. Similarly, if no ARCH.md exists, create one from design.md's architecture decisions as a living document. If ARCH.md already exists, do not modify it.
 
-5. **CI configuration task (optional).** Add or update CI/CD pipeline configuration. The orchestrator recommends whether to include this based on the change scope. The human decides during this review.
+5. **Documentation task (mandatory).** Write or update documentation for what was built. The orchestrator recommends the documentation scope based on what the feature tasks produce -- this varies by mission type. Not every mission needs install instructions, architecture diagrams, or API docs. Use terms from `UBIQUITOUS_LANGUAGE.md` consistently. Any commands shown in docs must be executed against the built artifacts and the actual output pasted -- don't show output that wasn't produced. If unsure what documentation is needed, ask the human during this review.
+
+6. **CI configuration task (optional).** Add or update CI/CD pipeline configuration. The orchestrator recommends whether to include this based on the change scope. The human decides during this review.
 
 If the design (Phase 4.3) identified refactoring needed for existing code, those tasks go before the feature tasks in tasks.md.
 
