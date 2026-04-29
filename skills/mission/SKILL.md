@@ -26,6 +26,7 @@ flow: align -> spec -> contract -> build -> validate -> ship
 2. **Establish Shared Language** -- create/update UBIQUITOUS_LANGUAGE.md
 3. **Write a PRD** -- file requirements as a GitHub issue
 4. **Create and Review OpenSpec Artifacts** -- proposal, specs, design, tasks (human-approved)
+4.3a. **Task Strategy Approval** -- approve decomposition approach before generating tasks
 4a. **Spec Coverage Audit** -- verify every PRD requirement maps to a task
 5. **Write Contract** -- validation assertions workers never see
 6. **Create Mission Directory** -- set up mission/ state directory
@@ -196,6 +197,20 @@ Before presenting it, run the Phase 4.3 design gate:
 
 After the human approves design.md, populate 5 of the 6 Deterministic Anchors in the plan: workspace layout, primary domain types, error handling strategy, test strategy, and chosen architecture. Source values from design.md's Architecture Decision, Type Catalog, and Error Strategy sections. Each anchor is a one-liner pointer with a source reference. The sixth anchor (task decomposition strategy) is populated in Phase 4.3a after the human approves the task strategy.
 
+If approved, proceed to Phase 4.3a.
+
+### Phase 4.3a: Task Strategy Approval
+
+Before generating tasks.md, present a task decomposition strategy for human approval:
+
+1. **Decomposition approach:** layered (types and domain logic first, then transport/CLI), vertical (each task cuts end-to-end through all layers), or hybrid (foundation layer first, then vertical slices). State which and why.
+2. **Target task count range:** e.g., "6-8 feature tasks + 4-5 closing tasks." Justify the range based on the module inventory from design.md.
+3. **Dependency ordering rationale:** which tasks must come first and why (e.g., "Task 1 defines core types that all subsequent tasks import").
+
+The human approves this strategy before tasks.md is generated. If rejected, revise and re-present.
+
+After approval, populate the task decomposition strategy anchor in the plan's Deterministic Anchors section.
+
 If approved, proceed to Phase 4.4.
 
 ### Phase 4.4: Generate and Review Tasks
@@ -204,11 +219,27 @@ Generate `tasks.md` (ordered checklist of implementation tasks).
 
 #### Task Quality Standard
 
-Each task must be a **vertical slice**: a thin end-to-end path through all layers (schema, API, UI, tests) that delivers narrow but complete functionality.
+Each task must produce a concrete, testable output. When the approved strategy (Phase 4.3a) is vertical, tasks cross all layers. When the strategy is layered or hybrid, tasks may be scoped to a single layer, provided each task still has a clear done state and a test surface.
 
 **One task = one worker = one commit = one validation cycle.**
 
 A task is good if you can demo it and verify it independently after it lands.
+
+#### Task Topology
+
+Each task in tasks.md must include topology metadata in this fixed format:
+
+```markdown
+- [ ] Task N: <name>
+  Depends on: <prior task numbers, or "none">
+  Consumes: <surfaces from prior tasks -- types, interfaces, endpoints>
+  Produces: <surfaces this task creates -- types, modules, interfaces, endpoints>
+  Layers: <logical architectural layers touched, e.g. domain, transport, storage>
+```
+
+Layers are logical groupings of modules (domain, transport, storage, configuration, etc.) defined in the design narrative, not columns from the Module Inventory table.
+
+When the approved strategy (Phase 4.3a) is layered or hybrid and a task's Layers field lists more than 2 architectural layers, flag the task for human review with a recommendation to split or approve as-is. When the approved strategy is vertical, the layer count flag does not apply since vertical tasks are expected to cross all layers.
 
 When a task adds public surface area to a module (new exports, API endpoints, CLI flags), include the implementation behind that surface in the same task. Do not split a module's interface from its implementation across tasks -- the per-task validator judges depth from a single diff and will flag an interface without the work behind it.
 

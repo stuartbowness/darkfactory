@@ -21,5 +21,5 @@ rules:
     - design.md must include a section heading for Error Strategy
     - design.md must include a section heading for Integration Points
   tasks:
-    - Each task should be a vertical slice -- a thin but complete path through all layers that is demoable and verifiable on its own
+    - Each task must produce a concrete, testable output. When the approved strategy is vertical, tasks cross all layers. When layered or hybrid, tasks may be scoped to a single layer with a clear done state and test surface.
     - One task = one worker = one commit = one validation cycle
