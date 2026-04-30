@@ -1,0 +1,16 @@
+- Task: Task C4 - Documentation
+- Result: fixed (commit SHA: ab1b35c)
+- What was checked:
+  - README.md: no `ln -sf` references, no old skill names, `install.sh` present (1 match), skills table lists all 12 new skill names
+  - UBIQUITOUS_LANGUAGE.md: no "separate skill" occurrences; one `/grill-me` reference found and fixed
+  - CLAUDE.md (repo root): clean, no old skill names
+  - All Markdown files in the repo (excluding `openspec/changes/skill-decomposition/` and `openspec/changes/archive/`): scanned for `grill-me`, `write-a-prd`, `ubiquitous-language`, `darkfactory-init`, `test-quality-review`, `security-review`
+- What was changed:
+  - `docs/reference_pocock_talk.md`: `/grill-me` → `/grill`, `/ubiquitous-language` → `/language`
+  - `docs/provenance.md`: `/grill-me` → `/grill`, `/ubiquitous-language` → `/language`
+  - `docs/design-decisions.md`: `grill-me session` → `grill session`, `/security-review` → `/security` (×2), `/grill-me` → `/grill`, `/ubiquitous-language` → `/language`, `/write-a-prd` → `/prd`
+  - `UBIQUITOUS_LANGUAGE.md`: `/grill-me` → `/grill` in the Orchestrator dialogue example
+  - `skills/mission/prompts/scrutiny-validator.md`: `/security-review` → `/security` in check 9; `test-quality-review` labels → `test-quality` in check 14 output format (pre-existing unstaged change from prior task)
+  - `skills/mission/templates/plan.md`: `/grill-me` → `/grill`, `/ubiquitous-language` → `/language`, `/write-a-prd` → `/prd`, `/security-review` → `/security` (pre-existing unstaged change from prior task)
+  - Also committed: deletion of legacy `.claude/skills/darkfactory-init/` and `.claude/skills/openspec-*/` and `.codex/skills/openspec-*/` (pre-existing unstaged deletions from prior tasks), plus `openspec/changes/skill-decomposition/tasks.md` and `mission/progress.md` updates
+- Concerns: none. The `openspec/changes/archive/` directory contains many historical references to old skill names in mission state files -- these were treated as historical records (like the excluded `skill-decomposition/` directory) and not modified.

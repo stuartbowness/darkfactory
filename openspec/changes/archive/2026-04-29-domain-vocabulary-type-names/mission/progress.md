@@ -1,0 +1,74 @@
+# Mission: domain-vocabulary-type-names
+
+Started: 2026-04-29T22:30:00Z
+
+## Log
+
+- 2026-04-29T22:30:00Z -- Mission directory created. Awaiting approval.
+- 2026-04-29T22:35:00Z -- Plan approved. 8 tasks, 16 assertions in contract. Branch: mission/domain-vocabulary-type-names
+- 2026-04-29T22:40:00Z -- Task 1: worker completed. Commit: 5fc93310a5ee9025085b6f51043cb6ccea721a43
+- 2026-04-29T22:42:00Z -- Task 1: scrutiny validation PASSED.
+- 2026-04-29T22:44:00Z -- Task 1: user-test validation PASSED.
+- 2026-04-29T22:45:00Z -- Foundation audit PASSED. No domain types or modules to verify -- mission introduces no domain types.
+- 2026-04-29T22:45:00Z -- Task 1 complete.
+  - Commit: 5fc93310a5ee9025085b6f51043cb6ccea721a43
+  - Scrutiny: PASS
+  - User-test: PASS
+  - Demo: SKIPPED
+  - Fix attempts: 0
+- 2026-04-29T22:50:00Z -- Task 3: worker completed. Commit: 5262e2bc3244eff1925796551f71b30ebeff152a
+- 2026-04-29T22:52:00Z -- Task 3: scrutiny validation PASSED.
+- 2026-04-29T22:53:00Z -- Task 3: user-test validation PASSED.
+- 2026-04-29T22:53:00Z -- Task 3 complete.
+  - Commit: 5262e2bc3244eff1925796551f71b30ebeff152a
+  - Scrutiny: PASS
+  - User-test: PASS
+  - Demo: SKIPPED
+  - Fix attempts: 0
+- 2026-04-29T22:55:00Z -- Task 4: smoke test PASSED. All 5 markdown files valid. No commit needed.
+- 2026-04-29T22:56:00Z -- Task 4: scrutiny validation PASSED.
+- 2026-04-29T22:56:00Z -- Task 4: user-test validation SKIPPED (all assertions infrastructure-only).
+- 2026-04-29T22:56:00Z -- Task 4 complete.
+  - Commit: none (no fixes needed)
+  - Scrutiny: PASS
+  - User-test: SKIP
+  - Demo: SKIPPED
+  - Fix attempts: 0
+- 2026-04-29T22:58:00Z -- Task 5: cleanup completed. Committed pre-build UBIQUITOUS_LANGUAGE.md changes. Commit: 902cea9
+- 2026-04-29T22:59:00Z -- Task 5: scrutiny validation PASSED.
+- 2026-04-29T22:59:00Z -- Task 5: user-test validation SKIPPED (all assertions infrastructure-only).
+- 2026-04-29T22:59:00Z -- Task 5 complete.
+  - Commit: 902cea9
+  - Scrutiny: PASS
+  - User-test: SKIP
+  - Demo: SKIPPED
+  - Fix attempts: 0
+- 2026-04-29T23:02:00Z -- Task 7: ARCH.md created. CLAUDE.md unchanged. Commit: a73ec1c
+- 2026-04-29T23:03:00Z -- Task 7: scrutiny validation PASSED.
+- 2026-04-29T23:03:00Z -- Task 7 complete.
+  - Commit: a73ec1c
+  - Scrutiny: PASS
+  - User-test: SKIP
+  - Demo: SKIPPED
+  - Fix attempts: 0
+- 2026-04-29T23:05:00Z -- Task 8: documentation completed. Added ARCH.md to Key references, fixed stale term count. Commit: 425fa25
+- 2026-04-29T23:06:00Z -- Task 8: scrutiny validation PASSED.
+- 2026-04-29T23:06:00Z -- Task 8 complete.
+  - Commit: 425fa25
+  - Scrutiny: PASS
+  - User-test: SKIP
+  - Demo: SKIPPED
+  - Fix attempts: 0
+- 2026-04-29T23:00:00Z -- Task 6: module shape re-check complete. No drift observed across all 5 modules. No domain types to verify.
+- 2026-04-29T23:15:00Z -- Draft PR created: https://github.com/layercodedev/darkfactory/pull/136. Adversarial reviews complete.
+- 2026-04-29T23:08:00Z -- Spec delta check CLEAN. 7 items verified, 1 approved deviation listed.
+- 2026-04-29T23:07:00Z -- Final gates PASSED. No build/test/lint/format commands for markdown-only project. No deferrals.
+- 2026-04-29T22:46:00Z -- Task 2: worker completed. Commit: cecf98a8d918de2ecd7b3106eea524377a654b58
+- 2026-04-29T22:48:00Z -- Task 2: scrutiny validation PASSED.
+- 2026-04-29T22:49:00Z -- Task 2: user-test validation PASSED.
+- 2026-04-29T22:49:00Z -- Task 2 complete.
+  - Commit: cecf98a8d918de2ecd7b3106eea524377a654b58
+  - Scrutiny: PASS
+  - User-test: PASS
+  - Demo: SKIPPED
+  - Fix attempts: 0
