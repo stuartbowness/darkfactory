@@ -294,11 +294,12 @@ The first version was hand-written during a `/grill` session that produced the d
 
 ## Key references
 
+- [Architecture](ARCH.md) -- living architecture document covering the three-role agent model, information walls, build loop, and planning constraints
 - [Factory Missions talk](docs/reference_factory_talk.md) -- the multi-agent architecture that inspired this project
 - [Matt Pocock skills talk](docs/reference_pocock_talk.md) -- design alignment, ubiquitous language, and TDD patterns
 - [Provenance](docs/provenance.md) -- how Darkfactory relates to both sources: what's faithful, what's different, and what's new
 - [Design decisions](docs/design-decisions.md) -- every architectural choice with rationale
-- [Ubiquitous language](UBIQUITOUS_LANGUAGE.md) -- shared terminology used throughout the codebase (25 terms)
+- [Ubiquitous language](UBIQUITOUS_LANGUAGE.md) -- shared terminology used throughout the codebase
 
 ## License
 
