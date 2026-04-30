@@ -12,6 +12,16 @@
 ## Key Terms (from UBIQUITOUS_LANGUAGE.md)
 <any domain terms the worker needs to understand>
 
+## Domain Types
+Use the exact Type Catalog names listed here when modeling domain concepts. Include entries relevant to this task from both the Produces and Consumes topology fields.
+
+<For each relevant Type Catalog entry, include:
+- TypeName: one-line purpose and owning module
+
+If no Type Catalog entries are relevant, write:
+None for this task.
+>
+
 ## What Previous Tasks Built
 <For task 1, this section is empty: "This is the first task. No prior code has been committed for this mission."
 

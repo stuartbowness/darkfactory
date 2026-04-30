@@ -64,6 +64,7 @@ List each planned module or major component. Use this table format:
 ## Type Catalog
 
 List domain types only. Type names must come from `UBIQUITOUS_LANGUAGE.md` when the term exists there. Do not include field-level detail.
+Domain types model the problem space; exclude technical helpers such as CLI parsers, test fixtures, and generic containers unless they are public compatibility surfaces.
 
 | Type name | Purpose | Owning module |
 |-----------|---------|---------------|

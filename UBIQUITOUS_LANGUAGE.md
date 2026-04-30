@@ -29,6 +29,7 @@
 | **User-test validator** | The second validator type that tests behavior by hitting the API (HTTP tests) or driving a browser (agent-browser) | QA, E2E tester, integration tester |
 | **Behavioral conformance** | A scrutiny validator check (check 11) that verifies observable behavior by writing and executing a test script rather than reading the code. Falls back to "verified by inspection" if execution is inconclusive. | Behavioral test, execution test, runtime check |
 | **Final gates** | Whole-repo build, test, lint, and format checks run after the last task completes but before PR creation. Catches regressions introduced by later tasks (e.g., documentation or CI tasks) after the cleanup task ran. | Final checks, post-build gates, repo gates |
+| **Module shape re-check** | A mandatory closing task that compares design.md module descriptions and Type Catalog names to what the code actually exposes, catching cumulative drift across tasks that per-task scrutiny cannot see | Shape check, surface audit, drift check |
 | **Demo video** | A recording of frontend functionality captured after both validators pass, created for human review | Screencast, screen recording |
 | **Fix loop** | The cycle where a validation failure spawns a fix worker, then both validators re-run, up to 3 attempts before asking the human | Retry, repair cycle |
 | **Circuit breaker** | The rule that stops the fix loop after 3 failed attempts on the same task and asks the human for guidance | Retry limit, fail-safe |
@@ -91,7 +92,8 @@
 | **Task Independence** | A scoring dimension measuring how well an architecture allows tasks to be completed without cross-task coordination on conventions | Worker task-ability, decomposability |
 | **Task Topology** | Per-task metadata declaring which prior tasks it depends on, which surfaces it consumes, which surfaces it produces, and which architectural layers it touches | Task graph, dependency map |
 | **Foundation Audit** | A one-time check after task 1 passes validation, verifying that committed code matches the design's module inventory and type catalog for task 1's declared produces | Post-task-1 check, foundation check |
-| **Type Catalog** | A design.md section listing domain types with name, purpose, and owning module -- no field-level detail | Type registry, type list, types.md |
+| **Type Catalog** | A design.md section listing domain types with name, purpose, and owning module -- no field-level detail. Type names are drawn from this glossary when a matching term exists; types not in the glossary are named by the worker | Type registry, type list, types.md |
+| **Domain type** | A type that models the problem space. Excludes technical helpers (CLI parsers, test fixtures, generic containers) unless they are public compatibility surfaces | Helper type, utility type, internal type |
 | **Module Inventory** | A design.md section listing modules with interface width, what they hide, and why the boundary exists | Module table, module list |
 | **Design Template** | A reference document defining mandatory design.md sections and scoring rubrics, used by the orchestrator alongside openspec config rules | Design spec, design schema |
 | **Spec Reference** | A capability/scenario identifier (e.g., add-todo/1) used to trace contract assertions back to formal spec requirements | REQ-ID, requirement ID, spec ID |
@@ -115,6 +117,7 @@
 - The **Test quality review** (`/test-quality`) is an owned skill invoked by the **Scrutiny validator** as a subagent, following the same pattern as `/review` and `/simplify`
 - A **Tautological assertion** is worse than no test because it gives false confidence -- the **Scrutiny validator** treats it as a hard FAIL
 - **Deterministic Anchors** are populated from design.md during Phase 4.3 and stored in the **Plan** -- they reference the **Type Catalog**, **Module Inventory**, and **Architecture Candidate Scoring** results
+- The **Type Catalog** draws **Domain type** names from this glossary. **Worker briefs** list relevant **Type Catalog** entries as exact names to use in code. The **Foundation Audit** checks task 1 names against the **Type Catalog**. The **Module shape re-check** verifies all **Type Catalog** names at the end.
 - The **Foundation Audit** runs once after task 1, comparing committed code against the **Module Inventory** and **Type Catalog** from design.md
 - **Spec References** in the **Contract** trace back to specific **Spec** capability/scenario pairs (e.g., add-todo/1), replacing arbitrary row numbers
 - **Task Topology** metadata is written per task in tasks.md and reviewed during Phase 4.4 -- tasks touching more than 2 architectural layers are flagged for human review
@@ -146,7 +149,7 @@
 >
 > **Dev:** "What stops the design from using different type names each run?"
 >
-> **Orchestrator:** "The **Type Catalog** in design.md names every domain type using terms from the ubiquitous language. The **Foundation Audit** checks after task 1 that the committed code actually uses those names. If it drifts, I generate a corrective task before task 2 starts."
+> **Orchestrator:** "The **Type Catalog** in design.md names every **Domain type** using terms from the ubiquitous language. The **Worker brief** lists the relevant **Type Catalog** entries so the worker uses exact names. The **Foundation Audit** checks after task 1 that the committed code matches. At the end, the module shape re-check verifies all **Type Catalog** names again."
 >
 > **Dev:** "And if context compacts mid-mission and you lose the design details?"
 >

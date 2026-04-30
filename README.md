@@ -74,10 +74,10 @@ Next, it creates a series of planning documents using [OpenSpec](https://github.
 
 - **Proposal** -- what you're building and why
 - **Specs** -- detailed requirements written as WHEN/THEN rules (e.g. "WHEN a user submits the login form with wrong credentials, THEN show an error message")
-- **Design** -- architecture decisions and technical approach. The design evaluates 2-3 architecture candidates against a four-dimension rubric (separation of concerns, testability, task independence, module depth) and picks the highest-scoring option. A mandatory gate verifies the design includes an architecture decision, module inventory, type catalog, error strategy, integration points, and test strategy.
+- **Design** -- architecture decisions and technical approach. The design evaluates 2-3 architecture candidates against a four-dimension rubric (separation of concerns, testability, task independence, module depth) and picks the highest-scoring option. A mandatory gate verifies the design includes an architecture decision, module inventory, type catalog, error strategy, integration points, and test strategy; the Type Catalog names problem-space domain types and excludes technical helpers like CLI parsers, test fixtures, and generic containers.
 - **Tasks** -- an ordered checklist of implementation work. Before generating tasks, the orchestrator presents a decomposition strategy (layered, vertical, or hybrid) with a target task count for your approval. Each task includes topology metadata -- which prior tasks it depends on, what it consumes, and what it produces.
 
-Every tasks.md ends with a set of **mandatory closing tasks** that run after the feature work: a smoke test (one end-to-end test through the primary user flow against real dependencies), a cleanup task (remove dead code, unused deps, and leftover scaffolding), a module shape re-check (catch drift between design.md and what the code actually exposes -- required once a mission has 5+ feature tasks), a documentation task, and a CLAUDE.md + ARCH.md generation task (creates project convention files if they don't already exist). A CI configuration task is optional and added when relevant.
+Every tasks.md ends with a set of **mandatory closing tasks** that run after the feature work: a smoke test (one end-to-end test through the primary user flow against real dependencies), a cleanup task (remove dead code, unused deps, and leftover scaffolding), a module shape re-check (catch drift between design.md and what the code actually exposes, including Type Catalog domain type names -- required once a mission has 5+ feature tasks), a documentation task, and a CLAUDE.md + ARCH.md generation task (creates project convention files if they don't already exist). A CI configuration task is optional and added when relevant.
 
 After the tasks are defined, the orchestrator runs a **coverage audit**. This maps every requirement from the PRD to one or more tasks. If anything is missing, it flags it. If a requirement was intentionally changed or dropped, you approve that decision explicitly. For substitutions, the orchestrator also checks that the replacement approach is fully covered by existing tasks -- if the substitution drops something important, it's flagged as a gap. Nothing falls through the cracks by accident.
 
@@ -130,7 +130,7 @@ The system has three roles, each handled by a separate AI agent:
 
 **Orchestrator** -- the main Claude Code session you interact with. It plans the work, sends out one worker at a time, reads their results, runs validators, and decides what to do next. It uses Claude Code's "plan mode," which keeps its instructions alive even when the conversation gets long enough that older messages are dropped to save space.
 
-**Workers** -- each worker builds a single task. By default, workers are powered by Codex (OpenAI's coding agent), but you can use Claude instead. Codex workers are dispatched through `darkfactory-dispatch`, a Rust process supervisor that provides process group isolation, two-phase timeout (SIGTERM then SIGKILL), heartbeat events every 15 seconds, and structured JSON results. Claude workers use Claude Code's built-in Agent tool. A worker gets a brief with everything it needs: what to build, how the project is structured, coding rules to follow, which files to look at, and a summary of what previous tasks already built (file paths, function names, and types -- facts only, never reasoning from other workers). It makes its changes in a single commit and writes a report describing what it did. Workers never see the contract -- they only know what the brief tells them.
+**Workers** -- each worker builds a single task. By default, workers are powered by Codex (OpenAI's coding agent), but you can use Claude instead. Codex workers are dispatched through `darkfactory-dispatch`, a Rust process supervisor that provides process group isolation, two-phase timeout (SIGTERM then SIGKILL), heartbeat events every 15 seconds, and structured JSON results. Claude workers use Claude Code's built-in Agent tool. A worker gets a brief with everything it needs: what to build, how the project is structured, coding rules to follow, which exact Type Catalog domain type names to use, which files to look at, and a summary of what previous tasks already built (file paths, function names, and types -- facts only, never reasoning from other workers). It makes its changes in a single commit and writes a report describing what it did. Workers never see the contract -- they only know what the brief tells them.
 
 **Validators** -- after each worker finishes, validators check the work against the contract. Two validators run back-to-back for every task: the scrutiny validator (a thorough quality check) and the user-test validator (which tests the feature the way a real user would). Validators never see the proposal or design documents -- they only see the code and the contract.
 
@@ -294,11 +294,12 @@ The first version was hand-written during a `/grill` session that produced the d
 
 ## Key references
 
+- [Architecture](ARCH.md) -- living architecture document covering the three-role agent model, information walls, build loop, and planning constraints
 - [Factory Missions talk](docs/reference_factory_talk.md) -- the multi-agent architecture that inspired this project
 - [Matt Pocock skills talk](docs/reference_pocock_talk.md) -- design alignment, ubiquitous language, and TDD patterns
 - [Provenance](docs/provenance.md) -- how Darkfactory relates to both sources: what's faithful, what's different, and what's new
 - [Design decisions](docs/design-decisions.md) -- every architectural choice with rationale
-- [Ubiquitous language](UBIQUITOUS_LANGUAGE.md) -- shared terminology used throughout the codebase (25 terms)
+- [Ubiquitous language](UBIQUITOUS_LANGUAGE.md) -- shared terminology used throughout the codebase
 
 ## License
 
