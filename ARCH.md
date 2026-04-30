@@ -46,7 +46,7 @@ Skills live in `skills/` at the repo root. `install.sh` symlinks each into `~/.c
 
 Each skill is a self-contained module. Public interface: frontmatter (name, description). Implementation: SKILL.md body. No skill imports from another at the filesystem level.
 
-The mission skill is intentionally monolithic (~825 lines). Companion files are read on demand:
+The mission skill is intentionally monolithic (~900 lines). Companion files are read on demand:
 - `templates/` -- artifact formats (plan, contract, worker brief, design, etc.)
 - `prompts/` -- instructions handed to validator and reviewer subagents
 

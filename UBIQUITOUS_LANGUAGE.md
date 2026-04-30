@@ -29,6 +29,7 @@
 | **User-test validator** | The second validator type that tests behavior by hitting the API (HTTP tests) or driving a browser (agent-browser) | QA, E2E tester, integration tester |
 | **Behavioral conformance** | A scrutiny validator check (check 11) that verifies observable behavior by writing and executing a test script rather than reading the code. Falls back to "verified by inspection" if execution is inconclusive. | Behavioral test, execution test, runtime check |
 | **Final gates** | Whole-repo build, test, lint, and format checks run after the last task completes but before PR creation. Catches regressions introduced by later tasks (e.g., documentation or CI tasks) after the cleanup task ran. | Final checks, post-build gates, repo gates |
+| **Module shape re-check** | A mandatory closing task that compares design.md module descriptions and Type Catalog names to what the code actually exposes, catching cumulative drift across tasks that per-task scrutiny cannot see | Shape check, surface audit, drift check |
 | **Demo video** | A recording of frontend functionality captured after both validators pass, created for human review | Screencast, screen recording |
 | **Fix loop** | The cycle where a validation failure spawns a fix worker, then both validators re-run, up to 3 attempts before asking the human | Retry, repair cycle |
 | **Circuit breaker** | The rule that stops the fix loop after 3 failed attempts on the same task and asks the human for guidance | Retry limit, fail-safe |
@@ -116,7 +117,7 @@
 - The **Test quality review** (`/test-quality`) is an owned skill invoked by the **Scrutiny validator** as a subagent, following the same pattern as `/review` and `/simplify`
 - A **Tautological assertion** is worse than no test because it gives false confidence -- the **Scrutiny validator** treats it as a hard FAIL
 - **Deterministic Anchors** are populated from design.md during Phase 4.3 and stored in the **Plan** -- they reference the **Type Catalog**, **Module Inventory**, and **Architecture Candidate Scoring** results
-- The **Type Catalog** draws **Domain type** names from this glossary. **Worker briefs** list relevant **Type Catalog** entries as exact names to use in code. The **Foundation Audit** checks task 1 names against the **Type Catalog**. The module shape re-check verifies all **Type Catalog** names at the end
+- The **Type Catalog** draws **Domain type** names from this glossary. **Worker briefs** list relevant **Type Catalog** entries as exact names to use in code. The **Foundation Audit** checks task 1 names against the **Type Catalog**. The **Module shape re-check** verifies all **Type Catalog** names at the end.
 - The **Foundation Audit** runs once after task 1, comparing committed code against the **Module Inventory** and **Type Catalog** from design.md
 - **Spec References** in the **Contract** trace back to specific **Spec** capability/scenario pairs (e.g., add-todo/1), replacing arbitrary row numbers
 - **Task Topology** metadata is written per task in tasks.md and reviewed during Phase 4.4 -- tasks touching more than 2 architectural layers are flagged for human review
