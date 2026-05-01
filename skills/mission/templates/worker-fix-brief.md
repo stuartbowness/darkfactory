@@ -1,7 +1,7 @@
 # Fix Brief: Task N - <name> (Attempt <attempt+1>)
 
 ## What Failed
-<describe the observed symptoms -- error messages, unexpected behavior, test failures. Do NOT copy assertion text from the contract. Describe what went wrong, not what the contract expected.>
+<describe the observed symptoms -- error messages, unexpected behavior, test failures. Do NOT copy check text from the contract. Describe what went wrong, not what the contract expected.>
 
 ## Diagnostic Triage
 <paste the triage subagent's output from mission/issues/task-N-v<attempt>-triage.md. If triage was skipped or failed, write "Triage unavailable -- diagnose from the validator output below.">

@@ -19,7 +19,7 @@ Closes #<PRD issue number from plan>
 
 ### Mission Stats
 - Total tasks: <N>
-- Total assertions: <M>
+- Total checks: <M>
 - Total fix attempts: <sum>
 - Circuit breakers triggered: <count>
 - Duration: <start to end>

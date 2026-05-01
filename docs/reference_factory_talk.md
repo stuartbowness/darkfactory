@@ -18,7 +18,7 @@ Source: Talk by Factory's core agent harness lead at AI Engineer Europe (April 2
 **Missions combine 4 of 5** (delegation, creator-verifier, broadcast, negotiation) into a single workflow.
 
 **Three-role architecture:**
-- **Orchestrators** -- plan features/milestones, ask clarifying questions, produce a "validation contract" (defines done before coding starts, can be hundreds of assertions)
+- **Orchestrators** -- plan features/milestones, ask clarifying questions, produce a "validation contract" (defines done before coding starts, can be hundreds of checks)
 - **Workers** -- implement one feature at a time with clean context, commit to git, structured handoff report (what was done, what's undone, commands/exit codes, issues, procedure compliance)
 - **Validators** -- two types:
   - *Scrutiny Validator* -- test suite, type checking, lint, dedicated code review agents per feature

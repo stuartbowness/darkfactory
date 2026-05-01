@@ -57,9 +57,9 @@ For each unchecked task in tasks.md (skip `- [~]` tasks):
 2. Write brief to mission/briefs/task-N.md
 3. Dispatch worker (engine from config.yaml)
 4. Read handoff from mission/handoffs/task-N.md
-5. Spawn scrutiny validator (commit SHA + contract assertions)
+5. Spawn scrutiny validator (commit SHA + contract checks)
 6. If fail -> write to issues/, spawn fix worker, re-validate. Circuit breaker at 3.
-7. Spawn user-test validator (commit SHA + contract assertions)
+7. Spawn user-test validator (commit SHA + contract checks)
 8. If fail -> same fix/re-validate loop
 9. If frontend task -> spawn demo video
 10. Mark task done in tasks.md, update progress.md

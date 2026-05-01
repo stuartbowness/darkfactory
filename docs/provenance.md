@@ -15,11 +15,11 @@ Source: [docs/reference_factory_talk.md](reference_factory_talk.md)
 | Concept | Factory description | Darkfactory implementation |
 |---------|--------------------|----------------------------|
 | Three-role architecture | Orchestrator, worker, validator as distinct roles | Orchestrator is the /mission session. Workers are dispatched subagents. Validators are separate subagents with isolated prompts. |
-| Validation contract | "Defines done before coding starts, can be hundreds of assertions" | contract.md (Phase 5), written after specs/tasks but before the build loop. Workers never see it. |
+| Validation contract | "Defines done before coding starts, can be hundreds of checks" | contract.md (Phase 5), written after specs/tasks but before the build loop. Workers never see it. |
 | Adversarial separation | Workers don't see the contract, validators don't see the plan | Stricter than Factory: workers never see contract.md, validators never see proposal.md or design.md. |
 | Serial execution | One worker at a time to avoid conflicts | Rule 1: "One worker at a time. Never dispatch two workers in parallel." |
 | Structured handoffs | Workers produce reports with what was done, commands, exit codes, issues | Handoff template: commit SHA, approach, commands run, concerns. |
-| Two validator types | Scrutiny validator (tests, lint, review) and user-testing validator (spawns app, interacts) | Scrutiny (Phase 8 Step 4): build/test/lint/review/standards/simplify/security/assertions/behavioral conformance. User-test (Phase 8 Step 6): HTTP tests or browser. |
+| Two validator types | Scrutiny validator (tests, lint, review) and user-testing validator (spawns app, interacts) | Scrutiny (Phase 8 Step 4): build/test/lint/review/standards/simplify/security/checks/behavioral conformance. User-test (Phase 8 Step 6): HTTP tests or browser. |
 | Multi-model strategy | Different LLMs for different roles | config.yaml: workers default to Codex (GPT-5.4), validators to Claude, adversarial reviewers use one of each. |
 | Read-only parallelization | Only parallelize read-only operations | Only parallel dispatch is the two adversarial reviewers in Phase 9, which are read-only. |
 
@@ -66,7 +66,7 @@ Concepts in the current implementation that neither source described:
 | Addition | Purpose |
 |----------|---------|
 | Spec coverage audit with deviation classification | Maps every PRD requirement to tasks. Classifies deviations as interpretation, substitution, or removal with escalating approval. |
-| Contract cross-referencing to PRD | Assertions trace to specific PRD requirements. Deviated items are marked. |
+| Contract cross-referencing to PRD | Checks trace to specific PRD requirements. Deviated items are marked. |
 | Fix loop with circuit breaker | On validation failure, spawns a fix worker and re-runs both validators. Caps at 3 attempts before escalating to human. |
 | Spec delta check | Post-build verification that every COVERED item in the coverage audit is actually present in the built code. |
 | Final gates | Whole-repo build/test/lint/format after the last task catches regressions from late tasks. |

@@ -28,7 +28,7 @@ flow: align -> spec -> contract -> build -> validate -> ship
 4. **Create and Review OpenSpec Artifacts** -- proposal, specs, design, tasks (human-approved)
 4.3a. **Task Strategy Approval** -- approve decomposition approach before generating tasks
 4a. **Spec Coverage Audit** -- verify every PRD requirement maps to a task
-5. **Write Contract** -- validation assertions workers never see
+5. **Write Contract** -- validation checks workers never see
 6. **Create Mission Directory** -- set up mission/ state directory
 7. **Launch Confirmation** -- human confirms, build starts
 8. **Build Loop** -- dispatch workers, validate per task, fix loop with circuit breaker
@@ -345,59 +345,59 @@ Create `contract.md` in the change directory (`openspec/changes/<change-name>/co
 
 ### Contract Rules
 
-1. Group assertions by task, matching the task list in tasks.md.
-2. Assertions should describe **observable behavior** verifiable from outside the code (HTTP response, CLI output, file on disk, UI state, build passing, etc.). Where this is genuinely not possible, use `[inspection]` assertions -- see the verification method tags in the contract template for caps.
+1. Group checks by task, matching the task list in tasks.md.
+2. Checks should describe **observable behavior** verifiable from outside the code (HTTP response, CLI output, file on disk, UI state, build passing, etc.). Where this is genuinely not possible, use `[inspection]` checks -- see the verification method tags in the contract template for caps.
 3. Do NOT reference implementation details (function names, variable names, internal data structures).
-4. Be specific and unambiguous. A validator reading only the contract and the diff should be able to check every assertion without guessing.
+4. Be specific and unambiguous. A validator reading only the contract and the diff should be able to verify every check without guessing.
 5. Workers never see this file.
-6. **Write the minimum set of assertions needed to verify the task is complete and correct.** Each assertion should trace to a specific spec scenario (e.g., `add-todo/1`), including error behaviors specified in the specs. Do not add assertions for edge cases, nice-to-haves, or defensive behaviors unless the PRD explicitly requires them. If an assertion would not cause you to reject the task when it fails, do not include it. Place assertions on the earliest task where they become verifiable -- if a behavior spans multiple tasks, put the assertion on the task where it can first be checked, not where the work begins.
+6. **Write the minimum set of checks needed to verify the task is complete and correct.** Each check should trace to a specific spec scenario (e.g., `add-todo/1`), including error behaviors specified in the specs. Do not add checks for edge cases, nice-to-haves, or defensive behaviors unless the PRD explicitly requires them. If a check would not cause you to reject the task when it fails, do not include it. Place checks on the earliest task where they become verifiable -- if a behavior spans multiple tasks, put the check on the task where it can first be checked, not where the work begins.
 
 ### Cross-Referencing Specs
 
-For each task, use the coverage audit from Phase 4a to find which spec capabilities map to it. Then read the actual spec files to identify specific scenarios. Write assertions that capture the specific details from those scenarios -- not generic behavioral checks, but assertions that would fail if the specific scenario were not implemented. Each assertion must trace back to a specific spec capability and scenario number (e.g., `add-todo/1`).
+For each task, use the coverage audit from Phase 4a to find which spec capabilities map to it. Then read the actual spec files to identify specific scenarios. Write checks that capture the specific details from those scenarios -- not generic behavioral checks, but checks that would fail if the specific scenario were not implemented. Each check must trace back to a specific spec capability and scenario number (e.g., `add-todo/1`).
 
 **Process for each task:**
 1. Look up the spec capabilities mapped to this task in the coverage table (e.g., `add-todo`, `search`).
 2. Read the actual spec files for those capabilities (`specs/<capability>/spec.md`). Identify which specific WHEN/THEN scenarios are relevant to this task. Number the scenarios within each spec file (1, 2, 3...) to form the `capability/N` identifiers used in contract comments.
-3. Write assertions that verify those specific behaviors with specific values, endpoints, messages, or states from the specs.
-4. If the spec mentions specific constraints (limits, formats, error messages, status codes), those constraints must appear in the assertions verbatim.
+3. Write checks that verify those specific behaviors with specific values, endpoints, messages, or states from the specs.
+4. If the spec mentions specific constraints (limits, formats, error messages, status codes), those constraints must appear in the checks verbatim.
 
 ### Contract Template
 
-Each assertion must include a **verification method** tag indicating how a validator should check it:
+Each check must include a **verification method** tag indicating how a validator should check it:
 - `[execution]` -- verifiable by running a command, HTTP request, or test script (strongest)
 - `[output]` -- verifiable by checking command output, file contents, or API response
 - `[inspection]` -- verifiable only by reading code (weakest)
 
-Cap `[inspection]` assertions at **20% of total per task**. If more than 20% require inspection, rewrite them as `[execution]` or `[output]` where possible. If an assertion genuinely cannot be made executable, it is acceptable -- but flag it during contract review.
+Cap `[inspection]` checks at **20% of total per task**. If more than 20% require inspection, rewrite them as `[execution]` or `[output]` where possible. If a check genuinely cannot be made executable, it is acceptable -- but flag it during contract review.
 
 Use the format in [templates/contract.md](templates/contract.md).
 
 Reference spec coverage with a `<!-- Specs: capability/N, capability/M -->` comment, where `capability` is the spec folder name and `N` is the scenario number within that spec file.
 
-When a spec scenario traces to an APPROVED-DEVIATION item in the coverage audit, mark it with `(DEVIATED)` in the Specs comment. The assertion itself describes the actual implemented behavior (the deviation), not the original spec requirement. This gives the human visibility during contract review into which assertions exist because of an approved deviation.
+When a spec scenario traces to an APPROVED-DEVIATION item in the coverage audit, mark it with `(DEVIATED)` in the Specs comment. The check itself describes the actual implemented behavior (the deviation), not the original spec requirement. This gives the human visibility during contract review into which checks exist because of an approved deviation.
 
 ### Contract Review
 
 After writing the contract, present it to the human following the standard review pattern: AI presents, AI recommends, human decides.
 
 For each task section, highlight:
-- Which spec scenarios (e.g., `add-todo/1`, `search/3`) the assertions trace to
-- Whether the assertion count feels right (too many suggests over-specification; too few suggests gaps)
-- Any spec scenarios that were hard to express as observable assertions
+- Which spec scenarios (e.g., `add-todo/1`, `search/3`) the checks trace to
+- Whether the check count feels right (too many suggests over-specification; too few suggests gaps)
+- Any spec scenarios that were hard to express as observable checks
 
 If the human requests changes, revise and re-present.
 
 ### Contract Testability Pre-flight
 
-After the human approves the contract, run a quick testability audit before proceeding. For each assertion, verify:
+After the human approves the contract, run a quick testability audit before proceeding. For each check, verify:
 
-1. **Executable assertions** (`[execution]`) -- confirm the assertion describes a concrete action and expected result that a validator could script (e.g., "POST /api/users with {email: 'a@b.com'} returns 201"). If the assertion is too vague to script, flag it.
-2. **Output assertions** (`[output]`) -- confirm the assertion names a specific file, value, or output to check. If it says "appropriate error message" instead of a specific message, flag it.
-3. **Inspection assertions** (`[inspection]`) -- check whether the assertion could be rewritten as `[execution]` or `[output]`. If yes, rewrite it. If genuinely not possible (e.g., "no direct database access outside the repository layer"), keep it.
+1. **Executable checks** (`[execution]`) -- confirm the check describes a concrete action and expected result that a validator could script (e.g., "POST /api/users with {email: 'a@b.com'} returns 201"). If the check is too vague to script, flag it.
+2. **Output checks** (`[output]`) -- confirm the check names a specific file, value, or output to check. If it says "appropriate error message" instead of a specific message, flag it.
+3. **Inspection checks** (`[inspection]`) -- verify whether the check could be rewritten as `[execution]` or `[output]`. If yes, rewrite it. If genuinely not possible (e.g., "no direct database access outside the repository layer"), keep it.
 
-If any assertions are flagged as ambiguous:
-- Rewrite them to be specific and re-present only the changed assertions to the human for quick approval
+If any checks are flagged as ambiguous:
+- Rewrite them to be specific and re-present only the changed checks to the human for quick approval
 - Do not re-review the entire contract
 
 Log the testability breakdown to progress.md: `<timestamp> -- Contract testability pre-flight: <N> execution, <M> output, <P> inspection (<Q>% inspection).`
@@ -406,7 +406,7 @@ Update the plan with the contract path after approval.
 
 **Gate -- proceed when:**
 - [ ] contract.md human-approved
-- [ ] Testability pre-flight passed (inspection assertions <=20%)
+- [ ] Testability pre-flight passed (inspection checks <=20%)
 - [ ] Testability breakdown logged to progress.md
 - [ ] Plan updated with contract path
 
@@ -482,18 +482,18 @@ mkdir -p openspec/changes/<change-name>/mission/{briefs,handoffs,validations,iss
 Ensure a feature branch. If `git rev-parse --abbrev-ref HEAD` equals `gh api repos/{owner}/{repo} --jq .default_branch` (abort Phase 7 if that gh call fails -- it means no GitHub remote or bad auth), run `git checkout -b mission/<change-name>` -- if that branch already exists, use `mission/<change-name>-$(date -u +%Y%m%d%H%M%S)`. Log the checkout to progress.md.
 
 Show the user a summary dashboard:
-1. **Mission overview** -- change name, total tasks (feature + closing), total contract assertions
+1. **Mission overview** -- change name, total tasks (feature + closing), total contract checks
 2. **Coverage audit result** -- number of PRD requirements covered, any deferred/skipped items
 3. **Engine config** -- which engine runs each role (from config.yaml)
 
 Ask: "Everything has been reviewed. Ready to start the build?"
 
-- If yes: append `<timestamp> -- Plan approved. <N> tasks, <M> assertions in contract.` to progress.md. Update plan status to BUILDING. Post a comment on the PRD issue: `gh issue comment <number> --body "Mission dispatched. <N> tasks, <M> assertions. Draft PR will link back on completion."` Proceed to Phase 8.
+- If yes: append `<timestamp> -- Plan approved. <N> tasks, <M> checks in contract.` to progress.md. Update plan status to BUILDING. Post a comment on the PRD issue: `gh issue comment <number> --body "Mission dispatched. <N> tasks, <M> checks. Draft PR will link back on completion."` Proceed to Phase 8.
 - If the human wants to revisit something: loop back to the specific phase they name. Do not re-review everything.
 
 **Gate -- proceed when:**
 - [ ] Human confirms "ready to start the build"
-- [ ] progress.md updated with approval timestamp and task/assertion counts
+- [ ] progress.md updated with approval timestamp and task/check counts
 - [ ] Plan status = BUILDING
 
 ---
@@ -591,7 +591,7 @@ Spawn a Claude subagent (via the Agent tool) with this prompt:
 
 #### Scrutiny Validator Prompt
 
-Read [prompts/scrutiny-validator.md](prompts/scrutiny-validator.md) and use it as the subagent prompt. Fill in the commit SHA and contract assertions for this task. The prompt runs 11 checks: test presence, build, tests, lint, code review, module depth, code standards, simplify, security (if applicable), contract assertions, behavioral conformance.
+Read [prompts/scrutiny-validator.md](prompts/scrutiny-validator.md) and use it as the subagent prompt. Fill in the commit SHA and contract checks for this task. The prompt runs 14 gates: test presence, build, tests, lint, code review, module depth, code standards, simplify, security (if applicable), contract checks, behavioral conformance, silent skip detection, diff coverage, test quality review.
 
 Read the validator's report from `mission/validations/task-N-scrutiny.md`.
 
@@ -609,11 +609,11 @@ Track the attempt number (starts at 1 for the initial worker, increments on each
 ```markdown
 # Issue: Task N - <name> (Attempt <attempt>)
 
-## Failed Checks
-<list of failed checks from validator report>
+## Failed Gates
+<list of failed gates from validator report>
 
 ## Observed Symptoms
-<describe what went wrong in terms of behavior -- error messages, test failures, unexpected output. Do NOT copy contract assertion text here.>
+<describe what went wrong in terms of behavior -- error messages, test failures, unexpected output. Do NOT copy contract check text here.>
 
 ## Validator Recommendations
 <recommendations from validator>
@@ -653,13 +653,13 @@ Spawn a Claude subagent (via the Agent tool) with this prompt:
 
 #### User-Test Validator Prompt
 
-Read [prompts/usertest-validator.md](prompts/usertest-validator.md) and use it as the subagent prompt. Fill in the commit SHA and contract assertions for this task.
+Read [prompts/usertest-validator.md](prompts/usertest-validator.md) and use it as the subagent prompt. Fill in the commit SHA and contract checks for this task.
 
 Read the validator's report from `mission/validations/task-N-usertest.md`.
 
 - **PASS**: Log to progress.md: `<timestamp> -- Task N: user-test validation PASSED.` Proceed to Step 6a (demo video).
 - **FAIL**: Enter the fix loop (Step 5a) with the user-test failure details. After the fix, re-run **both** validators (Step 4, then Step 6).
-- **SKIP** (all assertions skipped): Log to progress.md: `<timestamp> -- Task N: user-test validation SKIPPED (all assertions infrastructure-only).` Proceed to Step 6a (demo video).
+- **SKIP** (all checks skipped): Log to progress.md: `<timestamp> -- Task N: user-test validation SKIPPED (all checks infrastructure-only).` Proceed to Step 6a (demo video).
 
 ### Step 6a: Demo Video (Frontend Only)
 
@@ -705,7 +705,7 @@ Spawn a Claude subagent to run `/demo-video`. The subagent should save the recor
    If drift is detected (module structure or type names do not match the design for items task 1 declared it would produce):
    - Generate a corrective task 1a
    - Insert it in tasks.md between task 1 and task 2
-   - Add assertions for it to contract.md
+   - Add checks for it to contract.md
    - Present both to the human for approval
    - The corrective task goes through the normal build loop before task 2 starts
 
@@ -742,7 +742,7 @@ Run the project's build, test, lint, and format commands against the full reposi
 - Lint: zero warnings (e.g., `cargo clippy -- -D warnings`, `eslint .`)
 - Format: zero diffs (e.g., `cargo fmt --check`, `prettier --check .`)
 
-Also check `mission/deferrals.md`. If the file exists and contains entries, present them to the human: each line is a SKIP'd assertion from an earlier task that was supposed to be picked up later. For each, the human decides: accept (the deferral is fine), resolve (spawn a fix task to cover it), or dispute (the assertion was never actually deferred). Clear the file before proceeding once the human has ruled on every entry.
+Also check `mission/deferrals.md`. If the file exists and contains entries, present them to the human: each line is a SKIP'd check from an earlier task that was supposed to be picked up later. For each, the human decides: accept (the deferral is fine), resolve (spawn a fix task to cover it), or dispute (the check was never actually deferred). Clear the file before proceeding once the human has ruled on every entry.
 
 **If all gates pass:** Log to progress.md: `<timestamp> -- Final gates PASSED.` Proceed to the spec delta check.
 
@@ -763,7 +763,7 @@ Read the delta check report from `mission/validations/spec-delta.md`.
 **If CLEAN (no discrepancies):** Log to progress.md: `<timestamp> -- Spec delta check CLEAN. <N> items verified, <M> approved deviations listed.` Proceed to create the draft PR.
 
 **If DISCREPANCIES FOUND:** Present each discrepancy to the human with three options:
-- **Add fix task** -- create a new task to implement the missing item. Write assertions for this task and append them to contract.md (present to human for quick approval). The task then goes through the normal build loop (brief, worker, scrutiny validation, user-test validation). After completion, re-run final gates and the spec delta check.
+- **Add fix task** -- create a new task to implement the missing item. Write checks for this task and append them to contract.md (present to human for quick approval). The task then goes through the normal build loop (brief, worker, scrutiny validation, user-test validation). After completion, re-run final gates and the spec delta check.
 - **Reclassify as APPROVED-DEVIATION** -- the item was covered in planning but the implementation intentionally diverged. The human provides a reason and classification (Interpretation/Substitution/Removal). Update the coverage audit on disk.
 - **Accept gap** -- acknowledge the gap and proceed. Log it in progress.md as an accepted gap.
 

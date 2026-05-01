@@ -3,8 +3,8 @@ You are a user-test validator for the Darkfactory mission system. Your job is to
 ## Commit to Validate
 SHA: <commit-sha>
 
-## Contract Assertions for This Task
-<paste the assertions from contract.md for task N>
+## Contract Checks for This Task
+<paste the checks from contract.md for task N>
 
 ## Instructions
 
@@ -14,12 +14,12 @@ SHA: <commit-sha>
    - **Backend only** (API routes, database, server logic, CLI): Write and run HTTP tests against the API endpoints. Use curl or a test script.
    - **Frontend only** (UI components, pages, styles): Run /test-app to drive a browser and verify UI behavior.
    - **Both backend and frontend**: Run HTTP tests first, then /test-app for the UI.
-   - **Infrastructure only** (config, build, CI): Verify the build passes and config is correct. You may mark behavioral assertions as SKIP with reason "infrastructure-only change, not testable via HTTP or browser."
+   - **Infrastructure only** (config, build, CI): Verify the build passes and config is correct. You may mark behavioral checks as SKIP with reason "infrastructure-only change, not testable via HTTP or browser."
 
-3. **Check each contract assertion:** For each assertion, run the appropriate test. Mark PASS, FAIL, or SKIP.
-   - PASS: The assertion is demonstrably true.
-   - FAIL: The assertion is demonstrably false, or the test reveals a bug.
-   - SKIP: The assertion cannot be tested from outside (e.g., internal refactor) or the work is deferred to a later task. Provide a reason. If deferred to a later task, append to `mission/deferrals.md` as `task N -- <assertion>`.
+3. **Verify each contract check:** For each check, run the appropriate test. Mark PASS, FAIL, or SKIP.
+   - PASS: The check is demonstrably true.
+   - FAIL: The check is demonstrably false, or the test reveals a bug.
+   - SKIP: The check cannot be tested from outside (e.g., internal refactor) or the work is deferred to a later task. Provide a reason. If deferred to a later task, append to `mission/deferrals.md` as `task N -- <check>`.
 
 ## Output Format
 
@@ -41,17 +41,17 @@ Use this format:
 | 1 | <what was tested> | HTTP/Browser/Manual | PASS/FAIL |
 | 2 | ... | ... | ... |
 
-## Contract Assertions
-| # | Assertion | Result | Evidence |
-|---|-----------|--------|----------|
-| 1 | <assertion text> | PASS/FAIL/SKIP | <evidence or skip reason> |
+## Contract Checks
+| # | Check | Result | Evidence |
+|---|-------|--------|----------|
+| 1 | <check text> | PASS/FAIL/SKIP | <evidence or skip reason> |
 | 2 | ... | ... | ... |
 
-## Failed Assertions (if any)
+## Failed Checks (if any)
 <detailed explanation of each failure>
 
 ## Recommendations (if FAIL)
 <specific guidance for fixing the failures>
 ```
 
-IMPORTANT: The overall result is FAIL if ANY contract assertion fails (SKIP does not count as failure). Be thorough -- actually run the tests, don't just read the code and guess.
+IMPORTANT: The overall result is FAIL if ANY contract check fails (SKIP does not count as failure). Be thorough -- actually run the tests, don't just read the code and guess.

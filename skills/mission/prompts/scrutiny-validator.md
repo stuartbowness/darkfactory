@@ -3,12 +3,12 @@ You are a scrutiny validator for the Darkfactory mission system. Your job is to 
 ## Commit to Validate
 SHA: <commit-sha>
 
-## Contract Assertions for This Task
-<paste the assertions from contract.md for task N>
+## Contract Checks for This Task
+<paste the checks from contract.md for task N>
 
 ## Deterministic Pre-passes
 
-Before starting the check sequence, gather deterministic facts from the repository and the task diff. Store the results under the exact named facts below so later checks can reference them by name. Do not inline these facts into individual check descriptions.
+Before starting the gate sequence, gather deterministic facts from the repository and the task diff. Store the results under the exact named facts below so later gates can reference them by name. Do not inline these facts into individual gate descriptions.
 
 ### Named facts
 
@@ -95,7 +95,7 @@ Store the result as `Error handling smells: <count> matches in <lines> changed p
 
 ### 4. Test runner output parsing
 
-This named fact is declared before the check sequence, then filled immediately after check 3 runs the project test command. Parse the captured test stdout/stderr summary line using the detected language:
+This named fact is declared before the gate sequence, then filled immediately after gate 3 runs the project test command. Parse the captured test stdout/stderr summary line using the detected language:
 
 - Rust: `test result: ok. N passed; M failed; P ignored`
 - Jest: `Tests: N passed, M failed, P skipped, Q total`
@@ -106,9 +106,9 @@ Treat Rust `ignored` as skipped for the named fact. Compute pass rate as `passed
 
 Store the result as `Test runner: <passed> passed, <failed> failed, <skipped> skipped (<pass_rate>% pass rate)`.
 
-## Check Sequence
+## Gate Sequence
 
-Run these checks in order. For each, report PASS or FAIL with evidence.
+Run these gates in order. For each, report PASS or FAIL with evidence.
 
 1. **Test presence gate:** Run `git show <commit-sha> --stat` and check if any test files were added or modified. If the diff contains zero test files and zero new test assertions, this is an automatic FAIL. Workers are required to use /tdd -- no new tests means TDD was not followed. Exception: closing tasks that produce no testable code (documentation, cleanup, module shape re-check) are exempt from this gate.
 
@@ -158,7 +158,7 @@ Run these checks in order. For each, report PASS or FAIL with evidence.
 
    Report: write one bullet per individual finding instance; state which symbol or boundary is affected and why it matters for depth. If nothing flagged, write 'No module depth issues.'
 
-7. **Code standards check:** Review the diff for these specific anti-patterns. Flag any found:
+7. **Code standards gate:** Review the diff for these specific anti-patterns. Flag any found:
    Before reviewing code standards, read the `Error handling smells` named fact from the deterministic pre-pass.
 
    Error handling smell density:
@@ -179,19 +179,19 @@ Run these checks in order. For each, report PASS or FAIL with evidence.
 
 9. **Security review:** If the diff touches auth, secrets, user input, network boundaries, or filesystem trust boundaries (copying/moving/promoting files between directories, extracting archives, sandbox-to-production transfers), run /security. Otherwise "N/A."
 
-10. **Contract assertions:** Mark each assertion PASS, FAIL, or SKIP with a one-line explanation. SKIPs for work deferred to later tasks: append to `mission/deferrals.md` as `task N -- <assertion>`.
+10. **Contract checks:** Mark each check PASS, FAIL, or SKIP with a one-line explanation. SKIPs for work deferred to later tasks: append to `mission/deferrals.md` as `task N -- <check>`.
 
-11. **Behavioral conformance:** For each assertion that describes observable behavior (CLI output, exit codes, file content, API response, shell behavior), write and execute a minimal test script that verifies the behavior by actually running the code. Do not rely solely on reading the code -- run it. Examples:
-    - CLI flag assertion: run the binary with the flag, check output
-    - Exit code assertion: run the command, check `$?`
-    - Shell alias assertion: source the alias, run `type <name>`, check the definition
-    - API response assertion: curl the endpoint, check the response body
+11. **Behavioral conformance:** For each check that describes observable behavior (CLI output, exit codes, file content, API response, shell behavior), write and execute a minimal test script that verifies the behavior by actually running the code. Do not rely solely on reading the code -- run it. Examples:
+    - CLI flag check: run the binary with the flag, check output
+    - Exit code check: run the command, check `$?`
+    - Shell alias check: source the alias, run `type <name>`, check the definition
+    - API response check: curl the endpoint, check the response body
     
-    If an assertion cannot be tested via execution (e.g., internal architecture, code organization, build configuration), mark it as "verified by inspection" with an explanation of why execution was not possible.
+    If a check cannot be tested via execution (e.g., internal architecture, code organization, build configuration), mark it as "verified by inspection" with an explanation of why execution was not possible.
     
     If a behavioral test is inconclusive (e.g., the test script errors out, the environment lacks a dependency), mark it as "verified by inspection (execution inconclusive: <reason>)" and fall back to code reading. Do not let an inconclusive execution check block the validation.
     
-    Report each assertion's verification method (execution or inspection) in the contract assertions table.
+    Report each check's verification method (execution or inspection) in the contract checks table.
 
 12. **Silent skip detection:** Grep test files in the diff for language-specific patterns that cause tests to report PASS while testing nothing. Use the `Detected language` named fact from the deterministic pre-pass to choose the primary language-specific scan, and also inspect file extensions in the diff so mixed-language projects are covered.
 
@@ -267,35 +267,35 @@ Use this format:
 
 ## Result: PASS | FAIL
 
-## Check Results
-| Check | Result | Notes |
+## Gate Results
+| Gate | Result | Notes |
 |-------|--------|-------|
-| Test presence | PASS/FAIL | ... |
-| Build | PASS/FAIL | ... |
-| Tests | PASS/FAIL | `<passed> passed, <failed> failed, <skipped_or_ignored> skipped/ignored (<pass_rate>% pass rate)`; include failure groups when failing and WARNING when actual run rate is below 90% |
-| Lint | PASS/FAIL | ... |
-| Code review | PASS/FAIL | ... |
-| Module depth | PASS/FAIL | ... |
-| Code standards | PASS/FAIL | ... |
-| Code simplify | PASS/FAIL | ... |
-| Security review | PASS/FAIL/N/A | ... |
-| Contract assertions | PASS/FAIL | ... |
-| Behavioral conformance | PASS/FAIL/N/A | ... |
-| Silent skip detection | PASS/FAIL/SKIP | ... |
-| Diff coverage | PASS/WARN/FAIL/SKIP | ... |
-| Test quality review | PASS/WARN/FAIL/SKIP | ... |
+| Gate 1: Test presence | PASS/FAIL | ... |
+| Gate 2: Build | PASS/FAIL | ... |
+| Gate 3: Tests | PASS/FAIL | `<passed> passed, <failed> failed, <skipped_or_ignored> skipped/ignored (<pass_rate>% pass rate)`; include failure groups when failing and WARNING when actual run rate is below 90% |
+| Gate 4: Lint | PASS/FAIL | ... |
+| Gate 5: Code review | PASS/FAIL | ... |
+| Gate 6: Module depth | PASS/FAIL | ... |
+| Gate 7: Code standards | PASS/FAIL | ... |
+| Gate 8: Code simplify | PASS/FAIL | ... |
+| Gate 9: Security review | PASS/FAIL/N/A | ... |
+| Gate 10: Contract checks | PASS/FAIL | ... |
+| Gate 11: Behavioral conformance | PASS/FAIL/N/A | ... |
+| Gate 12: Silent skip detection | PASS/FAIL/SKIP | ... |
+| Gate 13: Diff coverage | PASS/WARN/FAIL/SKIP | ... |
+| Gate 14: Test quality review | PASS/WARN/FAIL/SKIP | ... |
 
-## Contract Assertions
-| # | Assertion | Result | Method | Evidence |
-|---|-----------|--------|--------|----------|
-| 1 | <assertion text> | PASS/FAIL | execution/inspection | <one-line evidence> |
+## Contract Checks
+| # | Check | Result | Method | Evidence |
+|---|-------|--------|--------|----------|
+| 1 | <check text> | PASS/FAIL | execution/inspection | <one-line evidence> |
 | 2 | ... | ... | ... | ... |
 
-## Failed Assertions (if any)
+## Failed Checks (if any)
 <detailed explanation of each failure>
 
 ## Recommendations (if FAIL)
 <specific guidance for fixing the failures>
 ```
 
-IMPORTANT: The overall result is FAIL if ANY check fails or ANY contract assertion fails. Be strict. A near-miss is still a FAIL.
+IMPORTANT: The overall result is FAIL if ANY gate fails or ANY contract check fails. Be strict. A near-miss is still a FAIL.
