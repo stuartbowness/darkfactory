@@ -348,7 +348,7 @@ Create `contract.md` in the change directory (`openspec/changes/<change-name>/co
 1. Group checks by task, matching the task list in tasks.md.
 2. Checks should describe **observable behavior** verifiable from outside the code (HTTP response, CLI output, file on disk, UI state, build passing, etc.). Where this is genuinely not possible, use `[inspection]` checks -- see the verification method tags in the contract template for caps.
 3. Do NOT reference implementation details (function names, variable names, internal data structures).
-4. Be specific and unambiguous. A validator reading only the contract and the diff should be able to check every check without guessing.
+4. Be specific and unambiguous. A validator reading only the contract and the diff should be able to verify every check without guessing.
 5. Workers never see this file.
 6. **Write the minimum set of checks needed to verify the task is complete and correct.** Each check should trace to a specific spec scenario (e.g., `add-todo/1`), including error behaviors specified in the specs. Do not add checks for edge cases, nice-to-haves, or defensive behaviors unless the PRD explicitly requires them. If a check would not cause you to reject the task when it fails, do not include it. Place checks on the earliest task where they become verifiable -- if a behavior spans multiple tasks, put the check on the task where it can first be checked, not where the work begins.
 
