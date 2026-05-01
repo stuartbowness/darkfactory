@@ -394,7 +394,7 @@ After the human approves the contract, run a quick testability audit before proc
 
 1. **Executable checks** (`[execution]`) -- confirm the check describes a concrete action and expected result that a validator could script (e.g., "POST /api/users with {email: 'a@b.com'} returns 201"). If the check is too vague to script, flag it.
 2. **Output checks** (`[output]`) -- confirm the check names a specific file, value, or output to check. If it says "appropriate error message" instead of a specific message, flag it.
-3. **Inspection checks** (`[inspection]`) -- check whether the check could be rewritten as `[execution]` or `[output]`. If yes, rewrite it. If genuinely not possible (e.g., "no direct database access outside the repository layer"), keep it.
+3. **Inspection checks** (`[inspection]`) -- verify whether the check could be rewritten as `[execution]` or `[output]`. If yes, rewrite it. If genuinely not possible (e.g., "no direct database access outside the repository layer"), keep it.
 
 If any checks are flagged as ambiguous:
 - Rewrite them to be specific and re-present only the changed checks to the human for quick approval

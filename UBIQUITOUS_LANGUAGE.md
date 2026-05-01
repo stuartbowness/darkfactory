@@ -13,8 +13,8 @@
 
 | Term | Definition | Aliases to avoid |
 | --- | --- | --- |
-| **Contract** | A set of assertions written during planning that define "done" independently of implementation, consumed only by validators | Test plan, acceptance criteria, spec |
-| **Assertion** | A single verifiable statement in a contract that a validator can check from outside the code | Test case, requirement, check |
+| **Contract** | A set of checks written during planning that define "done" independently of implementation, consumed only by validators | Test plan, acceptance criteria, spec |
+| **Check** | A single verifiable statement in a contract that a validator can verify from outside the code | Assertion (in contract context), test case, requirement |
 | **Brief** | A self-contained markdown file the orchestrator writes for a worker, containing the task description, project context, and procedures | Prompt, instructions, spec |
 | **Handoff** | A structured report a worker writes to disk after completing a task, including the commit SHA, approach taken, and any concerns | Report, summary, output |
 | **Vertical slice** | The default task quality standard. Each task must produce a concrete, testable output. When the approved strategy is vertical, tasks cross all layers. When layered or hybrid, tasks may be scoped to a single layer with a clear done state and test surface. | Horizontal slice, layer |
@@ -25,10 +25,11 @@
 
 | Term | Definition | Aliases to avoid |
 | --- | --- | --- |
-| **Scrutiny validator** | The first validator type that runs build, test, lint, code review, code simplify, and test health checks against the contract | Code reviewer, linter, static validator |
+| **Gate** | A numbered step in the scrutiny validator's sequence (e.g., gate 3: tests, gate 10: contract checks). Gates report PASS, FAIL, WARN, SKIP, or N/A. | Check (in validator-step context), step, stage |
+| **Scrutiny validator** | The first validator type that runs build, test, lint, code review, code simplify, and test health gates against the contract | Code reviewer, linter, static validator |
 | **User-test validator** | The second validator type that tests behavior by hitting the API (HTTP tests) or driving a browser (agent-browser) | QA, E2E tester, integration tester |
-| **Behavioral conformance** | A scrutiny validator check (check 11) that verifies observable behavior by writing and executing a test script rather than reading the code. Falls back to "verified by inspection" if execution is inconclusive. | Behavioral test, execution test, runtime check |
-| **Final gates** | Whole-repo build, test, lint, and format checks run after the last task completes but before PR creation. Catches regressions introduced by later tasks (e.g., documentation or CI tasks) after the cleanup task ran. | Final checks, post-build gates, repo gates |
+| **Behavioral conformance** | A scrutiny validator gate (gate 11) that verifies observable behavior by writing and executing a test script rather than reading the code. Falls back to "verified by inspection" if execution is inconclusive. | Behavioral test, execution test, runtime check |
+| **Final gates** | Whole-repo build, test, lint, and format gates run after the last task completes but before PR creation. Catches regressions introduced by later tasks (e.g., documentation or CI tasks) after the cleanup task ran. | Final checks, post-build gates, repo gates |
 | **Module shape re-check** | A mandatory closing task that compares design.md module descriptions and Type Catalog names to what the code actually exposes, catching cumulative drift across tasks that per-task scrutiny cannot see | Shape check, surface audit, drift check |
 | **Demo video** | A recording of frontend functionality captured after both validators pass, created for human review | Screencast, screen recording |
 | **Fix loop** | The cycle where a validation failure spawns a fix worker, then both validators re-run, up to 3 attempts before asking the human | Retry, repair cycle |
@@ -44,7 +45,7 @@
 | **File size pre-pass** | A deterministic line count on touched files injected into the module depth review, ensuring the LLM reviewer cannot overlook large files | Line count check, size gate |
 | **Test quality review** | An LLM-based semantic review (owned skill: `/test-quality`) that evaluates whether tests verify meaningful behavior, checking for tautological assertions, implementation coupling, untested branches, and missing edge cases | Test review, test audit, test assessment |
 | **Tautological assertion** | A test assertion that passes regardless of whether the code works correctly (e.g., `assert!(true)`, `expect(x).toBeDefined()` without checking the value) | Empty assertion, no-op test, fake test |
-| **Self-gating check** | A scrutiny check that naturally skips itself when the diff contains no relevant files, requiring no explicit closing-task exemption | Auto-skip, conditional check |
+| **Self-skipping gate** | A scrutiny gate that naturally skips itself when the diff contains no relevant files, requiring no explicit closing-task exemption | Auto-skip, conditional gate, self-gating check |
 
 ## Execution model
 
@@ -96,14 +97,14 @@
 | **Domain type** | A type that models the problem space. Excludes technical helpers (CLI parsers, test fixtures, generic containers) unless they are public compatibility surfaces | Helper type, utility type, internal type |
 | **Module Inventory** | A design.md section listing modules with interface width, what they hide, and why the boundary exists | Module table, module list |
 | **Design Template** | A reference document defining mandatory design.md sections and scoring rubrics, used by the orchestrator alongside openspec config rules | Design spec, design schema |
-| **Spec Reference** | A capability/scenario identifier (e.g., add-todo/1) used to trace contract assertions back to formal spec requirements | REQ-ID, requirement ID, spec ID |
+| **Spec Reference** | A capability/scenario identifier (e.g., add-todo/1) used to trace contract checks back to formal spec requirements | REQ-ID, requirement ID, spec ID |
 
 ## Relationships
 
 - A **Mission** belongs to exactly one **Change**
 - A **Change** contains one **Proposal**, one **Design**, one **Tasks** list, one **Contract**, and one **Mission directory**
 - Each **Task** maps to one **Worker** invocation, one git commit, and one validation cycle
-- A **Contract** contains **Assertions** grouped by **Task**
+- A **Contract** contains **Checks** grouped by **Task**
 - The **Orchestrator** writes **Briefs** and reads **Handoffs**
 - The **Orchestrator** spawns Codex **Workers** through the **Dispatcher**, and Claude **Workers** and **Validators** through the Agent tool
 - The **Dispatcher** supervises the Codex process: it manages the **Process group**, emits **Heartbeats**, enforces the **Two-phase timeout**, and returns a **Dispatch result**
@@ -112,14 +113,14 @@
 - A **Fix loop** produces versioned **Handoffs** (task-N-fix-v2.md) and re-runs both **Validators**
 - The **Circuit breaker** halts the **Fix loop** and returns control to the human
 - The **Dispatch store** is independent of the **Mission directory** -- it holds dispatcher metadata, not mission state
-- The **Scrutiny validator** runs deterministic checks (build, lint, **Silent skip** detection, **Diff coverage**, **Error handling smell** density, **File size pre-pass**) and LLM checks (code review, module depth, **Test quality review**)
+- The **Scrutiny validator** runs deterministic **Gates** (build, lint, **Silent skip** detection, **Diff coverage**, **Error handling smell** density, **File size pre-pass**) and LLM **Gates** (code review, module depth, **Test quality review**)
 - **Diff coverage** measures added lines only -- a worker is responsible for covering the code they wrote, not backfilling pre-existing debt
 - The **Test quality review** (`/test-quality`) is an owned skill invoked by the **Scrutiny validator** as a subagent, following the same pattern as `/review` and `/simplify`
 - A **Tautological assertion** is worse than no test because it gives false confidence -- the **Scrutiny validator** treats it as a hard FAIL
 - **Deterministic Anchors** are populated from design.md during Phase 4.3 and stored in the **Plan** -- they reference the **Type Catalog**, **Module Inventory**, and **Architecture Candidate Scoring** results
 - The **Type Catalog** draws **Domain type** names from this glossary. **Worker briefs** list relevant **Type Catalog** entries as exact names to use in code. The **Foundation Audit** checks task 1 names against the **Type Catalog**. The **Module shape re-check** verifies all **Type Catalog** names at the end.
 - The **Foundation Audit** runs once after task 1, comparing committed code against the **Module Inventory** and **Type Catalog** from design.md
-- **Spec References** in the **Contract** trace back to specific **Spec** capability/scenario pairs (e.g., add-todo/1), replacing arbitrary row numbers
+- **Spec References** in the **Contract** trace **Checks** back to specific **Spec** capability/scenario pairs (e.g., add-todo/1), replacing arbitrary row numbers
 - **Task Topology** metadata is written per task in tasks.md and reviewed during Phase 4.4 -- tasks touching more than 2 architectural layers are flagged for human review
 - The **Design Template** is a reference document in `templates/` -- the actual design.md generation is driven by openspec config rules that require the same sections
 
@@ -131,7 +132,7 @@
 >
 > **Dev:** "At least three -- WebSocket setup, notification delivery, and the UI. Each is a **Vertical slice** cutting through the API and frontend."
 >
-> **Orchestrator:** "That's a good fit. Let me **/grill** you on the requirements first, then I'll create the **Change** via **/opsx:propose** and write the **Contract** before any **Workers** start."
+> **Orchestrator:** "That's a good fit. Let me **/grill** you on the requirements first, then I'll create the **Change** via **/opsx:propose** and write the **Contract** with its **Checks** before any **Workers** start."
 >
 > **Dev:** "What if the Codex **Worker** hangs during the WebSocket task?"
 >
@@ -177,6 +178,6 @@
 
 - **"task"** was used early in the conversation to mean both a micro-step within a feature and a bounded unit of worker work. **Resolved:** keep "task" as the standard term. The guidance is that each task should follow the approved task quality standard, but the term "task" is unchanged from OpenSpec. "Slice" is not a standalone noun -- it's a quality standard for tasks.
 - **"spec"** was used to mean both SDD spec files and the planning phase of the mission flow. **Resolved:** SDD specs are not part of Darkfactory's vocabulary. In Darkfactory, **Spec** refers exclusively to the planning phase (`align -> spec -> contract -> build -> validate -> ship`) where the orchestrator creates OpenSpec artifacts and the contract. SDD is a separate workflow for documenting existing code after the fact.
-- **"validation"** was used for both the contract assertions and the act of running validators. **Resolved:** the **Contract** contains **Assertions**. **Validation** is the act of a **Validator** checking those assertions against the code. Be consistent: don't use "validation" to refer to the contract itself.
+- **"validation"** was used for both the contract checks and the act of running validators. **Resolved:** the **Contract** contains **Checks**. **Validation** is the act of a **Validator** verifying those checks against the code. Be consistent: don't use "validation" to refer to the contract itself.
 - **"coverage"** could mean line coverage (percentage of lines executed during tests) or spec coverage (percentage of PRD requirements mapped to tasks). **Resolved:** **Diff coverage** means line coverage on added lines in a git diff. **Coverage audit** means the spec-to-task mapping in Phase 4a. Don't use "coverage" without the qualifier.
-- **"check"** could mean a scrutiny validator step or a contract assertion. **Resolved:** a **Check** is a step in the scrutiny validator's sequence (e.g., check 3: tests, check 12: silent skip detection). An **Assertion** is a statement in the contract. Don't use "check" to refer to contract assertions.
+- **"check" / "assertion" / "gate"** had overlapping usage across contract items, validator steps, and code test assertions. **Resolved** with a three-way split: a **Gate** is a numbered step in the scrutiny validator's sequence (e.g., gate 3: tests, gate 10: contract checks). A **Check** is a single verifiable statement in a contract. An **Assertion** is reserved for code test assertions only (e.g., **Tautological assertion**, `assert_eq!`, `expect().toBe()`). Don't use "assertion" for contract items or "check" for validator steps.

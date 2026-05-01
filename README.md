@@ -93,16 +93,16 @@ After the first task passes validation, the orchestrator runs a foundation audit
 
 After each worker finishes, two validators check the work:
 
-1. **Scrutiny validator** -- a thorough quality check that runs a sequence of checks:
+1. **Scrutiny validator** -- a thorough quality review that runs a sequence of gates:
    - Do tests exist? (auto-fails the task if not)
    - Does the project build, do the tests pass, does the linter pass?
-   - Code review and code standards check
+   - Code review and code standards gate
    - Module depth review -- did the change make modules shallower or leak internal details?
-   - Complexity check -- is the code more complex than it needs to be?
+   - Complexity gate -- is the code more complex than it needs to be?
    - Security review (only when the changes touch auth, secrets, user input, network boundaries, or filesystem trust boundaries)
-   - Contract check -- does the code do what the contract says it should?
-   - Execution check -- actually runs the code to confirm it works, rather than just reading the source
-   - Test health checks -- silent skip detection, diff coverage on changed lines, and test quality review
+   - Contract checks gate -- does the code do what the contract says it should?
+   - Behavioral conformance gate -- actually runs the code to confirm it works, rather than just reading the source
+   - Test health gates -- silent skip detection, diff coverage on changed lines, and test quality review
 
 2. **User-test validator** -- tests the feature the way a user would. It decides whether to hit an API with HTTP requests, drive a browser, or both, based on what the task changed.
 
