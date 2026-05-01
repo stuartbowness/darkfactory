@@ -591,7 +591,7 @@ Spawn a Claude subagent (via the Agent tool) with this prompt:
 
 #### Scrutiny Validator Prompt
 
-Read [prompts/scrutiny-validator.md](prompts/scrutiny-validator.md) and use it as the subagent prompt. Fill in the commit SHA and contract assertions for this task. The prompt runs 11 checks: test presence, build, tests, lint, code review, module depth, code standards, simplify, security (if applicable), contract assertions, behavioral conformance.
+Read [prompts/scrutiny-validator.md](prompts/scrutiny-validator.md) and use it as the subagent prompt. Fill in the commit SHA and contract assertions for this task. The prompt runs 14 gates: test presence, build, tests, lint, code review, module depth, code standards, simplify, security (if applicable), contract assertions, behavioral conformance, silent skip detection, diff coverage, test quality review.
 
 Read the validator's report from `mission/validations/task-N-scrutiny.md`.
 
@@ -609,8 +609,8 @@ Track the attempt number (starts at 1 for the initial worker, increments on each
 ```markdown
 # Issue: Task N - <name> (Attempt <attempt>)
 
-## Failed Checks
-<list of failed checks from validator report>
+## Failed Gates
+<list of failed gates from validator report>
 
 ## Observed Symptoms
 <describe what went wrong in terms of behavior -- error messages, test failures, unexpected output. Do NOT copy contract assertion text here.>

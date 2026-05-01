@@ -8,7 +8,7 @@ SHA: <commit-sha>
 
 ## Deterministic Pre-passes
 
-Before starting the check sequence, gather deterministic facts from the repository and the task diff. Store the results under the exact named facts below so later checks can reference them by name. Do not inline these facts into individual check descriptions.
+Before starting the gate sequence, gather deterministic facts from the repository and the task diff. Store the results under the exact named facts below so later gates can reference them by name. Do not inline these facts into individual gate descriptions.
 
 ### Named facts
 
@@ -95,7 +95,7 @@ Store the result as `Error handling smells: <count> matches in <lines> changed p
 
 ### 4. Test runner output parsing
 
-This named fact is declared before the check sequence, then filled immediately after check 3 runs the project test command. Parse the captured test stdout/stderr summary line using the detected language:
+This named fact is declared before the gate sequence, then filled immediately after gate 3 runs the project test command. Parse the captured test stdout/stderr summary line using the detected language:
 
 - Rust: `test result: ok. N passed; M failed; P ignored`
 - Jest: `Tests: N passed, M failed, P skipped, Q total`
@@ -106,9 +106,9 @@ Treat Rust `ignored` as skipped for the named fact. Compute pass rate as `passed
 
 Store the result as `Test runner: <passed> passed, <failed> failed, <skipped> skipped (<pass_rate>% pass rate)`.
 
-## Check Sequence
+## Gate Sequence
 
-Run these checks in order. For each, report PASS or FAIL with evidence.
+Run these gates in order. For each, report PASS or FAIL with evidence.
 
 1. **Test presence gate:** Run `git show <commit-sha> --stat` and check if any test files were added or modified. If the diff contains zero test files and zero new test assertions, this is an automatic FAIL. Workers are required to use /tdd -- no new tests means TDD was not followed. Exception: closing tasks that produce no testable code (documentation, cleanup, module shape re-check) are exempt from this gate.
 
@@ -158,7 +158,7 @@ Run these checks in order. For each, report PASS or FAIL with evidence.
 
    Report: write one bullet per individual finding instance; state which symbol or boundary is affected and why it matters for depth. If nothing flagged, write 'No module depth issues.'
 
-7. **Code standards check:** Review the diff for these specific anti-patterns. Flag any found:
+7. **Code standards gate:** Review the diff for these specific anti-patterns. Flag any found:
    Before reviewing code standards, read the `Error handling smells` named fact from the deterministic pre-pass.
 
    Error handling smell density:
@@ -267,8 +267,8 @@ Use this format:
 
 ## Result: PASS | FAIL
 
-## Check Results
-| Check | Result | Notes |
+## Gate Results
+| Gate | Result | Notes |
 |-------|--------|-------|
 | Test presence | PASS/FAIL | ... |
 | Build | PASS/FAIL | ... |
@@ -298,4 +298,4 @@ Use this format:
 <specific guidance for fixing the failures>
 ```
 
-IMPORTANT: The overall result is FAIL if ANY check fails or ANY contract assertion fails. Be strict. A near-miss is still a FAIL.
+IMPORTANT: The overall result is FAIL if ANY gate fails or ANY contract assertion fails. Be strict. A near-miss is still a FAIL.
