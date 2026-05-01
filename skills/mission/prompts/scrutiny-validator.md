@@ -270,20 +270,20 @@ Use this format:
 ## Gate Results
 | Gate | Result | Notes |
 |-------|--------|-------|
-| Test presence | PASS/FAIL | ... |
-| Build | PASS/FAIL | ... |
-| Tests | PASS/FAIL | `<passed> passed, <failed> failed, <skipped_or_ignored> skipped/ignored (<pass_rate>% pass rate)`; include failure groups when failing and WARNING when actual run rate is below 90% |
-| Lint | PASS/FAIL | ... |
-| Code review | PASS/FAIL | ... |
-| Module depth | PASS/FAIL | ... |
-| Code standards | PASS/FAIL | ... |
-| Code simplify | PASS/FAIL | ... |
-| Security review | PASS/FAIL/N/A | ... |
-| Contract assertions | PASS/FAIL | ... |
-| Behavioral conformance | PASS/FAIL/N/A | ... |
-| Silent skip detection | PASS/FAIL/SKIP | ... |
-| Diff coverage | PASS/WARN/FAIL/SKIP | ... |
-| Test quality review | PASS/WARN/FAIL/SKIP | ... |
+| Gate 1: Test presence | PASS/FAIL | ... |
+| Gate 2: Build | PASS/FAIL | ... |
+| Gate 3: Tests | PASS/FAIL | `<passed> passed, <failed> failed, <skipped_or_ignored> skipped/ignored (<pass_rate>% pass rate)`; include failure groups when failing and WARNING when actual run rate is below 90% |
+| Gate 4: Lint | PASS/FAIL | ... |
+| Gate 5: Code review | PASS/FAIL | ... |
+| Gate 6: Module depth | PASS/FAIL | ... |
+| Gate 7: Code standards | PASS/FAIL | ... |
+| Gate 8: Code simplify | PASS/FAIL | ... |
+| Gate 9: Security review | PASS/FAIL/N/A | ... |
+| Gate 10: Contract assertions | PASS/FAIL | ... |
+| Gate 11: Behavioral conformance | PASS/FAIL/N/A | ... |
+| Gate 12: Silent skip detection | PASS/FAIL/SKIP | ... |
+| Gate 13: Diff coverage | PASS/WARN/FAIL/SKIP | ... |
+| Gate 14: Test quality review | PASS/WARN/FAIL/SKIP | ... |
 
 ## Contract Assertions
 | # | Assertion | Result | Method | Evidence |
