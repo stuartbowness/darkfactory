@@ -60,11 +60,11 @@ For each commit from the inventory, in order:
 
 - Logic errors or edge cases not covered by tests
 - Cross-file inconsistencies within this commit (types, interfaces, naming)
-- Contract assertions that technically pass but have subtle flaws
+- Contract checks that technically pass but have subtle flaws
 - Security issues, race conditions, or data integrity problems
 - Missing error handling or graceful degradation
 - Test doubles leaking into production code paths (NullBridge pattern)
-- Gaming of contract assertions (smoke test that bypasses real wiring, etc.)
+- Gaming of contract checks (smoke test that bypasses real wiring, etc.)
 
 For each finding, classify severity as HIGH, MEDIUM, or LOW. Cite file paths and line numbers.
 
@@ -74,7 +74,7 @@ Once every commit has been reviewed, re-read the `## Task N` sections of your ow
 
 - A type or interface introduced in task N consumed incorrectly by task N+k
 - Race conditions or ordering issues between tasks touching shared state
-- A contract assertion that no single commit falsifies but the combined behavior does
+- A contract check that no single commit falsifies but the combined behavior does
 - Integration gaps where task A's outputs do not meet task B's expectations
 
 To verify suspicions, read the **final state** of files from the current working tree (not historical commit blobs). The working tree reflects what will actually ship; commit blobs reflect a point in time that may have been amended by a later fix. Append findings to the `## Cross-task` section.

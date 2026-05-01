@@ -34,14 +34,14 @@ Inner loop per task: `spec -> build -> verify -> ship` with repetition on valida
 - Default engine: Codex (configurable in mission/config.yaml)
 
 ### Per-task validators (run sequentially)
-1. **Scrutiny validator** -- test presence gate, build/test/lint, /review, code standards, /simplify, /security (conditional), contract assertions. Always runs.
+1. **Scrutiny validator** -- test presence gate, build/test/lint, /review, code standards, /simplify, /security (conditional), contract checks. Always runs.
 2. **User-test validator** -- decides API tests (HTTP) and/or browser tests (agent-browser) based on what changed. Always runs.
 3. **Demo video** -- recorded after both validators pass, for frontend tasks. Orchestrator decides when.
 
 ### End-of-mission review
 4. **Dual adversarial review** -- runs once after the draft PR is created, against the full diff. Codex and Claude independently review the code. Both reports are presented to the human. No automated fix loop -- the human decides what to address.
 
-Validators receive: commit SHA + contract assertions. They do NOT receive proposal, design, or worker reasoning.
+Validators receive: commit SHA + contract checks. They do NOT receive proposal, design, or worker reasoning.
 
 ### Fix Loop
 - On validation failure: orchestrator writes a symptom-based fix brief (no contract text) to mission/issues/, spawns a fix worker
@@ -81,7 +81,7 @@ Validators receive: commit SHA + contract assertions. They do NOT receive propos
 
 ### OpenSpec integration
 - `/mission` is the single workflow for all work (small fixes to large epics). Scope adapts naturally.
-- contract.md is a new OpenSpec artifact (validation assertions, written during planning)
+- contract.md is a new OpenSpec artifact (validation checks, written during planning)
 - mission/ directory nests inside openspec/changes/<change-name>/
 - Archiving the change archives the mission artifacts too
 
@@ -137,9 +137,9 @@ For each unchecked task in tasks.md:
 2. Write brief to mission/briefs/task-N.md
 3. Kick off worker via Bash `run_in_background` (engine per config.yaml)
 4. On completion, read mission/handoffs/task-N.md
-5. Spawn scrutiny validator (commit SHA + contract assertions)
+5. Spawn scrutiny validator (commit SHA + contract checks)
 6. If fail -> write symptom-based fix brief, spawn fix worker, re-validate both. Circuit breaker: 3 attempts -> ask human.
-7. Spawn user-test validator (commit SHA + contract assertions)
+7. Spawn user-test validator (commit SHA + contract checks)
 8. If fail -> same fix/re-validate loop
 9. If frontend task -> spawn demo video
 10. Mark task complete in tasks.md, update progress.md
@@ -216,11 +216,11 @@ openspec/changes/<change-name>/
 # Contract
 
 ## Task 1: [name]
-- [Assertion verifiable from outside without knowing the code]
-- [Another assertion]
+- [Check verifiable from outside without knowing the code]
+- [Another check]
 
 ## Task 2: [name]
-- [Assertion]
+- [Check]
 ```
 
 ## Fix Brief Format
@@ -229,7 +229,7 @@ openspec/changes/<change-name>/
 # Fix Brief: Task N - [name] (Attempt 2)
 
 ## What Failed
-[Specific failed assertions from the validator report]
+[Specific failed checks from the validator report]
 
 ## Validator Output
 [Relevant error messages, test failures, review findings]

@@ -31,7 +31,7 @@ Read all artifacts for the selected mission:
 | Tasks | `openspec/changes/<change-name>/tasks.md` | Which tasks are done, which remain |
 | Progress log | `mission/progress.md` | Chronological record of what happened |
 | Mission config | `mission/config.yaml` | Engine assignments |
-| Contract | `contract.md` | Assertions grouped by task for validators |
+| Contract | `contract.md` | Checks grouped by task for validators |
 | Proposal | `proposal.md` | What is being built and why |
 | Design | `design.md` | Architecture decisions |
 

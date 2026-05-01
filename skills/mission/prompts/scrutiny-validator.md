@@ -3,8 +3,8 @@ You are a scrutiny validator for the Darkfactory mission system. Your job is to 
 ## Commit to Validate
 SHA: <commit-sha>
 
-## Contract Assertions for This Task
-<paste the assertions from contract.md for task N>
+## Contract Checks for This Task
+<paste the checks from contract.md for task N>
 
 ## Deterministic Pre-passes
 
@@ -179,19 +179,19 @@ Run these gates in order. For each, report PASS or FAIL with evidence.
 
 9. **Security review:** If the diff touches auth, secrets, user input, network boundaries, or filesystem trust boundaries (copying/moving/promoting files between directories, extracting archives, sandbox-to-production transfers), run /security. Otherwise "N/A."
 
-10. **Contract assertions:** Mark each assertion PASS, FAIL, or SKIP with a one-line explanation. SKIPs for work deferred to later tasks: append to `mission/deferrals.md` as `task N -- <assertion>`.
+10. **Contract checks:** Mark each check PASS, FAIL, or SKIP with a one-line explanation. SKIPs for work deferred to later tasks: append to `mission/deferrals.md` as `task N -- <check>`.
 
-11. **Behavioral conformance:** For each assertion that describes observable behavior (CLI output, exit codes, file content, API response, shell behavior), write and execute a minimal test script that verifies the behavior by actually running the code. Do not rely solely on reading the code -- run it. Examples:
-    - CLI flag assertion: run the binary with the flag, check output
-    - Exit code assertion: run the command, check `$?`
-    - Shell alias assertion: source the alias, run `type <name>`, check the definition
-    - API response assertion: curl the endpoint, check the response body
+11. **Behavioral conformance:** For each check that describes observable behavior (CLI output, exit codes, file content, API response, shell behavior), write and execute a minimal test script that verifies the behavior by actually running the code. Do not rely solely on reading the code -- run it. Examples:
+    - CLI flag check: run the binary with the flag, check output
+    - Exit code check: run the command, check `$?`
+    - Shell alias check: source the alias, run `type <name>`, check the definition
+    - API response check: curl the endpoint, check the response body
     
-    If an assertion cannot be tested via execution (e.g., internal architecture, code organization, build configuration), mark it as "verified by inspection" with an explanation of why execution was not possible.
+    If a check cannot be tested via execution (e.g., internal architecture, code organization, build configuration), mark it as "verified by inspection" with an explanation of why execution was not possible.
     
     If a behavioral test is inconclusive (e.g., the test script errors out, the environment lacks a dependency), mark it as "verified by inspection (execution inconclusive: <reason>)" and fall back to code reading. Do not let an inconclusive execution check block the validation.
     
-    Report each assertion's verification method (execution or inspection) in the contract assertions table.
+    Report each check's verification method (execution or inspection) in the contract checks table.
 
 12. **Silent skip detection:** Grep test files in the diff for language-specific patterns that cause tests to report PASS while testing nothing. Use the `Detected language` named fact from the deterministic pre-pass to choose the primary language-specific scan, and also inspect file extensions in the diff so mixed-language projects are covered.
 
@@ -279,23 +279,23 @@ Use this format:
 | Gate 7: Code standards | PASS/FAIL | ... |
 | Gate 8: Code simplify | PASS/FAIL | ... |
 | Gate 9: Security review | PASS/FAIL/N/A | ... |
-| Gate 10: Contract assertions | PASS/FAIL | ... |
+| Gate 10: Contract checks | PASS/FAIL | ... |
 | Gate 11: Behavioral conformance | PASS/FAIL/N/A | ... |
 | Gate 12: Silent skip detection | PASS/FAIL/SKIP | ... |
 | Gate 13: Diff coverage | PASS/WARN/FAIL/SKIP | ... |
 | Gate 14: Test quality review | PASS/WARN/FAIL/SKIP | ... |
 
-## Contract Assertions
-| # | Assertion | Result | Method | Evidence |
-|---|-----------|--------|--------|----------|
-| 1 | <assertion text> | PASS/FAIL | execution/inspection | <one-line evidence> |
+## Contract Checks
+| # | Check | Result | Method | Evidence |
+|---|-------|--------|--------|----------|
+| 1 | <check text> | PASS/FAIL | execution/inspection | <one-line evidence> |
 | 2 | ... | ... | ... | ... |
 
-## Failed Assertions (if any)
+## Failed Checks (if any)
 <detailed explanation of each failure>
 
 ## Recommendations (if FAIL)
 <specific guidance for fixing the failures>
 ```
 
-IMPORTANT: The overall result is FAIL if ANY gate fails or ANY contract assertion fails. Be strict. A near-miss is still a FAIL.
+IMPORTANT: The overall result is FAIL if ANY gate fails or ANY contract check fails. Be strict. A near-miss is still a FAIL.
