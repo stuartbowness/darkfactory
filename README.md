@@ -188,6 +188,11 @@ Darkfactory is controlled through skills -- reusable prompt templates you invoke
 | `/security` | Security review. The scrutiny validator runs this when the diff touches auth, secrets, user input, or network/filesystem boundaries. |
 | `/adversarial` | Dual-agent code review: dispatches a Codex reviewer and a Claude reviewer with identical input, then surfaces disagreements. |
 | `/dispatch` | Run a coding task via `darkfactory-dispatch`. Accepts a task description inline or prompts for one. Presents structured outcome. |
+| `/arch-review` | Architecture review with guides for deepening modules, interface design, and language precision. Standalone -- not yet wired into missions. |
+| `/domain-model` | Domain modeling with ADR and bounded context formats. Standalone -- not yet wired into missions. |
+| `/module-design` | Module design and boundary analysis. Standalone -- not yet wired into missions. |
+| `/qa` | QA review skill. Standalone -- not yet wired into missions. |
+| `/write-a-skill` | Meta-skill for writing new Darkfactory skills. Standalone -- not yet wired into missions. |
 
 ### Skill structure
 

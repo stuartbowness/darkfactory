@@ -194,6 +194,13 @@ Skills (via ~/.claude/skills/ symlinks):
   [x] /adversarial
   [x] /dispatch
 
+Optional standalone skills:
+  [ ] /arch-review (optional - standalone)
+  [ ] /domain-model (optional - standalone)
+  [ ] /module-design (optional - standalone)
+  [ ] /qa (optional - standalone)
+  [ ] /write-a-skill (optional - standalone)
+
 Optional project skills:
   [ ] /test-app (optional - project-specific)
   [ ] /demo-video (optional - project-specific)
@@ -214,7 +221,15 @@ OpenSpec:
 Ready: run /mission to start.
 ```
 
-Also check optional project skills at these locations:
+Also check optional standalone skills at these locations:
+
+- `$HOME/.claude/skills/arch-review`
+- `$HOME/.claude/skills/domain-model`
+- `$HOME/.claude/skills/module-design`
+- `$HOME/.claude/skills/qa`
+- `$HOME/.claude/skills/write-a-skill`
+
+And optional project skills at these locations:
 
 - `$HOME/.claude/skills/test-app`
 - `$HOME/.claude/skills/demo-video`
