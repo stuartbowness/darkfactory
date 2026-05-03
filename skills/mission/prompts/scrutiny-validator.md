@@ -110,7 +110,7 @@ Store the result as `Test runner: <passed> passed, <failed> failed, <skipped> sk
 
 Run these gates in order. For each, report PASS or FAIL with evidence.
 
-1. **Test presence gate:** Run `git show <commit-sha> --stat` and check if any test files were added or modified. If the diff contains zero test files and zero new test assertions, this is an automatic FAIL. Workers are required to use /tdd -- no new tests means TDD was not followed. Exception: closing tasks that produce no testable code (documentation, cleanup, module shape re-check) are exempt from this gate.
+1. **Test presence gate:** Run `git show <commit-sha> --stat` and check if any test files were added or modified. If the diff contains zero test files and zero new test assertions, this is an automatic FAIL. If the task has `Skill: /tdd`, the rationale is "TDD not followed." If the task has `Skill: /frontend`, the rationale is "/frontend Test phase not followed." Exception: closing tasks that produce no testable code (documentation, cleanup, module shape re-check) are exempt from this gate.
 
 2. **Build:** Run the project's build command. Does it pass?
 
@@ -158,7 +158,29 @@ Run these gates in order. For each, report PASS or FAIL with evidence.
 
    Report: write one bullet per individual finding instance; state which symbol or boundary is affected and why it matters for depth. If nothing flagged, write 'No module depth issues.'
 
-7. **Code standards gate:** Review the diff for these specific anti-patterns. Flag any found:
+7. **Frontend depth review:** If the diff contains zero `.tsx` or `.jsx` files, report `frontend-depth | SKIP | no React component files in diff` and move to the next gate.
+
+   When `.tsx`/`.jsx` files are present, evaluate each against the four deep-component rules defined in `skills/frontend/DEEP-COMPONENTS.md`:
+
+   - **Small semantic interface:** Flag components where the caller must understand more than 7 independent semantic concepts (count props + context providers consumed + URL params read + cache keys depended on). Do not count raw prop count alone — a component with 6 props describing one domain concept is deep. Exempt components in `*/ui/*` directories, components with only `className` + `children` + `...rest` props (design system leaves), and components importing from `@radix-ui/*` that wrap a Radix primitive with styling (headless behavior primitives).
+   - **Derive don't sync:** Flag `useEffect` paired with `setState` where the effect body is pure data transformation (no I/O, no subscriptions, no browser APIs). Suggest `useMemo` or inline computation as remediation. Do not flag effects that perform I/O, subscribe to external sources, or call imperative browser APIs.
+   - **Composition over configuration:** Flag components accepting config-style props — arrays of item objects or option objects with more than 5 configuration entries — where compound components with children/slots would be clearer. Do not flag headless primitives or design system components that use config props by convention.
+   - **Collapse coordination:** Flag components that expose coordination knobs such as `onStep1Complete`, `onValidate`, `onReset`, `onLoadingChange` rather than semantic events such as `onSubmit`, `onCancel`, `onSelect`, `onChange`. Coordination knobs indicate the parent is driving the child's internal workflow rather than the child owning it.
+
+   Allowed-shallow exceptions (do not flag these for depth violations):
+   - Components in `*/ui/*` directories
+   - Components with only `className` + `children` + `...rest` props
+   - Components importing from `@radix-ui/*` that wrap a Radix primitive
+   - Route/layout glue components (thin wrappers that read route params and pass data)
+
+   Verdict:
+   - PASS: No violations found, or all flagged items are in allowed-shallow exception categories.
+   - WARN: Isolated finding in a single component.
+   - FAIL: Systematic violations found across multiple components in the diff.
+
+   Report: Write one bullet per finding instance; state which component, which rule, and what specifically violates it. If nothing flagged, write "No frontend depth issues."
+
+8. **Code standards gate:** Review the diff for these specific anti-patterns. Flag any found:
    Before reviewing code standards, read the `Error handling smells` named fact from the deterministic pre-pass.
 
    Error handling smell density:
@@ -175,13 +197,13 @@ Run these gates in order. For each, report PASS or FAIL with evidence.
    - Feature flags for dead code: if the old way is being replaced, delete it. Don't gate behind a flag.
    - Defensive handling of impossible states: catch blocks or null checks for conditions that cannot occur given current code paths.
 
-8. **Code simplify:** Run /simplify against the changed files. 
+9. **Code simplify:** Run /simplify against the changed files.
 
-9. **Security review:** If the diff touches auth, secrets, user input, network boundaries, or filesystem trust boundaries (copying/moving/promoting files between directories, extracting archives, sandbox-to-production transfers), run /security. Otherwise "N/A."
+10. **Security review:** If the diff touches auth, secrets, user input, network boundaries, or filesystem trust boundaries (copying/moving/promoting files between directories, extracting archives, sandbox-to-production transfers), run /security. Otherwise "N/A."
 
-10. **Contract checks:** Mark each check PASS, FAIL, or SKIP with a one-line explanation. SKIPs for work deferred to later tasks: append to `mission/deferrals.md` as `task N -- <check>`.
+11. **Contract checks:** Mark each check PASS, FAIL, or SKIP with a one-line explanation. SKIPs for work deferred to later tasks: append to `mission/deferrals.md` as `task N -- <check>`.
 
-11. **Behavioral conformance:** For each check that describes observable behavior (CLI output, exit codes, file content, API response, shell behavior), write and execute a minimal test script that verifies the behavior by actually running the code. Do not rely solely on reading the code -- run it. Examples:
+12. **Behavioral conformance:** For each check that describes observable behavior (CLI output, exit codes, file content, API response, shell behavior), write and execute a minimal test script that verifies the behavior by actually running the code. Do not rely solely on reading the code -- run it. Examples:
     - CLI flag check: run the binary with the flag, check output
     - Exit code check: run the command, check `$?`
     - Shell alias check: source the alias, run `type <name>`, check the definition
@@ -193,7 +215,7 @@ Run these gates in order. For each, report PASS or FAIL with evidence.
     
     Report each check's verification method (execution or inspection) in the contract checks table.
 
-12. **Silent skip detection:** Grep test files in the diff for language-specific patterns that cause tests to report PASS while testing nothing. Use the `Detected language` named fact from the deterministic pre-pass to choose the primary language-specific scan, and also inspect file extensions in the diff so mixed-language projects are covered.
+13. **Silent skip detection:** Grep test files in the diff for language-specific patterns that cause tests to report PASS while testing nothing. Use the `Detected language` named fact from the deterministic pre-pass to choose the primary language-specific scan, and also inspect file extensions in the diff so mixed-language projects are covered.
 
     Test file detection uses the same language-specific patterns as the file size count exclusions: Rust files in `tests/` or files containing `#[test]`; TypeScript/Node `*.test.ts`, `*.spec.ts`, or files in `__tests__/`; Python `test_*.py`, `*_test.py`, or files in `tests/`.
 
@@ -218,7 +240,7 @@ Run these gates in order. For each, report PASS or FAIL with evidence.
 
     Report failures as `silent-skip-detection | FAIL | N silent skips found`. For each instance, list the file path, line number, test function name, and language-appropriate remediation guidance: Rust: "fail explicitly with `panic!("requires X")` or mark with `#[ignore]`"; TypeScript: "throw an error or use `it.skip()`"; Python: "call `pytest.skip("reason")` or use `@pytest.mark.skip`".
 
-13. **Diff coverage:** Use the `Detected language` named fact from the deterministic pre-pass to select the coverage tool. Run coverage for the primary language only. In multi-language projects, use the language with the most production source files in the diff; do not run two coverage tools.
+14. **Diff coverage:** Use the `Detected language` named fact from the deterministic pre-pass to select the coverage tool. Run coverage for the primary language only. In multi-language projects, use the language with the most production source files in the diff; do not run two coverage tools.
 
     First identify changed production source files for the selected language. Use the same production source and standalone test exclusions as the file size count:
     - Rust: include `.rs`; exclude files in `tests/`.
@@ -243,7 +265,7 @@ Run these gates in order. For each, report PASS or FAIL with evidence.
 
     Report success as `diff-coverage | PASS | 85% coverage on changed lines`. Report warnings as `diff-coverage | WARN | 74% coverage on changed lines (target: 80%)`. Report failures as `diff-coverage | FAIL | 55% coverage on changed lines (minimum: 70%)`. Include details listing under-covered files with added-line ranges that lack coverage.
 
-14. **Test quality review:** If the diff contains no test files, report `test-quality | SKIP | no test files in diff`.
+15. **Test quality review:** If the diff contains no test files, report `test-quality | SKIP | no test files in diff`.
 
     Run /test-quality as a subagent against the full diff, following the same delegation pattern as /review, /simplify, and /security. Read the skill markdown findings after the subagent completes. Findings are grouped by severity (P0, P1, P2, P3) and include file:line, evidence, and remediation.
 
@@ -276,14 +298,15 @@ Use this format:
 | Gate 4: Lint | PASS/FAIL | ... |
 | Gate 5: Code review | PASS/FAIL | ... |
 | Gate 6: Module depth | PASS/FAIL | ... |
-| Gate 7: Code standards | PASS/FAIL | ... |
-| Gate 8: Code simplify | PASS/FAIL | ... |
-| Gate 9: Security review | PASS/FAIL/N/A | ... |
-| Gate 10: Contract checks | PASS/FAIL | ... |
-| Gate 11: Behavioral conformance | PASS/FAIL/N/A | ... |
-| Gate 12: Silent skip detection | PASS/FAIL/SKIP | ... |
-| Gate 13: Diff coverage | PASS/WARN/FAIL/SKIP | ... |
-| Gate 14: Test quality review | PASS/WARN/FAIL/SKIP | ... |
+| Gate 7: Frontend depth review | PASS/FAIL/WARN/SKIP | ... |
+| Gate 8: Code standards | PASS/FAIL | ... |
+| Gate 9: Code simplify | PASS/FAIL | ... |
+| Gate 10: Security review | PASS/FAIL/N/A | ... |
+| Gate 11: Contract checks | PASS/FAIL | ... |
+| Gate 12: Behavioral conformance | PASS/FAIL/N/A | ... |
+| Gate 13: Silent skip detection | PASS/FAIL/SKIP | ... |
+| Gate 14: Diff coverage | PASS/WARN/FAIL/SKIP | ... |
+| Gate 15: Test quality review | PASS/WARN/FAIL/SKIP | ... |
 
 ## Contract Checks
 | # | Check | Result | Method | Evidence |
