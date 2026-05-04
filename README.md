@@ -50,7 +50,7 @@ Restart Claude Code, then from any project run:
 /mission-init
 ```
 
-This checks your entire setup and tells you exactly what's missing. It verifies all 12 skills are symlinked, CLI tools (codex, gh, openspec, darkfactory-dispatch, jq), coverage tools for your project's language (cargo-tarpaulin for Rust, jest/c8 for TypeScript, pytest-cov for Python), and initializes OpenSpec in the current project if needed.
+This checks your entire setup and tells you exactly what's missing. It verifies all required skills are symlinked, CLI tools (codex, gh, openspec, darkfactory-dispatch, jq), coverage tools for your project's language (cargo-tarpaulin for Rust, jest/c8 for TypeScript, pytest-cov for Python), and initializes OpenSpec in the current project if needed.
 
 ### Updating
 
@@ -179,14 +179,18 @@ Darkfactory is controlled through skills -- reusable prompt templates you invoke
 | `/mission` | Start an autonomous mission from scratch. Walks you through planning, dispatches workers, validates, and delivers a draft PR. |
 | `/mission-resume` | Resume a mission that was interrupted (session crash, closed terminal). Detects exactly where it left off and continues through to the draft PR and code review. |
 | `/mission-status` | Read-only progress check. Open a second terminal while a mission runs to see which tasks are done, in progress, or queued. |
-| `/mission-init` | Check your project setup. Verifies all 12 skill symlinks, CLI tools, and coverage tools. Runs `openspec init` if needed. |
+| `/mission-init` | Check your project setup. Verifies all 13 skill symlinks, CLI tools, and coverage tools. Runs `openspec init` if needed. |
 | `/grill` | Alignment interview: asks pointed questions until the goals, constraints, and edge cases are clear. Used in the mission planning phase. |
 | `/prd` | Turns an interview into a structured PRD filed as a GitHub issue. Used in the mission planning phase. |
 | `/language` | Creates a shared glossary (ubiquitous language) so you, the orchestrator, and all workers use the same terms. Used in the mission planning phase. |
-| `/tdd` | Test-driven development guidance. Workers invoke this during the build phase. Companion files cover deep modules, interfaces, mocking, refactoring, and test patterns. |
+| `/tdd` | Test-driven development guidance. Workers invoke this during the build phase for backend, hooks, and utility tasks. Companion files cover deep modules, interfaces, mocking, refactoring, and test patterns. |
+| `/frontend` | Prescriptive builder guide for React/TypeScript component development. Workers invoke this during the build phase for frontend component, page, and layout tasks. Defines the design-implement-test workflow with visual verification via chrome-devtools-mcp. Companion files: DEEP-COMPONENTS.md (four rules), STACK.md (tech stack), PATTERNS.md (code examples), TESTING.md (behavioral testing). |
+| `/ui-system` | ShadCN/Radix component selection, token discipline, composition patterns, and accessibility defaults. Constraint skill used alongside `/frontend`. Verbatim upstream content from shadcn/ui. |
+| `/react-perf` | React and Next.js performance optimization from Vercel Engineering. Waterfall elimination, bundle size, re-render discipline, server-side patterns. Constraint skill used alongside `/frontend`. Verbatim upstream content from Vercel. |
 | `/test-quality` | LLM-based semantic review of test effectiveness. The scrutiny validator runs this as a subagent after every worker commit. |
 | `/security` | Security review. The scrutiny validator runs this when the diff touches auth, secrets, user input, or network/filesystem boundaries. |
 | `/adversarial` | Dual-agent code review: dispatches a Codex reviewer and a Claude reviewer with identical input, then surfaces disagreements. |
+| `/artifact-review` | Review a planning artifact (language glossary, PRD, spec, design, tasks, contract) via Codex. Checks for ambiguity, terminology drift, contradictions, missing edge cases, coverage gaps, and feasibility. Used standalone or as a review gate in `/mission`. |
 | `/dispatch` | Run a coding task via `darkfactory-dispatch`. Accepts a task description inline or prompts for one. Presents structured outcome. |
 | `/arch-review` | Architecture review with guides for deepening modules, interface design, and language precision. Standalone -- not yet wired into missions. |
 | `/domain-model` | Domain modeling with ADR and bounded context formats. Standalone -- not yet wired into missions. |
@@ -210,6 +214,7 @@ All Darkfactory skills are bundled in this repo. `/mission` also calls two built
 
 | Skill | Source | When it's used |
 |-------|--------|---------|
+| `/artifact-review` | Bundled with Darkfactory (required) | Planning phases 2-5 and 4a: reviews each artifact before human Q&A |
 | `/review` | Built-in Claude Code (required) | Scrutiny validator: code review step |
 | `/simplify` | Built-in Claude Code (required) | Scrutiny validator: complexity check step |
 | `/test-app` | Your project's Claude skills (optional) | User-test validator: browser-based testing |

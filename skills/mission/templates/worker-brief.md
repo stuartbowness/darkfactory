@@ -50,7 +50,8 @@ Example:
 <Which later tasks in tasks.md will call this code? For each, name one minimum integration test that proves the call path works. Leave empty if no later task consumes this one.>
 
 ## Procedures
-- Use `/tdd` to implement this task
+- Use `<methodology from task Skill: field, default /tdd if no Skill: field>` to implement this task
+- <one line per Constraint from task topology, e.g. "Also follow /ui-system"; omit if no Constraints>
 - Commit all changes (code + tests) in a single commit with message: "[task-N] <description>"
 - Write your handoff report to openspec/changes/<change-name>/mission/handoffs/task-N.md
 

@@ -10,10 +10,10 @@ Verify the current project is ready to run `/mission`. Check skill symlinks, ini
 
 ## Step 1: Check Skill Symlinks
 
-Check these 12 owned skills:
+Check these 13 owned skills:
 
 ```bash
-mission mission-resume mission-status mission-init grill prd language tdd test-quality security adversarial dispatch
+mission mission-resume mission-status mission-init grill prd language tdd test-quality security adversarial dispatch artifact-review
 ```
 
 For each skill, verify:
@@ -34,7 +34,7 @@ Use this status format:
 Use a Bash pattern that always exits 0:
 
 ```bash
-for skill in mission mission-resume mission-status mission-init grill prd language tdd test-quality security adversarial dispatch; do
+for skill in mission mission-resume mission-status mission-init grill prd language tdd test-quality security adversarial dispatch artifact-review; do
   link="$HOME/.claude/skills/$skill"
   expected="$HOME/.darkfactory/skills/$skill"
 
@@ -61,10 +61,10 @@ If any required skill is missing, broken, or points to the wrong target, instruc
 
 Then tell them to restart Claude Code and re-run `/mission-init`. Stop after reporting the missing skill fixes.
 
-If all 12 skills are present and resolve correctly, report:
+If all 13 skills are present and resolve correctly, report:
 
 ```text
-All 12 skills: OK
+All 13 skills: OK
 ```
 
 Then continue.
@@ -120,7 +120,22 @@ Report each tool as installed, not installed, or not authenticated.
 - `openspec`: if missing, fix with `npm install -g @fission-ai/openspec`.
 - `jq`: if missing, fix with `brew install jq`.
 
-## Step 4: Coverage Tool Detection
+## Step 4: Browser Tools Check (conditional)
+
+If `browser_tools: true` in the mission's config.yaml (or if any task in the current mission has `Skill: /frontend`), check that chrome-devtools-mcp is registered:
+
+Attempt to call a chrome-devtools MCP tool to verify it is registered and responsive. Use a lightweight read-only tool such as `list_pages` or `get_console_message`. If the call succeeds (returns a result, even if empty), the server is available. If the call fails with a tool-not-found or connection error, the server is not registered.
+
+Alternatively, check whether any tool names starting with `mcp__chrome-devtools__` or `chrome-devtools` appear in the available tool list. If none are found, the server is not registered.
+
+If chrome-devtools-mcp is not registered:
+- Report: `[!] chrome-devtools-mcp - not registered (required when browser_tools: true)`
+- Fix: Install chrome-devtools-mcp from https://github.com/nichochar/chrome-devtools-mcp and add it to MCP configuration
+- This blocks mission launch for missions with `/frontend` tasks
+
+If `browser_tools: false` or no `/frontend` tasks exist, skip this check.
+
+## Step 5: Coverage Tool Detection
 
 Detect the project language from build files at the project root:
 
@@ -172,7 +187,7 @@ If no recognized build file exists, report:
 No recognized language detected - coverage tool check skipped.
 ```
 
-## Step 5: Report Status
+## Step 6: Report Status
 
 Print a structured report:
 
@@ -193,6 +208,7 @@ Skills (via ~/.claude/skills/ symlinks):
   [x] /security
   [x] /adversarial
   [x] /dispatch
+  [x] /artifact-review
 
 Optional standalone skills:
   [ ] /arch-review (optional - standalone)
@@ -212,6 +228,9 @@ CLI tools:
   [x] openspec
   [x] jq
 
+Browser tools:
+  [-] chrome-devtools-mcp (skipped - browser_tools: false and no /frontend tasks)
+
 Coverage:
   [x] cargo-tarpaulin (Rust detected)
 
@@ -228,6 +247,9 @@ Also check optional standalone skills at these locations:
 - `$HOME/.claude/skills/module-design`
 - `$HOME/.claude/skills/qa`
 - `$HOME/.claude/skills/write-a-skill`
+- `$HOME/.claude/skills/frontend`
+- `$HOME/.claude/skills/ui-system`
+- `$HOME/.claude/skills/react-perf`
 
 And optional project skills at these locations:
 

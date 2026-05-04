@@ -16,6 +16,7 @@ flow: align -> spec -> contract -> build -> validate -> ship
 8. **Plan is the operating manual.** Keep the plan updated after every phase and step. It must be accurate if context compacts.
 9. **Skipped tasks use `- [~]`.** The build loop treats `- [~]` as neither unchecked nor complete. Skipped tasks are not re-attempted.
 10. **Mark tasks done in tasks.md immediately.** After a task passes validation, change `- [ ]` to `- [x]` in tasks.md before moving to the next task. This is required for resume to work correctly.
+11. **Artifact review before human Q&A.** Every planning artifact (Phases 2-5 and 4a) is dispatched to Codex for review via `/artifact-review` before presenting to the human. Findings are shown alongside the artifact and the AI recommendation. If `/artifact-review` fails, note the failure and continue — review is non-blocking.
 
 ---
 
@@ -98,6 +99,8 @@ Run `/language` to create or update `UBIQUITOUS_LANGUAGE.md`.
 - If the file already existed and was read in Phase 0, this phase updates it with any new terms from the grill session.
 - If the file did not exist, this phase creates it. Read the file after creation so all subsequent phases use the terms.
 
+Run `/artifact-review` on the generated UBIQUITOUS_LANGUAGE.md before presenting to the human.
+
 **Gate -- proceed when:**
 - [ ] UBIQUITOUS_LANGUAGE.md exists and is loaded into context
 
@@ -112,7 +115,9 @@ Run `/language` to create or update `UBIQUITOUS_LANGUAGE.md`.
 
 Run `/prd` to turn the grill conversation into a structured product requirements document. Use terms from `UBIQUITOUS_LANGUAGE.md` consistently throughout the PRD. The PRD captures: problem statement, solution, user stories, implementation decisions, testing decisions, and out-of-scope items.
 
-After the issue is created, record both the issue URL and the issue number in the plan (under Spec Coverage Audit). The issue number is needed in Phase 9 to link the draft PR back to the issue.
+After the issue is created, run `/artifact-review` on the PRD content. If the review finds CRITICAL/HIGH issues, edit the GitHub issue to address them before proceeding.
+
+Record both the issue URL and the issue number in the plan (under Spec Coverage Audit). The issue number is needed in Phase 9 to link the draft PR back to the issue.
 
 **Gate -- proceed when:**
 - [ ] PRD filed as GitHub issue
@@ -143,9 +148,10 @@ The `spec-driven` schema generates four artifacts in dependency order: `proposal
 ### Review Pattern (used at every review point in planning)
 
 Every artifact review follows this pattern:
-1. **AI presents** -- show the artifact content to the human in the chat
-2. **AI recommends** -- state whether it looks good, flag any concerns, suggest specific changes if needed
-3. **Human decides** -- approve, request changes, or defer to the AI recommendation
+1. **Run `/artifact-review`** -- dispatch the artifact to Codex for review (per Rule 11)
+2. **AI presents** -- show the artifact content and the review findings (if any) to the human
+3. **AI recommends** -- state whether it looks good, incorporating review findings. Address CRITICAL/HIGH findings specifically — agree and suggest a fix, or explain why it's a false positive
+4. **Human decides** -- approve, request changes, or defer to the AI recommendation
 
 The human can always say "looks good" or "go with your recommendation" to keep momentum. If changes are requested, revise and re-present.
 
@@ -153,13 +159,13 @@ The human can always say "looks good" or "go with your recommendation" to keep m
 
 Generate `proposal.md` (what and why). This establishes the capabilities that will become spec files.
 
-Present it to the human with a recommendation. If approved, proceed to Phase 4.2.
+Run `/artifact-review` on the generated `proposal.md`. Present it to the human following the review pattern. If approved, proceed to Phase 4.2.
 
 ### Phase 4.2: Generate and Review Specs
 
 Generate `specs/<capability>/spec.md` files (one per capability listed in the proposal). Each spec contains formal WHEN/THEN requirements using SHALL/MUST language.
 
-Present all spec files to the human with a recommendation. Specs are the formal requirements that flow into tasks and the contract. Missing or vague specs are the primary cause of missed requirements in the final build.
+Run `/artifact-review` on each generated spec file. Present all spec files to the human following the review pattern. Specs are the formal requirements that flow into tasks and the contract. Missing or vague specs are the primary cause of missed requirements in the final build.
 
 If approved, proceed to Phase 4.3.
 
@@ -186,14 +192,14 @@ If a module has a large interface relative to its implementation, ask whether it
 
 When the mission modifies an existing codebase (not greenfield), the design must evaluate the current code structure against the planned architecture. For each module the design touches, read the existing code and assess whether it aligns with the target design. If existing modules are shallow, tightly coupled, or conflict with the planned architecture, the design should call this out explicitly and recommend refactoring as part of the implementation. These refactoring decisions flow naturally into task ordering in Phase 4.4 -- refactoring tasks go before the feature tasks that depend on them.
 
-Present it to the human with a recommendation.
-
-Before presenting it, run the Phase 4.3 design gate:
+Before presenting to the human, run the Phase 4.3 design gate:
 - Verify `design.md` contains all six required section headings from `templates/design-template.md`: Architecture Decision, Module Inventory, Type Catalog, Error Strategy, Integration Points, and Test Strategy. If any are missing, regenerate `design.md` before human review.
 - For greenfield missions or missions with explicit architecture changes, verify the Architecture Decision section contains 2-3 scored architecture candidates using the template rubric.
 - For existing codebase missions without architecture changes, scoring is not required. Verify the Architecture Decision section documents the current architecture and explains how the planned changes fit.
 - Enforce the hard floor: no recommended candidate can score 0 on any scoring dimension. If a candidate scores 0 on any dimension, flag it and recommend against it.
 - If candidates tie on total score, present the tied candidates to the human for discussion and selection. Do not apply an arbitrary tie-breaker.
+
+After the design gate passes, run `/artifact-review` on the generated `design.md`. Present it to the human following the review pattern.
 
 After the human approves design.md, populate 5 of the 6 Deterministic Anchors in the plan: workspace layout, primary domain types, error handling strategy, test strategy, and chosen architecture. Source values from design.md's Architecture Decision, Type Catalog, Error Strategy, and Test Strategy sections. Each anchor is a one-liner pointer with a source reference. The sixth anchor (task decomposition strategy) is populated in Phase 4.3a after the human approves the task strategy.
 
@@ -206,6 +212,27 @@ Before generating tasks.md, present a task decomposition strategy for human appr
 1. **Decomposition approach:** layered (types and domain logic first, then transport/CLI), vertical (each task cuts end-to-end through all layers), or hybrid (foundation layer first, then vertical slices). State which and why.
 2. **Target task count range:** e.g., "6-8 feature tasks + 4-5 closing tasks." Justify the range based on the module inventory from design.md.
 3. **Dependency ordering rationale:** which tasks must come first and why (e.g., "Task 1 defines core types that all subsequent tasks import").
+
+#### Frontend Task Decomposition (TypeScript React projects only)
+
+For TypeScript React projects, use the specific task layer vocabulary:
+
+| Layer | Skill | Rationale |
+|---|---|---|
+| `frontend/component` | `/frontend` | Visual React component work |
+| `frontend/page` | `/frontend` | Page composition |
+| `frontend/layout` | `/frontend` | Visual structure |
+| `frontend/hooks` | `/tdd` | Hooks have testable interfaces |
+| `backend` | `/tdd` | APIs, server logic |
+| `shared/types` | `/tdd` | Type contracts |
+| `shared/schema` | `/tdd` | Zod validation, pure logic |
+| `shared/utils` | `/tdd` | Pure utility functions |
+
+**Mechanical rule:** `/frontend` only when the layer starts with `frontend/` AND is not `frontend/hooks`. Everything else gets `/tdd`.
+
+Auto-set `browser_tools: true` in config.yaml when any task has `Skill: /frontend`.
+
+When a frontend feature contains complex logic (validation, state machines, data transformation), split it: one `/tdd` task for the logic as a hook/utility, one `/frontend` task for the component that consumes it. The `/tdd` task comes first in the task list.
 
 The human approves this strategy before tasks.md is generated. If rejected, revise and re-present.
 
@@ -237,6 +264,21 @@ Each task in tasks.md must include topology metadata in this fixed format:
   Layers: <logical architectural layers touched, e.g. domain, transport, storage>
 ```
 
+#### Skill and Constraint Validation (TypeScript React projects only)
+
+Task topology for TypeScript React projects includes two additional fields:
+
+```markdown
+Skill: </tdd or /frontend>
+Constraints: </ui-system, /react-perf, or "none">
+```
+
+Validation rules:
+- Exactly one `Skill:` value per task -- either `/tdd` or `/frontend`
+- Zero or more `Constraints:` values
+- `/ui-system` and `/react-perf` are only valid as mission constraints with `Skill: /frontend`. (Both skills are also independently invokable by humans via `/ui-system` or `/react-perf` outside of missions — the constraint restriction applies only to mission task topology.)
+- Flag invalid combinations during Phase 4.4 human review
+
 Layers are logical groupings of modules (domain, transport, storage, configuration, etc.) defined in the design narrative, not columns from the Module Inventory table.
 
 When the approved strategy (Phase 4.3a) is layered or hybrid and a task's Layers field lists more than 2 architectural layers, flag the task for human review with a recommendation to split or approve as-is. When the approved strategy is vertical, the layer count flag does not apply since vertical tasks are expected to cross all layers.
@@ -263,7 +305,7 @@ Every mission's tasks.md MUST include these closing tasks after all feature task
 
 If the design (Phase 4.3) identified refactoring needed for existing code, those tasks go before the feature tasks in tasks.md.
 
-Present the full task list (including closing tasks) to the human with a recommendation. If approved, proceed to Phase 4a.
+Run `/artifact-review` on the generated `tasks.md`. Present the full task list (including closing tasks) to the human following the review pattern. If approved, proceed to Phase 4a.
 
 After all artifacts are reviewed and approved, update the plan with the actual artifact paths.
 
@@ -314,15 +356,17 @@ The "Prerequisites met?" column applies to Substitutions only. For Interpretatio
 
   **Present substitutions and removals in a dedicated review step.** The human approves or rejects each individually. Do not mix them with the COVERED items review. Interpretations may be batch-approved with the main table.
 
-5. **Present the coverage table and gap recommendations** to the human. Follow the standard review pattern: AI presents, AI recommends, human decides.
+5. **Persist the coverage audit to disk.** Write the coverage table to `openspec/changes/<change-name>/coverage-audit.md`. This file is needed for mission resume (so a resumed session can see what was already mapped without re-running the audit) and for contract writing (Phase 5 cross-references it). For each Substitution deviation, include the prerequisite analysis (which prerequisites were checked, which were covered, which were gaps, and how they were resolved). This ensures a resumed session knows why a substitution was approved safe.
 
-6. **If specs change** (new spec requirements added to cover gaps), re-present the affected spec files for human review before proceeding. The human must approve any new or modified specs.
+6. Run `/artifact-review` on the persisted `coverage-audit.md`. **Present the coverage table and gap recommendations** to the human following the review pattern.
 
-7. **If tasks change** (new tasks added to cover gaps), re-present the updated tasks.md for review. The human must approve the final task list before proceeding.
+7. **If specs change** (new spec requirements added to cover gaps), re-present the affected spec files for human review before proceeding. The human must approve any new or modified specs.
 
-8. **Persist the coverage audit to disk.** Write the coverage table to `openspec/changes/<change-name>/coverage-audit.md`. This file is needed for mission resume (so a resumed session can see what was already mapped without re-running the audit) and for contract writing (Phase 5 cross-references it). For each Substitution deviation, include the prerequisite analysis (which prerequisites were checked, which were covered, which were gaps, and how they were resolved). This ensures a resumed session knows why a substitution was approved safe.
+8. **If tasks change** (new tasks added to cover gaps), re-present the updated tasks.md for review. The human must approve the final task list before proceeding.
 
-9. **Record the coverage audit** in the plan. Update the Spec Coverage Audit section with the PRD issue URL, gap count, and resolutions.
+9. **If specs or tasks changed in steps 7-8,** re-persist the updated `coverage-audit.md` to disk and re-run `/artifact-review` on it. Phase 5 reads this file to write the contract — it must reflect the final approved state.
+
+10. **Record the coverage audit** in the plan. Update the Spec Coverage Audit section with the PRD issue URL, gap count, and resolutions.
 
 **Gate -- proceed when:**
 - [ ] Coverage audit complete -- every PRD requirement mapped
@@ -379,7 +423,7 @@ When a spec scenario traces to an APPROVED-DEVIATION item in the coverage audit,
 
 ### Contract Review
 
-After writing the contract, present it to the human following the standard review pattern: AI presents, AI recommends, human decides.
+After writing the contract, run `/artifact-review` on the generated `contract.md`. Present it to the human following the review pattern.
 
 For each task section, highlight:
 - Which spec scenarios (e.g., `add-todo/1`, `search/3`) the checks trace to
@@ -444,6 +488,9 @@ engines:
   adversarial_reviewer_a: codex
   adversarial_reviewer_b: claude
   demo_video: claude
+
+# Auto-set to true during Phase 4.3a when any task has Skill: /frontend.
+browser_tools: false
 ```
 
 ### progress.md
@@ -517,9 +564,19 @@ Read [templates/worker-brief.md](templates/worker-brief.md).
 
 **The brief NEVER contains contract.md content.** 
 
+#### Browser Tools Override
+
+If `browser_tools: false` in config.yaml (human override), omit visual verification procedures from the worker brief even for `/frontend` tasks. The worker follows the `/frontend` workflow but skips the chrome-devtools-mcp visual verify step in the Build phase.
+
 ### Step 2: Dispatch Worker
 
 Read the engine from `mission/config.yaml`.
+
+#### Browser Tools Pre-flight (Skill: /frontend tasks only)
+
+Before dispatching a `/frontend` task, check that chrome-devtools-mcp is available:
+- If available: proceed with dispatch, include visual verification in the brief
+- If unavailable: block dispatch. Log to progress.md: `<timestamp> -- Task N: chrome-devtools-mcp unavailable at dispatch. Pausing.` Surface to human with options: retry (check again), skip visual verify for this task, or abort mission
 
 #### If engine is `codex`:
 
@@ -591,7 +648,7 @@ Spawn a Claude subagent (via the Agent tool) with this prompt:
 
 #### Scrutiny Validator Prompt
 
-Read [prompts/scrutiny-validator.md](prompts/scrutiny-validator.md) and use it as the subagent prompt. Fill in the commit SHA and contract checks for this task. The prompt runs 14 gates: test presence, build, tests, lint, code review, module depth, code standards, simplify, security (if applicable), contract checks, behavioral conformance, silent skip detection, diff coverage, test quality review.
+Read [prompts/scrutiny-validator.md](prompts/scrutiny-validator.md) and use it as the subagent prompt. Fill in the commit SHA and contract checks for this task. The prompt runs 15 gates: test presence, build, tests, lint, code review, module depth, frontend depth review, code standards, simplify, security (if applicable), contract checks, behavioral conformance, silent skip detection, diff coverage, test quality review.
 
 Read the validator's report from `mission/validations/task-N-scrutiny.md`.
 
