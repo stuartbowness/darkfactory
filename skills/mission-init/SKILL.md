@@ -10,10 +10,10 @@ Verify the current project is ready to run `/mission`. Check skill symlinks, ini
 
 ## Step 1: Check Skill Symlinks
 
-Check these 12 owned skills:
+Check these 13 owned skills:
 
 ```bash
-mission mission-resume mission-status mission-init grill prd language tdd test-quality security adversarial dispatch
+mission mission-resume mission-status mission-init grill prd language tdd test-quality security adversarial dispatch artifact-review
 ```
 
 For each skill, verify:
@@ -34,7 +34,7 @@ Use this status format:
 Use a Bash pattern that always exits 0:
 
 ```bash
-for skill in mission mission-resume mission-status mission-init grill prd language tdd test-quality security adversarial dispatch; do
+for skill in mission mission-resume mission-status mission-init grill prd language tdd test-quality security adversarial dispatch artifact-review; do
   link="$HOME/.claude/skills/$skill"
   expected="$HOME/.darkfactory/skills/$skill"
 
@@ -61,10 +61,10 @@ If any required skill is missing, broken, or points to the wrong target, instruc
 
 Then tell them to restart Claude Code and re-run `/mission-init`. Stop after reporting the missing skill fixes.
 
-If all 12 skills are present and resolve correctly, report:
+If all 13 skills are present and resolve correctly, report:
 
 ```text
-All 12 skills: OK
+All 13 skills: OK
 ```
 
 Then continue.
@@ -208,6 +208,7 @@ Skills (via ~/.claude/skills/ symlinks):
   [x] /security
   [x] /adversarial
   [x] /dispatch
+  [x] /artifact-review
 
 Optional standalone skills:
   [ ] /arch-review (optional - standalone)
@@ -246,6 +247,9 @@ Also check optional standalone skills at these locations:
 - `$HOME/.claude/skills/module-design`
 - `$HOME/.claude/skills/qa`
 - `$HOME/.claude/skills/write-a-skill`
+- `$HOME/.claude/skills/frontend`
+- `$HOME/.claude/skills/ui-system`
+- `$HOME/.claude/skills/react-perf`
 
 And optional project skills at these locations:
 
