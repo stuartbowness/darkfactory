@@ -82,7 +82,7 @@
 
 ## 7. Closing
 
-- [ ] Task 8: Smoke test
+- [x] Task 8: Smoke test
   Depends on: 1, 2, 3, 4, 5, 6, 7
   Skill: /tdd
   Constraints: none

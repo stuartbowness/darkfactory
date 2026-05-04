@@ -63,3 +63,15 @@ Started: 2026-05-03T00:00:00Z
   - User-test: SKIP (markdown-only task)
   - Demo: SKIPPED
   - Fix attempts: 0
+- 2026-05-04T00:55:00Z -- Task 8: smoke test PASSED.
+  - 20 skills installed (3 new: frontend, ui-system, react-perf)
+  - All symlinks point to darkfactory
+  - All frontmatter valid (name, user-invokable, description)
+  - All markdown links resolve
+  - 15 gates numbered sequentially
+  - Zero stale /shadcn references
+  - Worker brief conditional, constraints appendable
+  - Config template has browser_tools
+  - Gate 1 has /frontend rationale
+  - Mission SKILL.md has all orchestrator behaviors
+  - Fix attempts: 0
