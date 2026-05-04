@@ -207,6 +207,27 @@ Before generating tasks.md, present a task decomposition strategy for human appr
 2. **Target task count range:** e.g., "6-8 feature tasks + 4-5 closing tasks." Justify the range based on the module inventory from design.md.
 3. **Dependency ordering rationale:** which tasks must come first and why (e.g., "Task 1 defines core types that all subsequent tasks import").
 
+#### Frontend Task Decomposition (TypeScript React projects only)
+
+For TypeScript React projects, use the specific task layer vocabulary:
+
+| Layer | Skill | Rationale |
+|---|---|---|
+| `frontend/component` | `/frontend` | Visual React component work |
+| `frontend/page` | `/frontend` | Page composition |
+| `frontend/layout` | `/frontend` | Visual structure |
+| `frontend/hooks` | `/tdd` | Hooks have testable interfaces |
+| `backend` | `/tdd` | APIs, server logic |
+| `shared/types` | `/tdd` | Type contracts |
+| `shared/schema` | `/tdd` | Zod validation, pure logic |
+| `shared/utils` | `/tdd` | Pure utility functions |
+
+**Mechanical rule:** `/frontend` only when the layer starts with `frontend/` AND is not `frontend/hooks`. Everything else gets `/tdd`.
+
+Auto-set `browser_tools: true` in config.yaml when any task has `Skill: /frontend`.
+
+When a frontend feature contains complex logic (validation, state machines, data transformation), split it: one `/tdd` task for the logic as a hook/utility, one `/frontend` task for the component that consumes it. The `/tdd` task comes first in the task list.
+
 The human approves this strategy before tasks.md is generated. If rejected, revise and re-present.
 
 After approval, populate the task decomposition strategy anchor in the plan's Deterministic Anchors section.
@@ -236,6 +257,21 @@ Each task in tasks.md must include topology metadata in this fixed format:
   Produces: <surfaces this task creates -- types, modules, interfaces, endpoints>
   Layers: <logical architectural layers touched, e.g. domain, transport, storage>
 ```
+
+#### Skill and Constraint Validation (TypeScript React projects only)
+
+Task topology for TypeScript React projects includes two additional fields:
+
+```markdown
+Skill: </tdd or /frontend>
+Constraints: </ui-system, /react-perf, or "none">
+```
+
+Validation rules:
+- Exactly one `Skill:` value per task -- either `/tdd` or `/frontend`
+- Zero or more `Constraints:` values
+- `/ui-system` and `/react-perf` are only valid with `Skill: /frontend`
+- Flag invalid combinations during Phase 4.4 human review
 
 Layers are logical groupings of modules (domain, transport, storage, configuration, etc.) defined in the design narrative, not columns from the Module Inventory table.
 
@@ -444,6 +480,9 @@ engines:
   adversarial_reviewer_a: codex
   adversarial_reviewer_b: claude
   demo_video: claude
+
+# Auto-set to true during Phase 4.3a when any task has Skill: /frontend.
+browser_tools: false
 ```
 
 ### progress.md
@@ -517,9 +556,19 @@ Read [templates/worker-brief.md](templates/worker-brief.md).
 
 **The brief NEVER contains contract.md content.** 
 
+#### Browser Tools Override
+
+If `browser_tools: false` in config.yaml (human override), omit visual verification procedures from the worker brief even for `/frontend` tasks. The worker follows the `/frontend` workflow but skips the chrome-devtools-mcp visual verify step in the Build phase.
+
 ### Step 2: Dispatch Worker
 
 Read the engine from `mission/config.yaml`.
+
+#### Browser Tools Pre-flight (Skill: /frontend tasks only)
+
+Before dispatching a `/frontend` task, check that chrome-devtools-mcp is available:
+- If available: proceed with dispatch, include visual verification in the brief
+- If unavailable: block dispatch. Log to progress.md: `<timestamp> -- Task N: chrome-devtools-mcp unavailable at dispatch. Pausing.` Surface to human with options: retry (check again), skip visual verify for this task, or abort mission
 
 #### If engine is `codex`:
 

@@ -61,6 +61,15 @@ List each planned module or major component. Use this table format:
 |-------------|-----------------|---------------|-------------------|
 | `<module>` | Narrow / moderate / broad, with the public entry points named | Implementation details callers do not need to know | Reason this responsibility belongs behind this boundary |
 
+### Frontend Module Guidance
+
+For React frontend modules, describe:
+- **Prop interface:** how many semantic concepts the caller must understand (count props + context + URL params + cache dependencies, not raw prop count)
+- **State/effects encapsulated:** what state management and effects the component hides behind its interface
+- **Classification:** deep component (owns a workflow end-to-end) or allowed-shallow exception (design system leaf, route/layout glue, adapter, headless behavior primitive) with the reason for the classification
+
+Reference `/frontend` skill's DEEP-COMPONENTS.md for the four deep-component rules and allowed-shallow categories.
+
 ## Type Catalog
 
 List domain types only. Type names must come from `UBIQUITOUS_LANGUAGE.md` when the term exists there. Do not include field-level detail.

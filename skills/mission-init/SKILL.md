@@ -120,7 +120,23 @@ Report each tool as installed, not installed, or not authenticated.
 - `openspec`: if missing, fix with `npm install -g @fission-ai/openspec`.
 - `jq`: if missing, fix with `brew install jq`.
 
-## Step 4: Coverage Tool Detection
+## Step 4: Browser Tools Check (conditional)
+
+If `browser_tools: true` in the mission's config.yaml (or if any task in the current mission has `Skill: /frontend`), check that chrome-devtools-mcp is registered:
+
+```bash
+# Check if chrome-devtools MCP tools are available.
+# The exact check depends on the MCP registration mechanism.
+```
+
+If chrome-devtools-mcp is not registered:
+- Report: `[!] chrome-devtools-mcp - not registered (required when browser_tools: true)`
+- Fix: Install chrome-devtools-mcp from https://github.com/nichochar/chrome-devtools-mcp and add it to MCP configuration
+- This blocks mission launch for missions with `/frontend` tasks
+
+If `browser_tools: false` or no `/frontend` tasks exist, skip this check.
+
+## Step 5: Coverage Tool Detection
 
 Detect the project language from build files at the project root:
 
@@ -172,7 +188,7 @@ If no recognized build file exists, report:
 No recognized language detected - coverage tool check skipped.
 ```
 
-## Step 5: Report Status
+## Step 6: Report Status
 
 Print a structured report:
 
@@ -211,6 +227,9 @@ CLI tools:
   [x] gh (authenticated)
   [x] openspec
   [x] jq
+
+Browser tools:
+  [-] chrome-devtools-mcp (skipped - browser_tools: false and no /frontend tasks)
 
 Coverage:
   [x] cargo-tarpaulin (Rust detected)
