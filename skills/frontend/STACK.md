@@ -66,4 +66,4 @@ Do not test implementation details such as hook calls, prop plumbing, internal s
 
 ## Routing
 
-Use React Router for client-side routing. Route modules should stay thin: read route params, load route-level data, and pass domain facts into deep feature components.
+Use React Router for client-side routing. Route modules should stay thin: read route params, load route-level data, and pass domain facts into deep components.

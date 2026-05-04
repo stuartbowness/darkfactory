@@ -12,6 +12,8 @@ A component's prop interface should represent domain concepts, not implementatio
 
 A component with 6 props describing one concept can still be deep. A component with 1 prop bag containing 4 unrelated concerns is shallow because the caller must understand too many separate things.
 
+As a guideline, components requiring the caller to understand more than 7 independent semantic concepts (counting props, consumed context providers, URL params, and cache dependencies) are likely too wide unless they are an allowed-shallow exception.
+
 Diagnostic: "How many independent domain concepts must a caller understand to use this component?"
 
 ### 2. Derive Don't Sync
@@ -26,7 +28,7 @@ Diagnostic: "Can this value be computed from existing state/props during render 
 
 Use compound component slots and children instead of config objects with many options. Callers should compose behavior without learning the child's internal option schema.
 
-A component accepting `items: [{ label, icon, onClick, disabled, variant }]` is shallower than one accepting `<Menu><MenuItem>...</MenuItem></Menu>` because the config shape turns component behavior into data plumbing. Prefer children and named slots when callers need to provide UI or behavior.
+A component accepting `items: [{ label, icon, onClick, disabled, variant }]` is shallower than one accepting `<Menu><MenuItem>...</MenuItem></Menu>` because the config shape turns component behavior into data plumbing. Prefer children and named slots when callers need to provide UI or behavior. As a guideline, option objects with more than 5 configuration entries are a signal to consider compound components instead.
 
 Diagnostic: "Would this be clearer as compound components with children/slots instead of a config prop?"
 
@@ -46,7 +48,7 @@ Diagnostic: "Does the parent coordinate state that belongs inside this component
 
 ### Route/Layout Glue
 
-`App.tsx`, route modules, and page wrappers may read route params, load route-level data, and hand that data to a feature component. This is acceptable if they stay thin and do not become workflow owners.
+`App.tsx`, route modules, and page wrappers may read route params, load route-level data, and hand that data to a deep component. This is acceptable if they stay thin and do not become workflow owners.
 
 ### Adapter Components
 

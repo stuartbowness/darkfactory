@@ -50,12 +50,8 @@ Example:
 <Which later tasks in tasks.md will call this code? For each, name one minimum integration test that proves the call path works. Leave empty if no later task consumes this one.>
 
 ## Procedures
-- Use `<Skill from task topology>` to implement this task
-  - If Skill: /frontend -- "Use `/frontend` to implement this task"
-  - If Skill: /tdd -- "Use `/tdd` to implement this task"
-- <For each Constraint in task topology, append:>
-  - "Also follow `/ui-system` for component selection and token discipline"
-  - "Also follow `/react-perf` for performance optimization patterns"
+- Use `<methodology from task Skill: field — /tdd or /frontend>` to implement this task
+- <If task has Constraints, add one line per constraint: "Also follow <constraint skill name>">
 - Commit all changes (code + tests) in a single commit with message: "[task-N] <description>"
 - Write your handoff report to openspec/changes/<change-name>/mission/handoffs/task-N.md
 

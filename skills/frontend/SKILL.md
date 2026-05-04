@@ -71,8 +71,8 @@ Implement one component at a time.
 - Compose from existing ShadCN/Radix primitives before creating new UI leaves.
 - Follow the four deep-component rules in [DEEP-COMPONENTS.md](DEEP-COMPONENTS.md): Small Semantic Interfaces, Derive Don't Sync, Composition Over Configuration, and Collapse Coordination.
 - Follow stack conventions in [STACK.md](STACK.md), including direct imports, `cn()`, semantic tokens, `data-slot`, and local file organization.
-- Use [PATTERNS.md](PATTERNS.md) for concrete examples when it exists.
-- Keep route and layout glue thin. Push meaningful workflow ownership into the deep feature component.
+- Use [PATTERNS.md](PATTERNS.md) for concrete examples.
+- Keep route and layout glue thin. Push meaningful workflow ownership into the deep component.
 - If new state is derived from props or other state, compute it inline or with `useMemo`. Do not sync derived state with `useEffect`.
 - If a component needs stateful logic that should live outside the component, stop and split that hook into a `/tdd` task instead of hiding hook creation inside `/frontend`.
 
@@ -114,7 +114,6 @@ Tests should describe what a user can see or do. They should survive internal re
 Before committing, review every `.tsx` file you created or modified:
 
 ```text
-Before committing, review every .tsx file you created or modified:
 [ ] Each prop represents a semantic domain concept, not an implementation knob
 [ ] No useEffect syncing derived state (use useMemo or inline computation)
 [ ] No config objects where compound components with slots would work

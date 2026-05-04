@@ -270,7 +270,7 @@ Constraints: </ui-system, /react-perf, or "none">
 Validation rules:
 - Exactly one `Skill:` value per task -- either `/tdd` or `/frontend`
 - Zero or more `Constraints:` values
-- `/ui-system` and `/react-perf` are only valid with `Skill: /frontend`
+- `/ui-system` and `/react-perf` are only valid as mission constraints with `Skill: /frontend`. (Both skills are also independently invokable by humans via `/ui-system` or `/react-perf` outside of missions — the constraint restriction applies only to mission task topology.)
 - Flag invalid combinations during Phase 4.4 human review
 
 Layers are logical groupings of modules (domain, transport, storage, configuration, etc.) defined in the design narrative, not columns from the Module Inventory table.

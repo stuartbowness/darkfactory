@@ -124,10 +124,9 @@ Report each tool as installed, not installed, or not authenticated.
 
 If `browser_tools: true` in the mission's config.yaml (or if any task in the current mission has `Skill: /frontend`), check that chrome-devtools-mcp is registered:
 
-```bash
-# Check if chrome-devtools MCP tools are available.
-# The exact check depends on the MCP registration mechanism.
-```
+Attempt to call a chrome-devtools MCP tool to verify it is registered and responsive. Use a lightweight read-only tool such as `list_pages` or `get_console_message`. If the call succeeds (returns a result, even if empty), the server is available. If the call fails with a tool-not-found or connection error, the server is not registered.
+
+Alternatively, check whether any tool names starting with `mcp__chrome-devtools__` or `chrome-devtools` appear in the available tool list. If none are found, the server is not registered.
 
 If chrome-devtools-mcp is not registered:
 - Report: `[!] chrome-devtools-mcp - not registered (required when browser_tools: true)`

@@ -110,7 +110,7 @@ Store the result as `Test runner: <passed> passed, <failed> failed, <skipped> sk
 
 Run these gates in order. For each, report PASS or FAIL with evidence.
 
-1. **Test presence gate:** Run `git show <commit-sha> --stat` and check if any test files were added or modified. If the diff contains zero test files and zero new test assertions, this is an automatic FAIL. If the task has `Skill: /tdd`, the rationale is "TDD not followed." If the task has `Skill: /frontend`, the rationale is "/frontend Test phase not followed." Exception: closing tasks that produce no testable code (documentation, cleanup, module shape re-check) are exempt from this gate.
+1. **Test presence gate:** Run `git show <commit-sha> --stat` and check if any test files were added or modified. If the diff contains zero test files and zero new test assertions, this is an automatic FAIL. If the task has `Skill: /frontend`, the rationale is "/frontend Test phase not followed." Otherwise (including `Skill: /tdd` or no `Skill:` field), the rationale is "TDD not followed." Exception: closing tasks that produce no testable code (documentation, cleanup, module shape re-check) are exempt from this gate.
 
 2. **Build:** Run the project's build command. Does it pass?
 
