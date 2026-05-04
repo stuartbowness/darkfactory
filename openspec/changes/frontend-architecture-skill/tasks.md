@@ -92,7 +92,7 @@
 
   Run ./install.sh and verify the 3 new symlinks exist (frontend, ui-system, react-perf). Verify all markdown links in new skill files resolve to existing files. Verify scrutiny validator gates are numbered 1-15 sequentially with no gaps or duplicates. Verify SKILL.md frontmatter for all 3 new skills has name, user-invokable: true, and description fields. Run a grep to confirm no remaining references to /shadcn in any file. Verify worker-brief.md Procedures section references /frontend or /tdd conditionally (not hardcoded). Verify worker-brief.md appends Constraints after methodology reference. Verify config.yaml template contains browser_tools field. Verify gate 1 in scrutiny-validator.md contains "/frontend Test phase not followed" rationale text for /frontend tasks. Verify skills/mission/SKILL.md contains: layer vocabulary mapping rules, Skill:/Constraints: validation rules, browser_tools auto-set logic, dispatch pre-flight check, and browser_tools: false override handling.
 
-- [ ] Task 9: Cleanup + module shape re-check
+- [x] Task 9: Cleanup + module shape re-check
   Depends on: 8
   Skill: /tdd
   Constraints: none
@@ -102,7 +102,7 @@
 
   Remove any unused files, dead references, or leftover scaffolding from the build process. Compare design.md Module Inventory descriptions to actual file structure. Verify each module listed in the inventory exists with the described interface. Write findings to mission/validations/module-shape-audit.md.
 
-- [ ] Task 10: Documentation
+- [x] Task 10: Documentation
   Depends on: 9
   Skill: /tdd
   Constraints: none
