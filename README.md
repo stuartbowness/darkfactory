@@ -214,7 +214,6 @@ All Darkfactory skills are bundled in this repo. `/mission` also calls two built
 
 | Skill | Source | When it's used |
 |-------|--------|---------|
-| `/artifact-review` | Bundled with Darkfactory (required) | Planning phases 2-5 and 4a: reviews each artifact before human Q&A |
 | `/review` | Built-in Claude Code (required) | Scrutiny validator: code review step |
 | `/simplify` | Built-in Claude Code (required) | Scrutiny validator: complexity check step |
 | `/test-app` | Your project's Claude skills (optional) | User-test validator: browser-based testing |
