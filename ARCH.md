@@ -50,7 +50,7 @@ The mission skill is intentionally monolithic (~900 lines). Companion files are 
 - `templates/` -- artifact formats (plan, contract, worker brief, design, etc.)
 - `prompts/` -- instructions handed to validator and reviewer subagents
 
-20 skills total: mission, mission-resume, mission-status, mission-init, grill, language, prd, tdd, test-quality, security, adversarial, dispatch, arch-review, domain-model, module-design, qa, write-a-skill, frontend, ui-system, react-perf.
+21 skills total: mission, mission-resume, mission-status, mission-init, grill, language, prd, tdd, test-quality, security, adversarial, dispatch, artifact-review, arch-review, domain-model, module-design, qa, write-a-skill, frontend, ui-system, react-perf.
 
 ## Build loop
 

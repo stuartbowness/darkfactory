@@ -50,7 +50,7 @@ Restart Claude Code, then from any project run:
 /mission-init
 ```
 
-This checks your entire setup and tells you exactly what's missing. It verifies all required skills are symlinked, CLI tools (codex, gh, openspec, darkfactory-dispatch, jq), coverage tools for your project's language (cargo-tarpaulin for Rust, jest/c8 for TypeScript, pytest-cov for Python), and initializes OpenSpec in the current project if needed.
+This checks your entire setup and tells you exactly what's missing. It verifies the required skill symlinks, reports on optional bundled skills, checks CLI tools (codex, gh, openspec, darkfactory-dispatch, jq), checks coverage tools for your project's language (cargo-tarpaulin for Rust, jest/c8 for TypeScript, pytest-cov for Python), and initializes OpenSpec in the current project if needed.
 
 ### Updating
 
@@ -179,7 +179,7 @@ Darkfactory is controlled through skills -- reusable prompt templates you invoke
 | `/mission` | Start an autonomous mission from scratch. Walks you through planning, dispatches workers, validates, and delivers a draft PR. |
 | `/mission-resume` | Resume a mission that was interrupted (session crash, closed terminal). Detects exactly where it left off and continues through to the draft PR and code review. |
 | `/mission-status` | Read-only progress check. Open a second terminal while a mission runs to see which tasks are done, in progress, or queued. |
-| `/mission-init` | Check your project setup. Verifies all 13 skill symlinks, CLI tools, and coverage tools. Runs `openspec init` if needed. |
+| `/mission-init` | Check your project setup. Verifies required skill symlinks, reports on optional bundled skills, checks CLI tools and coverage tools, checks chrome-devtools-mcp when `browser_tools: true`, and runs `openspec init` if needed. |
 | `/grill` | Alignment interview: asks pointed questions until the goals, constraints, and edge cases are clear. Used in the mission planning phase. |
 | `/prd` | Turns an interview into a structured PRD filed as a GitHub issue. Used in the mission planning phase. |
 | `/language` | Creates a shared glossary (ubiquitous language) so you, the orchestrator, and all workers use the same terms. Used in the mission planning phase. |
@@ -214,7 +214,6 @@ All Darkfactory skills are bundled in this repo. `/mission` also calls two built
 
 | Skill | Source | When it's used |
 |-------|--------|---------|
-| `/artifact-review` | Bundled with Darkfactory (required) | Planning phases 2-5 and 4a: reviews each artifact before human Q&A |
 | `/review` | Built-in Claude Code (required) | Scrutiny validator: code review step |
 | `/simplify` | Built-in Claude Code (required) | Scrutiny validator: complexity check step |
 | `/test-app` | Your project's Claude skills (optional) | User-test validator: browser-based testing |
