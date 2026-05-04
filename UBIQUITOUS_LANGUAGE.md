@@ -25,10 +25,10 @@
 
 | Term | Definition | Aliases to avoid |
 | --- | --- | --- |
-| **Gate** | A numbered step in the scrutiny validator's sequence (e.g., gate 3: tests, gate 10: contract checks). Gates report PASS, FAIL, WARN, SKIP, or N/A. | Check (in validator-step context), step, stage |
+| **Gate** | A numbered step in the scrutiny validator's sequence (e.g., gate 3: tests, gate 11: contract checks). Gates report PASS, FAIL, WARN, SKIP, or N/A. | Check (in validator-step context), step, stage |
 | **Scrutiny validator** | The first validator type that runs build, test, lint, code review, code simplify, and test health gates against the contract | Code reviewer, linter, static validator |
 | **User-test validator** | The second validator type that tests behavior by hitting the API (HTTP tests) or driving a browser (agent-browser) | QA, E2E tester, integration tester |
-| **Behavioral conformance** | A scrutiny validator gate (gate 11) that verifies observable behavior by writing and executing a test script rather than reading the code. Falls back to "verified by inspection" if execution is inconclusive. | Behavioral test, execution test, runtime check |
+| **Behavioral conformance** | A scrutiny validator gate (gate 12) that verifies observable behavior by writing and executing a test script rather than reading the code. Falls back to "verified by inspection" if execution is inconclusive. | Behavioral test, execution test, runtime check |
 | **Final gates** | Whole-repo build, test, lint, and format gates run after the last task completes but before PR creation. Catches regressions introduced by later tasks (e.g., documentation or CI tasks) after the cleanup task ran. | Final checks, post-build gates, repo gates |
 | **Module shape re-check** | A mandatory closing task that compares design.md module descriptions and Type Catalog names to what the code actually exposes, catching cumulative drift across tasks that per-task scrutiny cannot see | Shape check, surface audit, drift check |
 | **Demo video** | A recording of frontend functionality captured after both validators pass, created for human review | Screencast, screen recording |

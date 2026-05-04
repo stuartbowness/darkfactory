@@ -183,7 +183,10 @@ Darkfactory is controlled through skills -- reusable prompt templates you invoke
 | `/grill` | Alignment interview: asks pointed questions until the goals, constraints, and edge cases are clear. Used in the mission planning phase. |
 | `/prd` | Turns an interview into a structured PRD filed as a GitHub issue. Used in the mission planning phase. |
 | `/language` | Creates a shared glossary (ubiquitous language) so you, the orchestrator, and all workers use the same terms. Used in the mission planning phase. |
-| `/tdd` | Test-driven development guidance. Workers invoke this during the build phase. Companion files cover deep modules, interfaces, mocking, refactoring, and test patterns. |
+| `/tdd` | Test-driven development guidance. Workers invoke this during the build phase for backend, hooks, and utility tasks. Companion files cover deep modules, interfaces, mocking, refactoring, and test patterns. |
+| `/frontend` | Prescriptive builder guide for React/TypeScript component development. Workers invoke this during the build phase for frontend component, page, and layout tasks. Defines the design-implement-test workflow with visual verification via chrome-devtools-mcp. Companion files: DEEP-COMPONENTS.md (four rules), STACK.md (tech stack), PATTERNS.md (code examples), TESTING.md (behavioral testing). |
+| `/ui-system` | ShadCN/Radix component selection, token discipline, composition patterns, and accessibility defaults. Constraint skill used alongside `/frontend`. Verbatim upstream content from shadcn/ui. |
+| `/react-perf` | React and Next.js performance optimization from Vercel Engineering. Waterfall elimination, bundle size, re-render discipline, server-side patterns. Constraint skill used alongside `/frontend`. Verbatim upstream content from Vercel. |
 | `/test-quality` | LLM-based semantic review of test effectiveness. The scrutiny validator runs this as a subagent after every worker commit. |
 | `/security` | Security review. The scrutiny validator runs this when the diff touches auth, secrets, user input, or network/filesystem boundaries. |
 | `/adversarial` | Dual-agent code review: dispatches a Codex reviewer and a Claude reviewer with identical input, then surfaces disagreements. |
