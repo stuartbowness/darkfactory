@@ -1,0 +1,9 @@
+base_branch: main
+
+engines:
+  worker: codex
+  scrutiny_validator: claude
+  usertest_validator: claude
+  adversarial_reviewer_a: codex
+  adversarial_reviewer_b: claude
+  demo_video: claude

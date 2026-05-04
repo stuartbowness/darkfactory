@@ -99,6 +99,30 @@
 | **Design Template** | A reference document defining mandatory design.md sections and scoring rubrics, used by the orchestrator alongside openspec config rules | Design spec, design schema |
 | **Spec Reference** | A capability/scenario identifier (e.g., add-todo/1) used to trace contract checks back to formal spec requirements | REQ-ID, requirement ID, spec ID |
 
+## Frontend architecture
+
+| Term | Definition | Aliases to avoid |
+| --- | --- | --- |
+| **Deep component** | A React component with a small prop interface that hides significant state, effects, and rendering logic, owning one user-facing workflow end-to-end | Smart component, container component, feature component |
+| **Allowed-shallow exception** | A component that is intentionally thin and exempt from depth rules: design system leaves, route/layout glue, adapter components, or headless behavior primitives | Dumb component, presentational component, wrapper |
+| **Component contract** | A lightweight per-component declaration written before implementation, specifying name, deep/shallow classification, prop interface, and key render states | Component spec, component design, component plan |
+| **Design-implement-test** | The `/frontend` skill's implementation workflow: design component interfaces, build with visual verification, then write behavioral tests. Replaces red-green-refactor for React components. | Frontend TDD, component TDD |
+| **Visual verification** | Using chrome-devtools-mcp during the Build phase to confirm a component renders correctly before writing tests | Visual testing, screenshot testing, visual QA |
+| **Frontend depth gate** | A self-skipping scrutiny validator gate (gate 7) that evaluates React component structure against the four deep-component rules when `.tsx`/`.jsx` files are in the diff | Component review, React lint, frontend lint |
+| **Methodology** | The implementation workflow skill assigned to a task -- either `/tdd` (red-green-refactor) or `/frontend` (design-implement-test). Mutually exclusive per task. | Implementation skill, build skill, workflow |
+| **Constraint** | An additive design-guidance skill layered on top of a methodology -- `/ui-system`, `/react-perf`, or future `/backend-ts`. Zero or more per task. | Supplementary skill, pattern skill |
+| **Task layer** | A specific vocabulary value in task topology metadata that determines which methodology applies. `frontend/component`, `frontend/page`, `frontend/layout` map to `/frontend`; `frontend/hooks`, `backend`, `shared/*` map to `/tdd`. | Task type, task category |
+| **Browser tools** | A mission config flag (`browser_tools: true/false`) indicating whether chrome-devtools-mcp is required. Auto-set by the orchestrator when any task has `Skill: /frontend`. | Browser testing, visual tools |
+
+## Frontend: deep component rules
+
+| Term | Definition | Aliases to avoid |
+| --- | --- | --- |
+| **Small semantic interface** | A component prop interface where each prop represents a domain concept, not an implementation knob. Count concepts, not props. Audit hidden inputs (context, URL, cache). | Narrow props, minimal API |
+| **Derive don't sync** | Computing values during render (useMemo, inline computation) instead of syncing state with useEffect. Effects that transform data without I/O are a depth violation. | Computed state, reactive state |
+| **Composition over configuration** | Using compound component slots and children instead of config objects with many options. Callers compose behavior without understanding internals. | Compound components, slots pattern |
+| **Collapse coordination** | A deep component owns one workflow end-to-end, exposing semantic events (onSubmit) not coordination knobs (onValidate, onStep1Complete). Parents choose what happens, not how. | Single responsibility, workflow ownership |
+
 ## Relationships
 
 - A **Mission** belongs to exactly one **Change**
@@ -123,6 +147,14 @@
 - **Spec References** in the **Contract** trace **Checks** back to specific **Spec** capability/scenario pairs (e.g., add-todo/1), replacing arbitrary row numbers
 - **Task Topology** metadata is written per task in tasks.md and reviewed during Phase 4.4 -- tasks touching more than 2 architectural layers are flagged for human review
 - The **Design Template** is a reference document in `templates/` -- the actual design.md generation is driven by openspec config rules that require the same sections
+- A **Task** has exactly one **Methodology** (`/tdd` or `/frontend`) and zero or more **Constraints** (`/ui-system`, `/react-perf`)
+- The **Task layer** determines the **Methodology**: `frontend/component`, `frontend/page`, `frontend/layout` map to `/frontend`; all other layers map to `/tdd`
+- `frontend/hooks` maps to `/tdd` despite being frontend code -- hooks have testable interfaces suited to red-green-refactor
+- The **Frontend depth gate** (gate 7) is a **Self-skipping gate** that only fires when `.tsx`/`.jsx` files are in the diff
+- **Visual verification** requires **Browser tools** (`browser_tools: true` in **Mission config**), checked at mission-init and at dispatch time
+- A **Deep component** satisfies all four rules: **Small semantic interface**, **Derive don't sync**, **Composition over configuration**, **Collapse coordination**
+- An **Allowed-shallow exception** is exempt from depth rules but must be classified: design system leaf, route/layout glue, adapter, or headless behavior primitive
+- The **Component contract** is written per component during the `/frontend` workflow's Contract phase, before the Build phase begins
 
 ## Example dialogue
 
@@ -170,6 +202,24 @@
 >
 > **Orchestrator:** "The **Test quality review** catches that. It's an LLM subagent that reads the test diff alongside the production diff and flags **Tautological assertions** -- tests that pass regardless of correctness. A P0 finding like `assert!(true)` is a hard FAIL."
 
+## Example dialogue (frontend architecture)
+
+> **Dev:** "I need to build a payment form. Should that be one task or two?"
+>
+> **Orchestrator:** "Two. The validation logic (card format, expiry, required fields) is a hook with a testable interface -- that's a `/tdd` task with **Task layer** `frontend/hooks`. The form component itself is visual and owns the submission workflow -- that's a `/frontend` task with **Task layer** `frontend/component`."
+>
+> **Dev:** "How does the `/frontend` worker know what to build?"
+>
+> **Orchestrator:** "The workflow starts with a Scan (read existing components), then a **Component contract** -- name the component, declare it **Deep** or **Allowed-shallow**, define the prop interface, list render states. Then Build with **Visual verification** via chrome-devtools-mcp, then behavioral tests."
+>
+> **Dev:** "What if the worker builds a component with 15 props?"
+>
+> **Orchestrator:** "The deep-component audit checklist catches it before commit -- **Small semantic interface** says count concepts, not props. If the worker misses it, the **Frontend depth gate** (gate 7) flags it during scrutiny validation."
+>
+> **Dev:** "And if the project is Rust, none of this applies?"
+>
+> **Orchestrator:** "Correct. Every task gets `/tdd`, no **Constraints**, no **Browser tools**. The **Frontend depth gate** self-skips because there are no `.tsx` files in the diff."
+
 ## Flagged ambiguities
 
 - **"template"** is used for two different things in the mission skill: the **Design Template** (a reference document defining mandatory design.md sections and scoring rubrics) and the **CLAUDE.md template** (a fill-in-the-blanks document for the closing task). Both live in `templates/` but serve different purposes. **Resolved:** use the full name ("design template" or "CLAUDE.md template") when context is ambiguous. The file names distinguish them: `design-template.md` vs `claude-md.md`.
@@ -181,3 +231,5 @@
 - **"validation"** was used for both the contract checks and the act of running validators. **Resolved:** the **Contract** contains **Checks**. **Validation** is the act of a **Validator** verifying those checks against the code. Be consistent: don't use "validation" to refer to the contract itself.
 - **"coverage"** could mean line coverage (percentage of lines executed during tests) or spec coverage (percentage of PRD requirements mapped to tasks). **Resolved:** **Diff coverage** means line coverage on added lines in a git diff. **Coverage audit** means the spec-to-task mapping in Phase 4a. Don't use "coverage" without the qualifier.
 - **"check" / "assertion" / "gate"** had overlapping usage across contract items, validator steps, and code test assertions. **Resolved** with a three-way split: a **Gate** is a numbered step in the scrutiny validator's sequence (e.g., gate 3: tests, gate 10: contract checks). A **Check** is a single verifiable statement in a contract. An **Assertion** is reserved for code test assertions only (e.g., **Tautological assertion**, `assert_eq!`, `expect().toBe()`). Don't use "assertion" for contract items or "check" for validator steps.
+- **"skill"** could mean both a methodology (implementation workflow) and a constraint (design guidance). **Resolved** with a two-axis model: a **Methodology** is the implementation workflow (`/tdd` or `/frontend`, mutually exclusive per task). A **Constraint** is additive design guidance (`/ui-system`, `/react-perf`, zero or more per task). Both are skills, but the axes are orthogonal. Don't say "skill" when you mean methodology or constraint specifically.
+- **"frontend"** as a task layer could mean component work (visual, needs `/frontend`) or hook work (logic, needs `/tdd`). **Resolved** with specific layer vocabulary: `frontend/component`, `frontend/page`, `frontend/layout` map to `/frontend`; `frontend/hooks` maps to `/tdd`. Don't use bare "frontend" as a task layer.
