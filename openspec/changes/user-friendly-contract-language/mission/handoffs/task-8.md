@@ -1,5 +1,0 @@
-- Task: Task 8 - Documentation update
-- Commit SHA: no commit needed (no fixes required)
-- Approach: Reviewed README.md, docs/provenance.md, docs/design-decisions.md, docs/reference_factory_talk.md, and UBIQUITOUS_LANGUAGE.md for stale "assertion" usage in contract-item context. All files already use "checks" for contract items. No occurrences of "assertion" in contract-item context found in any documentation file. UBIQUITOUS_LANGUAGE.md correctly reserves "assertion" for code test assertions only (e.g., Tautological assertion). Contract, Check, and Gate terms are used consistently per the ubiquitous language.
-- Commands run: grep -rn -i 'assertion' across all target files -- only hits in UBIQUITOUS_LANGUAGE.md (all correct: aliases-to-avoid column, tautological assertion, resolved ambiguity section)
-- Concerns: none
