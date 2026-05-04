@@ -162,7 +162,7 @@ Run these gates in order. For each, report PASS or FAIL with evidence.
 
    When `.tsx`/`.jsx` files are present, evaluate each against the four deep-component rules defined in `skills/frontend/DEEP-COMPONENTS.md`:
 
-   - **Small semantic interface:** Flag components where the caller must understand more than 7 independent semantic concepts (count props + context providers consumed + URL params read + cache keys depended on). Do not count raw prop count alone — a component with 6 props describing one domain concept is deep. Exempt components in `*/ui/*` directories, components with only `className` + `children` + `...rest` props (design system leaves), and components importing from `@radix-ui/*` that wrap a Radix primitive with styling (headless behavior primitives).
+   - **Small semantic interface:** Flag components where the caller must understand more than 7 independent semantic concepts (count props + context providers consumed + URL params read + cache keys depended on). Do not count raw prop count alone — a component with 6 props describing one domain concept is deep. Exempt components in `*/ui/*` directories and components with only `className` + `children` + `...rest` props (design system leaves).
    - **Derive don't sync:** Flag `useEffect` paired with `setState` where the effect body is pure data transformation (no I/O, no subscriptions, no browser APIs). Suggest `useMemo` or inline computation as remediation. Do not flag effects that perform I/O, subscribe to external sources, or call imperative browser APIs.
    - **Composition over configuration:** Flag components accepting config-style props — arrays of item objects or option objects with more than 5 configuration entries — where compound components with children/slots would be clearer. Do not flag headless primitives or design system components that use config props by convention.
    - **Collapse coordination:** Flag components that expose coordination knobs such as `onStep1Complete`, `onValidate`, `onReset`, `onLoadingChange` rather than semantic events such as `onSubmit`, `onCancel`, `onSelect`, `onChange`. Coordination knobs indicate the parent is driving the child's internal workflow rather than the child owning it.
@@ -170,10 +170,14 @@ Run these gates in order. For each, report PASS or FAIL with evidence.
    Allowed-shallow exceptions (do not flag these for depth violations):
    - Components in `*/ui/*` directories
    - Components with only `className` + `children` + `...rest` props
-   - Components importing from `@radix-ui/*` that wrap a Radix primitive
+   - Components importing from `@radix-ui/*` that wrap a Radix primitive AND have only `className` + `children` + `...rest` props (thin Radix wrappers with no domain logic)
    - Route/layout glue components (thin wrappers that read route params and pass data)
 
-   Verdict:
+   Methodology-aware verdict:
+   - If the task has `Skill: /frontend`: PASS, WARN, or FAIL as below.
+   - If the task has `Skill: /tdd` or no `Skill:` field: downgrade all findings to WARN (never FAIL). The worker was not instructed to follow `/frontend` rules, so findings are advisory.
+
+   Verdict (for `/frontend` tasks):
    - PASS: No violations found, or all flagged items are in allowed-shallow exception categories.
    - WARN: Isolated finding in a single component.
    - FAIL: Systematic violations found across multiple components in the diff.
