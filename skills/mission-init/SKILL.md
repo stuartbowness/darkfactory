@@ -83,7 +83,13 @@ for skill in frontend tdd ui-system react-perf; do
   elif [ ! -e "$link" ]; then
     echo "[!] /$skill - broken symlink in ~/.codex/skills/"
   else
-    echo "[x] /$skill - present in ~/.codex/skills/"
+    resolved="$(cd "$link" 2>/dev/null && pwd -P)"
+    expected="$(cd "$HOME/.darkfactory/skills/$skill" 2>/dev/null && pwd -P)"
+    if [ "$resolved" != "$expected" ]; then
+      echo "[!] /$skill - wrong target in ~/.codex/skills/"
+    else
+      echo "[x] /$skill - symlink OK in ~/.codex/skills/"
+    fi
   fi
 done
 ```

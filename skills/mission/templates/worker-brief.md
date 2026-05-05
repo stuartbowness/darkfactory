@@ -54,7 +54,7 @@ Example:
 **Before writing any code**, invoke the `<task Skill: value, or /tdd if no Skill: field>` skill. This is mandatory — do not skip it, do not treat it as optional guidance. The skill contains the workflow you must follow for this task. Invoke it now, read the full instructions it returns, and follow its phases in order.
 
 <If task has Constraints, one line per constraint skill, e.g.:>
-Also invoke `/<constraint skill name>` and follow its rules alongside the primary methodology.
+Also invoke the `<constraint Skill: value>` skill and follow its rules alongside the primary methodology.
 
 <If task Skill: is /frontend and browser_tools is false, include this line:>
 Browser tools are disabled for this mission. Skip the chrome-devtools-mcp visual verification step in the /frontend workflow.

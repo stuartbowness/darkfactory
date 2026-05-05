@@ -578,11 +578,17 @@ If `browser_tools: false` in config.yaml (human override), omit visual verificat
 
 Read the engine from `mission/config.yaml`.
 
-#### Browser Tools Pre-flight (Skill: /frontend tasks only)
+#### Browser Tools Pre-flight (Skill: /frontend tasks only, browser_tools: true)
 
-Before dispatching a `/frontend` task, check that chrome-devtools-mcp is available:
-- If available: proceed with dispatch, include visual verification in the brief
-- If unavailable: block dispatch. Log to progress.md: `<timestamp> -- Task N: chrome-devtools-mcp unavailable at dispatch. Pausing.` Surface to human with options: retry (check again), skip visual verify for this task, or abort mission
+Skip this check if `browser_tools: false` in config.yaml or the task does not have `Skill: /frontend`.
+
+Before dispatching a `/frontend` task with `browser_tools: true`, check that chrome-devtools-mcp is available in **both** environments:
+
+1. **Claude Code (orchestrator):** Check that `mcp__chrome-devtools__*` tools are in the available tool list.
+2. **Codex (dispatch workers):** Run `grep -q '\[mcp_servers\.chrome-devtools\]' "$HOME/.codex/config.toml"` to verify the MCP server is configured for `codex exec`.
+
+If both pass: proceed with dispatch, include visual verification in the brief.
+If either fails: block dispatch. Log to progress.md: `<timestamp> -- Task N: chrome-devtools-mcp unavailable at dispatch. Pausing.` Surface to human with options: retry (check again), skip visual verify for this task, or abort mission.
 
 #### If engine is `codex`:
 
