@@ -69,6 +69,33 @@ All 13 skills: OK
 
 Then continue.
 
+## Step 1b: Check Codex Skill Symlinks
+
+Workers dispatched via `darkfactory-dispatch` run inside `codex exec`, which discovers skills from `~/.codex/skills/`. Verify the skills that workers must invoke are also symlinked there.
+
+Check these skills in `$HOME/.codex/skills/`:
+
+```bash
+for skill in frontend tdd ui-system react-perf; do
+  link="$HOME/.codex/skills/$skill"
+  if [ ! -L "$link" ]; then
+    echo "[ ] /$skill - missing in ~/.codex/skills/"
+  elif [ ! -e "$link" ]; then
+    echo "[!] /$skill - broken symlink in ~/.codex/skills/"
+  else
+    resolved="$(cd "$link" 2>/dev/null && pwd -P)"
+    expected="$(cd "$HOME/.darkfactory/skills/$skill" 2>/dev/null && pwd -P)"
+    if [ "$resolved" != "$expected" ]; then
+      echo "[!] /$skill - wrong target in ~/.codex/skills/"
+    else
+      echo "[x] /$skill - symlink OK in ~/.codex/skills/"
+    fi
+  fi
+done
+```
+
+If any are missing, the fix is the same as Step 1: run `~/.darkfactory/install.sh`.
+
 ## Step 2: Initialize OpenSpec
 
 Check for `openspec/config.yaml` in the current directory.
@@ -122,18 +149,58 @@ Report each tool as installed, not installed, or not authenticated.
 
 ## Step 4: Browser Tools Check (conditional)
 
-If `browser_tools: true` in the mission's config.yaml (or if any task in the current mission has `Skill: /frontend`), check that chrome-devtools-mcp is registered:
+If `browser_tools: true` in the mission's config.yaml (or if any task in the current mission has `Skill: /frontend`), check chrome-devtools-mcp in **both** Claude Code and Codex environments.
 
-Attempt to call a chrome-devtools MCP tool to verify it is registered and responsive. Use a lightweight read-only tool such as `list_pages` or `get_console_message`. If the call succeeds (returns a result, even if empty), the server is available. If the call fails with a tool-not-found or connection error, the server is not registered.
+### 4a: Claude Code (orchestrator)
 
-Alternatively, check whether any tool names starting with `mcp__chrome-devtools__` or `chrome-devtools` appear in the available tool list. If none are found, the server is not registered.
+Check whether any tool names starting with `mcp__chrome-devtools__` or `chrome-devtools` appear in the available tool list. If none are found, the server is not registered.
 
-If chrome-devtools-mcp is not registered:
-- Report: `[!] chrome-devtools-mcp - not registered (required when browser_tools: true)`
-- Fix: Install chrome-devtools-mcp from https://github.com/nichochar/chrome-devtools-mcp and add it to MCP configuration
+If chrome-devtools-mcp is not registered in Claude Code:
+- Report: `[!] chrome-devtools-mcp - not registered in Claude Code (required when browser_tools: true)`
+- Fix: Add chrome-devtools-mcp to Claude Code's MCP settings
 - This blocks mission launch for missions with `/frontend` tasks
 
-If `browser_tools: false` or no `/frontend` tasks exist, skip this check.
+### 4b: Codex (dispatch workers)
+
+Workers dispatched via `darkfactory-dispatch` run in `codex exec`. They need chrome-devtools-mcp configured in Codex's global config. Check `~/.codex/config.toml` for the MCP server entry:
+
+```bash
+grep -q '\[mcp_servers\.chrome-devtools\]' "$HOME/.codex/config.toml" 2>/dev/null && echo "CONFIGURED" || echo "NOT_CONFIGURED"
+```
+
+If not configured:
+- Report: `[!] chrome-devtools-mcp - not configured in Codex (workers cannot run visual verification)`
+- Fix: Add to `~/.codex/config.toml`:
+  ```toml
+  [mcp_servers.chrome-devtools]
+  command = "npx"
+  args = ["-y", "chrome-devtools-mcp@latest"]
+  ```
+- This blocks mission launch for missions with `/frontend` tasks
+
+### 4c: Dispatch probe (optional, run when both 4a and 4b pass)
+
+Run a lightweight dispatch to verify chrome-devtools-mcp actually works inside `codex exec`:
+
+```bash
+darkfactory-dispatch \
+  --model gpt-5.5 \
+  --effort low \
+  --timeout 120 \
+  --sandbox read-only \
+  --prompt "List browser pages using the chrome-devtools MCP tool (list_pages). Report the result or any error. Write PROBE_OK if the tool responded, PROBE_FAIL if it was unavailable." \
+  --cwd "$(pwd)" \
+  --json
+```
+
+Parse the result. If the dispatch completes and the output or activity suggests the MCP tool was called, report:
+- `[x] chrome-devtools-mcp - verified in dispatch worker`
+
+If the probe fails or times out, report:
+- `[!] chrome-devtools-mcp - configured but not working in dispatch (check npx and Node availability)`
+- Do not block on probe failure if 4a and 4b both passed — report as a warning.
+
+If `browser_tools: false` or no `/frontend` tasks exist, skip all of Step 4.
 
 ## Step 5: Coverage Tool Detection
 
@@ -228,8 +295,16 @@ CLI tools:
   [x] openspec
   [x] jq
 
+Codex worker skills (via ~/.codex/skills/ symlinks):
+  [x] /frontend
+  [x] /tdd
+  [x] /ui-system
+  [x] /react-perf
+
 Browser tools:
-  [-] chrome-devtools-mcp (skipped - browser_tools: false and no /frontend tasks)
+  [-] chrome-devtools-mcp in Claude Code (skipped - no /frontend tasks)
+  [-] chrome-devtools-mcp in Codex config (skipped - no /frontend tasks)
+  [-] chrome-devtools-mcp dispatch probe (skipped - no /frontend tasks)
 
 Coverage:
   [x] cargo-tarpaulin (Rust detected)

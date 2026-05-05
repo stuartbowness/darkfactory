@@ -564,6 +564,12 @@ Read [templates/worker-brief.md](templates/worker-brief.md).
 
 **The brief NEVER contains contract.md content.** 
 
+#### Skill Invocation (mandatory)
+
+The Procedures section of every brief — both initial worker briefs and fix briefs — must instruct the worker to **invoke** the task's skill (e.g. `/tdd`, `/frontend`) before writing any code. Use the exact language from the templates — "invoke", not "use" or "follow". The worker has access to all darkfactory skills via its skill loader; this instruction ensures it actually loads the skill's full workflow rather than treating the skill name as a vague hint. The same applies to constraint skills (`/ui-system`, `/react-perf`) — each must be explicitly invoked.
+
+Substitute the task's `Skill:` value directly into the placeholder (it already includes the leading slash). If the task has no `Skill:` field, substitute `/tdd`. Fix briefs must carry forward the original task's `Skill:` and `Constraints:` values — never hardcode `/tdd`.
+
 #### Browser Tools Override
 
 If `browser_tools: false` in config.yaml (human override), omit visual verification procedures from the worker brief even for `/frontend` tasks. The worker follows the `/frontend` workflow but skips the chrome-devtools-mcp visual verify step in the Build phase.
@@ -572,11 +578,17 @@ If `browser_tools: false` in config.yaml (human override), omit visual verificat
 
 Read the engine from `mission/config.yaml`.
 
-#### Browser Tools Pre-flight (Skill: /frontend tasks only)
+#### Browser Tools Pre-flight (Skill: /frontend tasks only, browser_tools: true)
 
-Before dispatching a `/frontend` task, check that chrome-devtools-mcp is available:
-- If available: proceed with dispatch, include visual verification in the brief
-- If unavailable: block dispatch. Log to progress.md: `<timestamp> -- Task N: chrome-devtools-mcp unavailable at dispatch. Pausing.` Surface to human with options: retry (check again), skip visual verify for this task, or abort mission
+Skip this check if `browser_tools: false` in config.yaml or the task does not have `Skill: /frontend`.
+
+Before dispatching a `/frontend` task with `browser_tools: true`, check that chrome-devtools-mcp is available in **both** environments:
+
+1. **Claude Code (orchestrator):** Check that `mcp__chrome-devtools__*` tools are in the available tool list.
+2. **Codex (dispatch workers):** Run `grep -q '\[mcp_servers\.chrome-devtools\]' "$HOME/.codex/config.toml"` to verify the MCP server is configured for `codex exec`.
+
+If both pass: proceed with dispatch, include visual verification in the brief.
+If either fails: block dispatch. Log to progress.md: `<timestamp> -- Task N: chrome-devtools-mcp unavailable at dispatch. Pausing.` Surface to human with options: retry (check again), skip visual verify for this task, or abort mission.
 
 #### If engine is `codex`:
 
@@ -699,6 +711,8 @@ Track the attempt number (starts at 1 for the initial worker, increments on each
 Read [templates/worker-fix-brief.md](templates/worker-fix-brief.md).
 
 **The fix brief NEVER contains contract.md content.** 
+
+The fix brief must carry forward the original task's `Skill:` and `Constraints:` values into its Procedures section. See "Skill Invocation (mandatory)" in Step 1 — the same rules apply to fix briefs.
 
 5. **Dispatch fix worker** using the same engine and method as Step 2, but with the fix brief.
 

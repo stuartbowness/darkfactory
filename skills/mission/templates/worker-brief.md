@@ -50,8 +50,15 @@ Example:
 <Which later tasks in tasks.md will call this code? For each, name one minimum integration test that proves the call path works. Leave empty if no later task consumes this one.>
 
 ## Procedures
-- Use `<methodology from task Skill: field, default /tdd if no Skill: field>` to implement this task
-- <one line per Constraint from task topology, e.g. "Also follow /ui-system"; omit if no Constraints>
+
+**Before writing any code**, invoke the `<task Skill: value, or /tdd if no Skill: field>` skill. This is mandatory — do not skip it, do not treat it as optional guidance. The skill contains the workflow you must follow for this task. Invoke it now, read the full instructions it returns, and follow its phases in order.
+
+<If task has Constraints, one line per constraint skill, e.g.:>
+Also invoke the `<constraint Skill: value>` skill and follow its rules alongside the primary methodology.
+
+<If task Skill: is /frontend and browser_tools is false, include this line:>
+Browser tools are disabled for this mission. Skip the chrome-devtools-mcp visual verification step in the /frontend workflow.
+
 - Commit all changes (code + tests) in a single commit with message: "[task-N] <description>"
 - Write your handoff report to openspec/changes/<change-name>/mission/handoffs/task-N.md
 
