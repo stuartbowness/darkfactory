@@ -83,22 +83,25 @@ DISPATCH_RESULT=$(darkfactory-dispatch \
   --prompt-file "$PROMPT_PATH" \
   --output "$REPORT_PATH" \
   --cwd "$(pwd)" \
-  --json)
+  --json 2>/dev/null)
 
 rm -f "$PROMPT_PATH"
+
+DISPATCH_STATUS=$(echo "$DISPATCH_RESULT" | jq -r '.status')
+DISPATCH_ERROR=$(echo "$DISPATCH_RESULT" | jq -r '.error.message // empty')
 ```
 
 ## Step 4: Present Findings
 
-If dispatch succeeded (`.status` is `completed` and `$REPORT_PATH` exists), read the report and present the findings to the user.
+If `$DISPATCH_STATUS` is `completed` and `$REPORT_PATH` exists, read the report and present the findings to the user.
 
-If dispatch failed or timed out:
+If `$DISPATCH_STATUS` is `failed`, `timed_out`, or empty:
 
 ```text
 Artifact review failed.
 
-Status: <status>
-Error: <error.message or "no error message">
+Status: <DISPATCH_STATUS>
+Error: <DISPATCH_ERROR or "no error message">
 
 The review did not complete. You can retry with /artifact-review or review the artifact manually.
 ```
