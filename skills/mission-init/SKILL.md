@@ -224,16 +224,16 @@ If missing, suggest:
 cargo install cargo-tarpaulin
 ```
 
-For TypeScript/Node, check `package.json` for `c8`, `jest`, or `istanbul` in `dependencies` or `devDependencies`. Use an exit-0 pattern:
+For TypeScript/Node, check `package.json` for `vitest`, `@vitest/coverage-v8`, `@vitest/coverage-istanbul`, `c8`, `jest`, or `istanbul` in `dependencies` or `devDependencies`. Use an exit-0 pattern:
 
 ```bash
-node -e 'const p=require("./package.json"); const d={...(p.dependencies||{}), ...(p.devDependencies||{})}; console.log(["c8","jest","istanbul"].some((k)=>d[k]) ? "FOUND" : "NOT_INSTALLED")' 2>/dev/null || echo "NOT_INSTALLED"
+node -e 'const p=require("./package.json"); const d={...(p.dependencies||{}), ...(p.devDependencies||{})}; console.log(["vitest","@vitest/coverage-v8","@vitest/coverage-istanbul","c8","jest","istanbul"].some((k)=>d[k]) ? "FOUND" : "NOT_INSTALLED")' 2>/dev/null || echo "NOT_INSTALLED"
 ```
 
-If missing, suggest:
+If missing, suggest (Vitest preferred for new projects):
 
 ```bash
-npm install -D c8
+npm install -D vitest @vitest/coverage-v8
 ```
 
 For Python:
