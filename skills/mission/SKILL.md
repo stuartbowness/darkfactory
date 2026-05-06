@@ -162,7 +162,7 @@ Every artifact review follows this pattern:
 1. **Run `/artifact-review`** -- dispatch the artifact to Codex for review (per Rule 11)
 2. **Write checkpoint** -- persist the review result before continuing:
    - **Phases 2-3** (before change directory exists): add a structured entry to the plan's Review Checkpoints section: `- Phase N (<artifact>): REVIEWED | FAILED — <timestamp> — <finding count or failure reason>`
-   - **Phases 4+** (change directory exists): write the review output (or failure notice) to `reviews/<phase>-<artifact>.md` in the change directory, using the format in [templates/review-checkpoint.md](templates/review-checkpoint.md). If `/artifact-review` failed or was not attempted, write a FAILED checkpoint with the reason.
+   - **Phases 4+** (change directory exists): write the review output (or failure notice) to `reviews/<phase>-<artifact>.md` in the change directory, using the format in [templates/review-checkpoint.md](templates/review-checkpoint.md). If the `/artifact-review` dispatch fails, write a FAILED checkpoint with the dispatch error.
    The checkpoint must exist before proceeding to step 3.
 3. **AI presents** -- show the artifact content and the review findings (if any) to the human
 4. **AI recommends** -- state whether it looks good, incorporating review findings. Address CRITICAL/HIGH findings specifically — agree and suggest a fix, or explain why it's a false positive
