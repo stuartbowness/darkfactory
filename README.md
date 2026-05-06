@@ -160,6 +160,7 @@ openspec/changes/<change-name>/
   tasks.md                 # Task checklist (includes mandatory closing tasks)
   coverage-audit.md        # PRD requirement-to-task mapping
   contract.md              # What the code should do (traced to PRD, tagged by verification method)
+  reviews/                 # Artifact review checkpoints from planning phases (one file per reviewed artifact)
   mission/
     config.yaml            # Engine settings per role
     progress.md            # Orchestrator's running log

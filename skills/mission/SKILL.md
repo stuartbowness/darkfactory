@@ -16,7 +16,7 @@ flow: align -> spec -> contract -> build -> validate -> ship
 8. **Plan is the operating manual.** Keep the plan updated after every phase and step. It must be accurate if context compacts.
 9. **Skipped tasks use `- [~]`.** The build loop treats `- [~]` as neither unchecked nor complete. Skipped tasks are not re-attempted.
 10. **Mark tasks done in tasks.md immediately.** After a task passes validation, change `- [ ]` to `- [x]` in tasks.md before moving to the next task. This is required for resume to work correctly.
-11. **Artifact review before human Q&A.** Every planning artifact (Phases 2-5 and 4a) is dispatched to Codex for review via `/artifact-review` before presenting to the human. Findings are shown alongside the artifact and the AI recommendation. If `/artifact-review` fails, note the failure and continue — review is non-blocking.
+11. **Artifact review before human Q&A.** Every planning artifact (Phases 2-5 and 4a) is dispatched to Codex for review via `/artifact-review` before presenting to the human. Findings are shown alongside the artifact and the AI recommendation. If `/artifact-review` fails, note the failure and continue — review is non-blocking. The review result (or failure notice) must be persisted as a checkpoint before presenting the artifact to the human. For Phases 2-3, record checkpoints in the plan's Review Checkpoints section. For Phases 4+, write checkpoint files to `reviews/` in the change directory.
 
 ---
 
@@ -51,6 +51,8 @@ Enter plan mode immediately. Write a durable operating manual as the plan. This 
 ### Plan Template
 
 Write this plan, filling in values as they become known. Read the plan structure from [templates/plan.md](templates/plan.md).
+
+The plan must include a `## Review Checkpoints` section for recording Phase 2-3 review results before the change directory exists.
 
 To fill in the **Darkfactory SHA** field, run `git -C ~/.darkfactory rev-parse HEAD`; if `git -C ~/.darkfactory status --porcelain` returns anything, append `-dirty` to the SHA. Paste the result into the plan. If `~/.darkfactory` does not exist (non-standard install), resolve the darkfactory clone path from the symlink target of `~/.claude/skills/mission` and use that instead.
 
@@ -103,6 +105,7 @@ Run `/artifact-review` on the generated UBIQUITOUS_LANGUAGE.md before presenting
 
 **Gate -- proceed when:**
 - [ ] UBIQUITOUS_LANGUAGE.md exists and is loaded into context
+- [ ] Review checkpoint recorded in plan (REVIEWED or FAILED)
 
 ---
 
@@ -122,6 +125,7 @@ Record both the issue URL and the issue number in the plan (under Spec Coverage 
 **Gate -- proceed when:**
 - [ ] PRD filed as GitHub issue
 - [ ] Issue URL and issue number recorded in plan
+- [ ] Review checkpoint recorded in plan (REVIEWED or FAILED)
 
 ---
 
@@ -139,6 +143,13 @@ The `spec-driven` schema generates four artifacts in dependency order: `proposal
 **Do NOT run `/opsx:propose` as a single pass.** Instead, orchestrate artifact creation using the openspec CLI commands directly:
 
 1. `openspec new change "<name>"` -- create the change directory
+   After the change directory is created, create the reviews directory and retroactively write Phase 2-3 checkpoints:
+   ```bash
+   mkdir -p openspec/changes/<change-name>/reviews
+   ```
+   Read the plan's Review Checkpoints section. For each Phase 2-3 entry, write a corresponding checkpoint file to `reviews/` using the template format:
+   - `reviews/phase2-ubiquitous-language.md`
+   - `reviews/phase3-prd.md`
 2. `openspec status --change "<name>" --json` -- get artifact order and dependencies
 3. For each artifact in order:
    a. `openspec instructions <artifact-id> --change "<name>" --json` -- get instructions for this artifact
@@ -149,9 +160,13 @@ The `spec-driven` schema generates four artifacts in dependency order: `proposal
 
 Every artifact review follows this pattern:
 1. **Run `/artifact-review`** -- dispatch the artifact to Codex for review (per Rule 11)
-2. **AI presents** -- show the artifact content and the review findings (if any) to the human
-3. **AI recommends** -- state whether it looks good, incorporating review findings. Address CRITICAL/HIGH findings specifically — agree and suggest a fix, or explain why it's a false positive
-4. **Human decides** -- approve, request changes, or defer to the AI recommendation
+2. **Write checkpoint** -- persist the review result before continuing:
+   - **Phases 2-3** (before change directory exists): add a structured entry to the plan's Review Checkpoints section: `- Phase N (<artifact>): REVIEWED | FAILED — <timestamp> — <finding count or failure reason>`
+   - **Phases 4+** (change directory exists): write the review output (or failure notice) to `reviews/<phase>-<artifact>.md` in the change directory, using the format in [templates/review-checkpoint.md](templates/review-checkpoint.md). If `/artifact-review` failed or was not attempted, write a FAILED checkpoint with the reason.
+   The checkpoint must exist before proceeding to step 3.
+3. **AI presents** -- show the artifact content and the review findings (if any) to the human
+4. **AI recommends** -- state whether it looks good, incorporating review findings. Address CRITICAL/HIGH findings specifically — agree and suggest a fix, or explain why it's a false positive
+5. **Human decides** -- approve, request changes, or defer to the AI recommendation
 
 The human can always say "looks good" or "go with your recommendation" to keep momentum. If changes are requested, revise and re-present.
 
@@ -311,10 +326,14 @@ After all artifacts are reviewed and approved, update the plan with the actual a
 
 **Gate -- proceed when:**
 - [ ] proposal.md human-approved
+- [ ] Review checkpoint exists: reviews/phase4.1-proposal.md
 - [ ] All specs/<capability>/spec.md files human-approved
+- [ ] Review checkpoint exists for every spec: reviews/phase4.2-spec-<capability>.md matches specs/ one-to-one
 - [ ] design.md human-approved
+- [ ] Review checkpoint exists: reviews/phase4.3-design.md
 - [ ] Task strategy approved by human (Phase 4.3a)
 - [ ] tasks.md (with closing tasks) human-approved
+- [ ] Review checkpoint exists: reviews/phase4.4-tasks.md
 - [ ] Plan updated with actual artifact paths
 
 ---
@@ -364,7 +383,7 @@ The "Prerequisites met?" column applies to Substitutions only. For Interpretatio
 
 8. **If tasks change** (new tasks added to cover gaps), re-present the updated tasks.md for review. The human must approve the final task list before proceeding.
 
-9. **If specs or tasks changed in steps 7-8,** re-persist the updated `coverage-audit.md` to disk and re-run `/artifact-review` on it. Phase 5 reads this file to write the contract — it must reflect the final approved state.
+9. **If specs or tasks changed in steps 7-8,** re-persist the updated `coverage-audit.md` to disk and re-run `/artifact-review` on it. Overwrite the existing checkpoint file (`reviews/phase4a-coverage-audit.md`) with the new review result. Phase 5 reads this file to write the contract — it must reflect the final approved state.
 
 10. **Record the coverage audit** in the plan. Update the Spec Coverage Audit section with the PRD issue URL, gap count, and resolutions.
 
@@ -374,6 +393,7 @@ The "Prerequisites met?" column applies to Substitutions only. For Interpretatio
 - [ ] All deviations classified and approved by human
 - [ ] Changed specs/tasks re-approved by human (if any changed)
 - [ ] coverage-audit.md persisted to disk
+- [ ] Review checkpoint exists: reviews/phase4a-coverage-audit.md
 - [ ] Plan updated with audit results
 
 ---
@@ -450,6 +470,7 @@ Update the plan with the contract path after approval.
 
 **Gate -- proceed when:**
 - [ ] contract.md human-approved
+- [ ] Review checkpoint exists: reviews/phase5-contract.md
 - [ ] Testability pre-flight passed (inspection checks <=20%)
 - [ ] Testability breakdown logged to progress.md
 - [ ] Plan updated with contract path

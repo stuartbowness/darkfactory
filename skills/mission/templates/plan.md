@@ -81,5 +81,10 @@ After all tasks complete:
 ## Codebase Deltas
 <Accumulated after each task passes validation. Used to populate "What Previous Tasks Built" in subsequent briefs. Generated from git diff, never from handoff reports.>
 
+## Review Checkpoints
+
+- Phase 2 (UBIQUITOUS_LANGUAGE.md): <pending>
+- Phase 3 (PRD): <pending>
+
 ## Current Task: <N or "none">
 ## Current Step: <step name or "none">
