@@ -1,5 +1,7 @@
 #!/bin/sh
-DARKFACTORY="$HOME/.darkfactory"
+# Resolve repo root from script location, not a hardcoded path.
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd -P)"
+DARKFACTORY="$SCRIPT_DIR"
 SKILLS_DIR="$DARKFACTORY/skills"
 CLAUDE_SKILLS="$HOME/.claude/skills"
 AGENTS_SKILLS="$HOME/.agents/skills"

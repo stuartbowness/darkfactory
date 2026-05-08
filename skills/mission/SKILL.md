@@ -54,7 +54,7 @@ Write this plan, filling in values as they become known. Read the plan structure
 
 The plan must include a `## Review Checkpoints` section for recording Phase 2-3 review results before the change directory exists.
 
-To fill in the **Darkfactory SHA** field, run `git -C ~/.darkfactory rev-parse HEAD`; if `git -C ~/.darkfactory status --porcelain` returns anything, append `-dirty` to the SHA. Paste the result into the plan. If `~/.darkfactory` does not exist (non-standard install), resolve the darkfactory clone path from the symlink target of `~/.claude/skills/mission` and use that instead.
+To fill in the **Darkfactory SHA** field, resolve the Darkfactory repo root from the skill symlink: `DARKFACTORY_ROOT="$(cd "$(readlink "$HOME/.claude/skills/mission")/../.." 2>/dev/null && pwd -P)"`. Then run `git -C "$DARKFACTORY_ROOT" rev-parse HEAD`; if `git -C "$DARKFACTORY_ROOT" status --porcelain` returns anything, append `-dirty` to the SHA. Paste the result into the plan.
 
 ### First Action
 

@@ -19,8 +19,9 @@ mission mission-resume mission-status mission-init grill prd language tdd test-q
 For each skill, verify:
 
 1. `$HOME/.claude/skills/<name>` exists as a symlink, not a regular file or directory.
-2. The symlink target exists.
-3. `readlink "$HOME/.claude/skills/<name>"` equals `$HOME/.darkfactory/skills/<name>`.
+2. The symlink target exists (not a broken symlink).
+3. The symlink target contains a `SKILL.md` file (valid skill directory).
+4. All skills resolve to the same Darkfactory repo root (no mixed sources).
 
 Use this status format:
 
@@ -28,24 +29,30 @@ Use this status format:
   [x] /mission - symlink OK
   [ ] /adversarial - missing (symlink does not exist)
   [!] /dispatch - broken (symlink exists but target missing)
-  [!] /prd - wrong target
+  [!] /prd - wrong target (no SKILL.md in target directory)
+  [!] /tdd - wrong source (resolves to different repo root)
 ```
 
 Use a Bash pattern that always exits 0:
 
 ```bash
+df_root=""
 for skill in mission mission-resume mission-status mission-init grill prd language tdd test-quality security adversarial dispatch artifact-review; do
   link="$HOME/.claude/skills/$skill"
-  expected="$HOME/.darkfactory/skills/$skill"
 
   if [ ! -L "$link" ]; then
     echo "[ ] /$skill - missing (symlink does not exist)"
   elif [ ! -e "$link" ]; then
     echo "[!] /$skill - broken (symlink exists but target missing)"
+  elif [ ! -f "$link/SKILL.md" ]; then
+    echo "[!] /$skill - wrong target (no SKILL.md in target directory)"
   else
-    target="$(readlink "$link" 2>/dev/null || true)"
-    if [ "$target" != "$expected" ]; then
-      echo "[!] /$skill - wrong target"
+    root="$(cd "$(readlink "$link")/../.." 2>/dev/null && pwd -P)"
+    if [ -z "$df_root" ]; then
+      df_root="$root"
+      echo "[x] /$skill - symlink OK"
+    elif [ "$root" != "$df_root" ]; then
+      echo "[!] /$skill - wrong source (resolves to $root, expected $df_root)"
     else
       echo "[x] /$skill - symlink OK"
     fi
@@ -53,13 +60,7 @@ for skill in mission mission-resume mission-status mission-init grill prd langua
 done
 ```
 
-If any required skill is missing, broken, or points to the wrong target, instruct the user to run:
-
-```bash
-~/.darkfactory/install.sh
-```
-
-Then tell them to restart Claude Code and re-run `/mission-init`. Stop after reporting the missing skill fixes.
+If any required skill is missing, broken, or has a wrong target, instruct the user to run `install.sh` from their Darkfactory clone directory. Then tell them to restart Claude Code and re-run `/mission-init`. Stop after reporting the missing skill fixes.
 
 If all 13 skills are present and resolve correctly, report:
 
@@ -84,7 +85,7 @@ for skill in frontend tdd ui-system react-perf; do
     echo "[!] /$skill - broken symlink in ~/.codex/skills/"
   else
     resolved="$(cd "$link" 2>/dev/null && pwd -P)"
-    expected="$(cd "$HOME/.darkfactory/skills/$skill" 2>/dev/null && pwd -P)"
+    expected="$(cd "$HOME/.claude/skills/$skill" 2>/dev/null && pwd -P)"
     if [ "$resolved" != "$expected" ]; then
       echo "[!] /$skill - wrong target in ~/.codex/skills/"
     else
@@ -94,7 +95,7 @@ for skill in frontend tdd ui-system react-perf; do
 done
 ```
 
-If any are missing, the fix is the same as Step 1: run `~/.darkfactory/install.sh`.
+If any are missing, the fix is the same as Step 1: run `install.sh` from the Darkfactory clone directory.
 
 ## Step 2: Initialize OpenSpec
 
@@ -142,7 +143,7 @@ jq --version 2>/dev/null || echo "NOT_INSTALLED"
 Report each tool as installed, not installed, or not authenticated.
 
 - `codex`: if missing, fix with `npm install -g @openai/codex`. If installed but a Codex command reports an auth failure, fix with `codex login`.
-- `darkfactory-dispatch`: if missing, fix with `cd ~/.darkfactory/tools/darkfactory-dispatch && make install`.
+- `darkfactory-dispatch`: if missing, fix with `cd <darkfactory-clone>/tools/darkfactory-dispatch && make install` (where `<darkfactory-clone>` is the directory where the user cloned the Darkfactory repo).
 - `gh`: if `gh --version` is missing, fix with `brew install gh`. If `gh auth status` fails while `gh` is installed, fix with `gh auth login`.
 - `openspec`: if missing, fix with `npm install -g @fission-ai/openspec`.
 - `jq`: if missing, fix with `brew install jq`.

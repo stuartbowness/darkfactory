@@ -10,10 +10,11 @@ Dispatch a planning artifact to Codex for review against six dimensions: ambigui
 
 ## Startup Config
 
-Read the default model from `~/.darkfactory/config.yaml`. Fall back to `gpt-5.5`.
+Resolve the Darkfactory repo root from the skill symlink and read `default_model` from its `config.yaml`. Fall back to `gpt-5.5`.
 
 ```bash
-DEFAULT_MODEL=$(awk -F: '/^[[:space:]]*default_model[[:space:]]*:/ { gsub(/^[[:space:]]+|[[:space:]]+$/, "", $2); print $2; exit }' "$HOME/.darkfactory/config.yaml" 2>/dev/null)
+DARKFACTORY_ROOT="$(cd "$(readlink "$HOME/.claude/skills/artifact-review")/../.." 2>/dev/null && pwd -P)"
+DEFAULT_MODEL=$(awk -F: '/^[[:space:]]*default_model[[:space:]]*:/ { gsub(/^[[:space:]]+|[[:space:]]+$/, "", $2); print $2; exit }' "$DARKFACTORY_ROOT/config.yaml" 2>/dev/null)
 : "${DEFAULT_MODEL:=gpt-5.5}"
 ```
 

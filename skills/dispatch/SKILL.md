@@ -12,10 +12,11 @@ Do not call the Codex CLI directly. Always use `darkfactory-dispatch`.
 
 ## Startup Config
 
-At startup, read `default_model` from `~/.darkfactory/config.yaml`. If the file or key is absent, use `gpt-5.5`.
+At startup, resolve the Darkfactory repo root from the skill symlink and read `default_model` from its `config.yaml`. If the file or key is absent, use `gpt-5.5`.
 
 ```bash
-DEFAULT_MODEL=$(awk -F: '/^[[:space:]]*default_model[[:space:]]*:/ { gsub(/^[[:space:]]+|[[:space:]]+$/, "", $2); print $2; exit }' "$HOME/.darkfactory/config.yaml" 2>/dev/null)
+DARKFACTORY_ROOT="$(cd "$(readlink "$HOME/.claude/skills/dispatch")/../.." 2>/dev/null && pwd -P)"
+DEFAULT_MODEL=$(awk -F: '/^[[:space:]]*default_model[[:space:]]*:/ { gsub(/^[[:space:]]+|[[:space:]]+$/, "", $2); print $2; exit }' "$DARKFACTORY_ROOT/config.yaml" 2>/dev/null)
 : "${DEFAULT_MODEL:=gpt-5.5}"
 ```
 

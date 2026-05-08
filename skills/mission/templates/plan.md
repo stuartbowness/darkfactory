@@ -6,7 +6,7 @@
 openspec/changes/<change-name>/mission/
 
 ## Darkfactory SHA
-<full SHA of ~/.darkfactory at plan-creation time; append "-dirty" if working tree has uncommitted changes>
+<full SHA of the Darkfactory repo at plan-creation time; append "-dirty" if working tree has uncommitted changes>
 Captured so this mission can be reproduced against the exact skill version that ran it.
 
 ## OpenSpec Artifacts
