@@ -26,7 +26,7 @@ Inspired by [Factory's Missions architecture](https://www.factory.ai/) and [Matt
 
 ### First-time install
 
-Clone Darkfactory and symlink its skills into your global Claude Code skills directory:
+Clone Darkfactory and symlink its skills into your global Claude Code skills directory. You can clone to any path -- `~/.darkfactory` is the conventional default:
 
 ```bash
 git clone https://github.com/layercodedev/darkfactory.git ~/.darkfactory
@@ -39,6 +39,8 @@ Then build and install the dispatch supervisor:
 ```bash
 cd ~/.darkfactory/tools/darkfactory-dispatch && make install
 ```
+
+If you cloned to a different path, replace `~/.darkfactory` with your clone directory in the commands above.
 
 This compiles a Rust binary and copies it to `~/.local/bin/darkfactory-dispatch`. It supervises Codex subprocess dispatches with process group isolation, two-phase timeout, NDJSON heartbeat events, and structured JSON results.
 
@@ -226,7 +228,7 @@ All Darkfactory skills are bundled in this repo. `/mission` also calls two built
 
 ### Configuration
 
-Darkfactory reads global defaults from `~/.darkfactory/config.yaml`:
+Darkfactory reads global defaults from `config.yaml` at the repo root (resolved at runtime from skill symlinks):
 
 ```yaml
 default_model: gpt-5.5
