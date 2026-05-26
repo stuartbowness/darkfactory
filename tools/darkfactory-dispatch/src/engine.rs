@@ -250,7 +250,6 @@ fn build_codex_args(spec: &DispatchSpec) -> Vec<OsString> {
     let mut args = vec![
         "exec".into(),
         "--json".into(),
-        "--full-auto".into(),
         "-s".into(),
         sandbox.into(),
         "-m".into(),
@@ -889,7 +888,6 @@ mod tests {
             vec![
                 "exec",
                 "--json",
-                "--full-auto",
                 "-s",
                 "workspace-write",
                 "-m",
