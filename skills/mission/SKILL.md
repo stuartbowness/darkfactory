@@ -4,6 +4,20 @@ description: Start an autonomous Darkfactory mission. Grills the user for alignm
 flow: align -> spec -> contract -> build -> validate -> ship
 ---
 
+## Mode Selection
+
+If the args string contains `--basic`, read and follow [basic/SKILL.md](basic/SKILL.md) instead. **Stop reading this file.** The remaining content below is for full mission mode only.
+
+Supported basic mode flags (parsed by basic/SKILL.md):
+- `--basic` -- activate basic mode (required)
+- `--no-tdd` -- skip TDD, implement directly then write tests
+- `--instruction <path>` -- read task description from file
+- Unquoted/quoted text after flags -- inline task description
+
+If `--basic` is not present, continue with full mission mode below.
+
+---
+
 ## Rules (Always Enforced)
 
 1. **Serial execution.** One worker at a time. Never dispatch two workers in parallel. (Exception: the two adversarial reviewers in Phase 9 run in parallel since they are independent read-only reviewers.)
