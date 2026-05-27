@@ -26,6 +26,10 @@ Planning artifacts follow the OpenSpec change lifecycle: propose -> spec -> desi
 - After making architectural changes, update ARCH.md to reflect the change.
 - Shell scripts in skills must work on both Debian/Ubuntu (GNU coreutils) and macOS (BSD coreutils). Avoid GNU-only flags (`sed -i`, `date -d`, `stat -c`, `mktemp --suffix`, `readlink -f`, `grep -P`). Use POSIX-portable forms instead (e.g., `mktemp /tmp/prefix.XXXXXX`, not `mktemp --suffix=prefix`).
 
+## Versioning
+
+The darkfactory repo has one version: the GitHub release tag (v1.4.x). Internal tools like `darkfactory-dispatch` are pinned at v1.0.0 in their Cargo.toml and never bumped -- the repo release is the only version that matters. When creating a release, increment the repo tag only.
+
 ## darkfactory-dispatch
 
 Use `darkfactory-dispatch` to dispatch coding tasks to Codex with process supervision (timeout, heartbeat, process group isolation, structured JSON results). Run `darkfactory-dispatch --help` for full usage and examples.

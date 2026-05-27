@@ -80,6 +80,10 @@ Tests required when a change could break silently (process management, NDJSON pa
 - **Bug fix** -> regression test that fails without the fix.
 - **Tokio tests**: All async tests MUST use `#[tokio::test(flavor = "multi_thread")]`.
 
+## Versioning
+
+The Cargo.toml version is pinned at 1.0.0 and never bumped. The darkfactory repo release tag (v1.4.x) is the only version that matters. Do not bump the crate version when making changes or creating releases.
+
 ## Secrets -- do not commit
 
 No secrets in this project. The Codex CLI handles its own authentication.
