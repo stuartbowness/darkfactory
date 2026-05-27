@@ -68,6 +68,10 @@ Before task generation, the orchestrator presents a decomposition strategy (laye
 
 Global defaults in `~/.darkfactory/config.yaml`. Per-mission engine assignments in `mission/config.yaml` (worker, scrutiny_validator, usertest_validator, adversarial reviewers).
 
+## Versioning
+
+One version for the whole repo: the GitHub release tag (v1.4.x). Internal tools (darkfactory-dispatch) have their own Cargo.toml version pinned at 1.0.0, which is never bumped. When releasing, increment the repo tag only.
+
 ## External dependencies
 
 - Claude Code (orchestrator, Claude workers, validators)
