@@ -88,8 +88,8 @@ DISPATCH_RESULT=$(darkfactory-dispatch \
 
 rm -f "$PROMPT_PATH"
 
-DISPATCH_STATUS=$(echo "$DISPATCH_RESULT" | jq -r '.status')
-DISPATCH_ERROR=$(echo "$DISPATCH_RESULT" | jq -r '.error.message // empty')
+DISPATCH_STATUS=$(printf '%s\n' "$DISPATCH_RESULT" | jq -r '.status')
+DISPATCH_ERROR=$(printf '%s\n' "$DISPATCH_RESULT" | jq -r '.error.message // empty')
 ```
 
 ## Step 4: Present Findings

@@ -641,8 +641,8 @@ DISPATCH_RESULT=$(darkfactory-dispatch \
 if [ -z "$DISPATCH_RESULT" ]; then
   echo "TASK_FAILED: dispatcher crashed with no output. Log: $LOG_PATH"
 else
-  DISPATCH_STATUS=$(echo "$DISPATCH_RESULT" | jq -r '.status')
-  DISPATCH_ERROR=$(echo "$DISPATCH_RESULT" | jq -r '.error.message // empty')
+  DISPATCH_STATUS=$(printf '%s\n' "$DISPATCH_RESULT" | jq -r '.status')
+  DISPATCH_ERROR=$(printf '%s\n' "$DISPATCH_RESULT" | jq -r '.error.message // empty')
 
   if [ "$DISPATCH_STATUS" = "completed" ] && [ -f "$HANDOFF_PATH" ]; then
     echo "TASK_COMPLETE: handoff written"
@@ -931,8 +931,8 @@ rm -f "$PROMPT_PATH"
 if [ -z "$DISPATCH_RESULT" ]; then
   echo "REVIEW_FAILED: dispatcher crashed with no output. Log: $LOG_PATH"
 else
-  DISPATCH_STATUS=$(echo "$DISPATCH_RESULT" | jq -r '.status')
-  DISPATCH_ERROR=$(echo "$DISPATCH_RESULT" | jq -r '.error.message // empty')
+  DISPATCH_STATUS=$(printf '%s\n' "$DISPATCH_RESULT" | jq -r '.status')
+  DISPATCH_ERROR=$(printf '%s\n' "$DISPATCH_RESULT" | jq -r '.error.message // empty')
 
   if [ "$DISPATCH_STATUS" = "completed" ] && [ -f "$REPORT_PATH" ]; then
     echo "REVIEW_COMPLETE: report written"

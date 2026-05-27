@@ -21,6 +21,7 @@ use crate::types::{
 
 const STDOUT_BUFFER_BYTES: usize = 4 * 1024 * 1024;
 const WATCHDOG_INTERVAL_SECS: u64 = 5;
+const DISPATCH_DEPTH_ENV: &str = "DARKFACTORY_DISPATCH_DEPTH";
 
 pub(crate) async fn dispatch(
     spec: DispatchSpec,
@@ -35,10 +36,12 @@ pub(crate) async fn dispatch(
         .emit_dispatch_start("codex", spec.model.clone())
         .map_err(dispatch_event_error)?;
 
-    let args = build_codex_args(&spec);
+    let depth = dispatch_depth();
+    let args = build_codex_args(&spec, depth);
     let run_handle = SupervisorBuilder::new("codex")
         .args(args)
         .current_dir(&spec.cwd)
+        .env(DISPATCH_DEPTH_ENV, (depth + 1).to_string())
         .stdin(StdinMode::Null)
         .parent_death_watch(spec.store_dir.is_none())
         .spawn()
@@ -241,7 +244,7 @@ pub(crate) async fn dispatch(
     Ok(result)
 }
 
-fn build_codex_args(spec: &DispatchSpec) -> Vec<OsString> {
+fn build_codex_args(spec: &DispatchSpec, depth: u64) -> Vec<OsString> {
     let sandbox = if spec.sandbox.is_empty() {
         "workspace-write"
     } else {
@@ -268,9 +271,28 @@ fn build_codex_args(spec: &DispatchSpec) -> Vec<OsString> {
         args.push("-o".into());
         args.push(output.as_os_str().to_os_string());
     }
-    args.push(spec.prompt.clone().into());
+
+    let prompt = if depth > 0 {
+        format!(
+            "[DISPATCH CONTEXT] You are running inside a darkfactory-dispatch worker (depth={depth}). \
+             Do not call darkfactory-dispatch or create nested dispatches. \
+             Execute all work directly.\n\
+             ---\n\
+             {}", spec.prompt
+        )
+    } else {
+        spec.prompt.clone()
+    };
+    args.push(prompt.into());
 
     args
+}
+
+fn dispatch_depth() -> u64 {
+    std::env::var(DISPATCH_DEPTH_ENV)
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(0)
 }
 
 type SharedLog = Option<Arc<Mutex<tokio::fs::File>>>;
@@ -878,7 +900,7 @@ mod tests {
             store_dir: None,
         };
 
-        let args = build_codex_args(&spec)
+        let args = build_codex_args(&spec, 0)
             .into_iter()
             .map(|arg| arg.to_string_lossy().to_string())
             .collect::<Vec<_>>();
@@ -901,6 +923,61 @@ mod tests {
                 "do work",
             ]
         );
+    }
+
+    #[test]
+    fn codex_args_prepend_dispatch_context_at_depth_1() {
+        let spec = DispatchSpec {
+            model: "gpt-5".to_string(),
+            effort: None,
+            timeout_sec: 10,
+            grace_sec: 0,
+            heartbeat_sec: DEFAULT_HEARTBEAT_INTERVAL_SECS,
+            sandbox: "read-only".to_string(),
+            configs: vec![],
+            prompt: "review this artifact".to_string(),
+            output: None,
+            cwd: PathBuf::from("."),
+            log: None,
+            store_dir: None,
+        };
+
+        let args = build_codex_args(&spec, 1)
+            .into_iter()
+            .map(|arg| arg.to_string_lossy().to_string())
+            .collect::<Vec<_>>();
+
+        let prompt = args.last().expect("args should have a prompt");
+        assert!(prompt.starts_with("[DISPATCH CONTEXT]"));
+        assert!(prompt.contains("depth=1"));
+        assert!(prompt.contains("Do not call darkfactory-dispatch"));
+        assert!(prompt.ends_with("review this artifact"));
+    }
+
+    #[test]
+    fn codex_args_no_preamble_at_depth_0() {
+        let spec = DispatchSpec {
+            model: "gpt-5".to_string(),
+            effort: None,
+            timeout_sec: 10,
+            grace_sec: 0,
+            heartbeat_sec: DEFAULT_HEARTBEAT_INTERVAL_SECS,
+            sandbox: "read-only".to_string(),
+            configs: vec![],
+            prompt: "do work".to_string(),
+            output: None,
+            cwd: PathBuf::from("."),
+            log: None,
+            store_dir: None,
+        };
+
+        let args = build_codex_args(&spec, 0)
+            .into_iter()
+            .map(|arg| arg.to_string_lossy().to_string())
+            .collect::<Vec<_>>();
+
+        let prompt = args.last().expect("args should have a prompt");
+        assert_eq!(prompt, "do work");
     }
 
     #[test]
