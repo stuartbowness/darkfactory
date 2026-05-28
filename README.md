@@ -179,7 +179,7 @@ Darkfactory is controlled through skills -- reusable prompt templates you invoke
 
 | Skill | Purpose |
 |-------|---------|
-| `/mission` | Start an autonomous mission from scratch. Walks you through planning, dispatches workers, validates, and delivers a draft PR. |
+| `/mission` | Start an autonomous mission from scratch. Walks you through planning, dispatches workers, validates, and delivers a draft PR. Pass `--basic` for a lightweight single-task mode (see [Basic mode](#basic-mode)). |
 | `/mission-resume` | Resume a mission that was interrupted (session crash, closed terminal). Detects exactly where it left off and continues through to the draft PR and code review. |
 | `/mission-status` | Read-only progress check. Open a second terminal while a mission runs to see which tasks are done, in progress, or queued. |
 | `/mission-init` | Check your project setup. Verifies required skill symlinks, reports on optional bundled skills, checks CLI tools and coverage tools, checks chrome-devtools-mcp when `browser_tools: true`, and runs `openspec init` if needed. |
@@ -252,7 +252,33 @@ The default uses Codex for workers and one of the two independent code reviewers
 
 ## Usage
 
-### Start a mission
+### Basic mode
+
+For single-task work (bug fixes, small features, quick spikes), use `--basic` to skip the full planning ceremony:
+
+```
+/mission --basic Add a health check endpoint that returns 200 OK
+```
+
+Basic mode runs the orchestrator itself as the builder -- no workers or subagents dispatched. It generates a mini-contract (3-8 observable behavior checks), follows TDD by default, validates against 5 gates (build, test, lint, format, contract), and runs a fix loop with a circuit breaker at 3 attempts. One commit at the end.
+
+Options:
+- `--no-tdd` -- skip TDD, implement directly then write tests
+- `--instruction <path>` -- read the task description from a file
+
+```
+/mission --basic --no-tdd Fix the off-by-one error in pagination
+/mission --basic --instruction instruction.md
+```
+
+| Use case | Mode |
+|----------|------|
+| Bug fix, small feature, single-file change | `--basic` |
+| Multi-file feature, needs planning | full `/mission` |
+| Overnight autonomous build | full `/mission` |
+| Quick prototype or spike | `--basic --no-tdd` |
+
+### Start a full mission
 
 ```
 /mission Build a user authentication system with email/password login, session management, and a profile page

@@ -6,7 +6,7 @@ Living architecture document. Update when you change architecture.
 
 Darkfactory uses three agent roles, each running as a separate AI conversation:
 
-**Orchestrator** -- the main Claude Code session. Plans the work, dispatches one worker at a time, runs validators, manages fix loops and circuit breakers. Uses plan mode to keep instructions alive across long conversations. Defined by `skills/mission/SKILL.md` (10 phases, 0-9).
+**Orchestrator** -- the main Claude Code session. Plans the work, dispatches one worker at a time, runs validators, manages fix loops and circuit breakers. Uses plan mode to keep instructions alive across long conversations. Defined by `skills/mission/SKILL.md` (10 phases, 0-9). In basic mode (`--basic`), the orchestrator also acts as the builder -- no workers are dispatched. Defined by `skills/mission/basic/SKILL.md`.
 
 **Workers** -- each builds a single task from a brief. Default engine is Codex (via `darkfactory-dispatch`); Claude is an alternative. A worker receives only its brief, never the contract. Makes changes in one commit and writes a handoff report.
 
@@ -50,13 +50,17 @@ The mission skill is intentionally monolithic (~900 lines). Companion files are 
 - `templates/` -- artifact formats (plan, contract, worker brief, design, etc.)
 - `prompts/` -- instructions handed to validator and reviewer subagents
 
-21 skills total: mission, mission-resume, mission-status, mission-init, grill, language, prd, tdd, test-quality, security, adversarial, dispatch, artifact-review, arch-review, domain-model, module-design, qa, write-a-skill, frontend, ui-system, react-perf.
+22 skills total: mission (with basic sub-skill), mission-resume, mission-status, mission-init, grill, language, prd, tdd, test-quality, security, adversarial, dispatch, artifact-review, arch-review, domain-model, module-design, qa, write-a-skill, frontend, ui-system, react-perf.
 
 ## Build loop
 
 For each task: dispatch worker, run scrutiny validator, run user-test validator. On failure: diagnostic triage, then fix worker with symptoms only (information wall maintained). Circuit breaker after 3 attempts (1 build + 2 fixes) -- pauses for human decision.
 
 After task 1 passes, a foundation audit checks module structure and type names against the design.
+
+### Basic mode build loop
+
+`/mission --basic` collapses the full loop into a single-session workflow. The orchestrator acts as its own builder -- no workers dispatched. Phases: orient (detect tooling, generate mini-contract), build (TDD by default, or direct with `--no-tdd`), validate (5 sequential gates: build, test, lint, format, contract), fix (same circuit breaker at 3 attempts, but no human pause -- stops and commits what it has). Single commit at the end. No information walls since there's only one agent.
 
 ## Planning constraints
 
@@ -70,7 +74,7 @@ Global defaults in `~/.darkfactory/config.yaml`. Per-mission engine assignments 
 
 ## Versioning
 
-One version for the whole repo: the GitHub release tag (v1.4.x). Internal tools (darkfactory-dispatch) have their own Cargo.toml version pinned at 1.0.0, which is never bumped. When releasing, increment the repo tag only.
+One version for the whole repo: the GitHub release tag (v1.x). Internal tools (darkfactory-dispatch) have their own Cargo.toml version pinned at 1.0.0, which is never bumped. When releasing, increment the repo tag only.
 
 ## External dependencies
 
