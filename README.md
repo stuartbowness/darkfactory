@@ -254,27 +254,46 @@ The default uses Codex for workers and one of the two independent code reviewers
 
 ### Basic mode
 
-For single-task work (bug fixes, small features, quick spikes), use `--basic` to skip the full planning ceremony:
+A full mission involves an interview, planning documents, multiple AI workers, validators, and human approval gates. That's the right approach for large features, but it's more than you need for a bug fix or a small feature.
+
+Basic mode is a lightweight alternative that runs everything in a single session. One agent reads your codebase, writes the code, checks its own work, and commits the result. You describe the task, walk away, and come back to a finished commit.
+
+It keeps the parts of the full mission that matter even for small tasks: writing a contract before coding (so it knows what "done" looks like), test-driven development, automated validation, and a self-healing fix loop. It drops the parts that only help with larger work: planning documents, multi-agent coordination, and human review gates.
 
 ```
 /mission --basic Add a health check endpoint that returns 200 OK
 ```
 
-Basic mode runs the orchestrator itself as the builder -- no workers or subagents dispatched. It generates a mini-contract (3-8 observable behavior checks), follows TDD by default, validates against 5 gates (build, test, lint, format, contract), and runs a fix loop with a circuit breaker at 3 attempts. One commit at the end.
+When you run this, it goes through 5 phases automatically:
 
-Options:
-- `--no-tdd` -- skip TDD, implement directly then write tests
-- `--instruction <path>` -- read the task description from a file
+1. **Orient** -- reads your codebase, figures out how to build and test your project, and writes a short checklist (the "mini-contract") of 3-8 things the finished code should do, derived from your task description.
+2. **Build** -- writes the code using test-driven development by default: write a failing test, write the code to make it pass, repeat.
+3. **Validate** -- runs 5 checks in order: does the project build? do the tests pass? does the linter pass? is the code formatted? does the code satisfy the mini-contract?
+4. **Fix** -- if any check fails, it diagnoses the problem and applies a fix, then re-runs all checks from scratch. If it fails 3 times in a row, it stops and tells you what went wrong.
+5. **Commit** -- creates a single commit after all checks pass.
+
+The entire process runs without asking you any questions.
+
+**Options:**
+
+If your task description is long, put it in a file:
 
 ```
-/mission --basic --no-tdd Fix the off-by-one error in pagination
 /mission --basic --instruction instruction.md
 ```
 
+If you'd rather skip test-driven development and write the implementation first (then add tests after):
+
+```
+/mission --basic --no-tdd Fix the off-by-one error in pagination
+```
+
+**When to use basic vs full mission:**
+
 | Use case | Mode |
 |----------|------|
-| Bug fix, small feature, single-file change | `--basic` |
-| Multi-file feature, needs planning | full `/mission` |
+| Bug fix or small feature | `--basic` |
+| Multi-file feature that needs upfront planning | full `/mission` |
 | Overnight autonomous build | full `/mission` |
 | Quick prototype or spike | `--basic --no-tdd` |
 
