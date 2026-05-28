@@ -284,6 +284,7 @@ Optional standalone skills:
   [ ] /module-design (optional - standalone)
   [ ] /qa (optional - standalone)
   [ ] /write-a-skill (optional - standalone)
+  [ ] /skill-review (optional - standalone)
 
 Optional project skills:
   [ ] /test-app (optional - project-specific)
@@ -323,6 +324,7 @@ Also check optional standalone skills at these locations:
 - `$HOME/.claude/skills/module-design`
 - `$HOME/.claude/skills/qa`
 - `$HOME/.claude/skills/write-a-skill`
+- `$HOME/.claude/skills/skill-review`
 - `$HOME/.claude/skills/frontend`
 - `$HOME/.claude/skills/ui-system`
 - `$HOME/.claude/skills/react-perf`
