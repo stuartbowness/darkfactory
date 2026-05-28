@@ -59,6 +59,8 @@ Save the diff content once and pass the identical content to both reviewers.
 
 Start Codex first and do not wait for it before launching Claude. Dispatch with `darkfactory-dispatch --async` and use the Bash tool with `run_in_background: true`. Capture the `dispatch_id` from the `async_started` JSON on stdout.
 
+Do NOT pass `--json` alongside `--async` -- they are mutually exclusive flags. Async mode prints its own JSON to stdout.
+
 Prompt:
 
 ```text
