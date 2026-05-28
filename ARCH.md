@@ -60,7 +60,13 @@ After task 1 passes, a foundation audit checks module structure and type names a
 
 ### Basic mode build loop
 
-`/mission --basic` collapses the full loop into a single-session workflow. The orchestrator acts as its own builder -- no workers dispatched. Phases: orient (detect tooling, generate mini-contract), build (TDD by default, or direct with `--no-tdd`), validate (5 sequential gates: build, test, lint, format, contract), fix (same circuit breaker at 3 attempts, but no human pause -- stops and commits what it has). Single commit at the end. No information walls since there's only one agent.
+`/mission --basic` is a simplified version of the full build loop designed for single-task work like bug fixes and small features. Instead of dispatching separate worker and validator agents, the orchestrator handles everything itself in one session.
+
+The flow has 5 phases: orient (read the codebase, detect build/test tooling, generate a mini-contract of 3-8 expected behaviors), build (TDD by default, or direct implementation with `--no-tdd`), validate (5 sequential gates: build, test, lint, format, contract), fix (diagnose and retry on failure), and commit (single commit at the end).
+
+The circuit breaker works the same way -- 3 total attempts before stopping -- but unlike the full loop, it doesn't pause to ask the user. It commits whatever it has and reports what failed. There are no information walls since there's only one agent doing all the work.
+
+Defined by `skills/mission/basic/SKILL.md`. The main `skills/mission/SKILL.md` routes to it when `--basic` is present in the arguments.
 
 ## Planning constraints
 
