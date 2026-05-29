@@ -2,6 +2,14 @@
 
 ## Status: PLANNING | APPROVED | BUILDING | COMPLETE | PAUSED
 
+## Orchestrator Phase
+<!-- The current major phase (0-9, 4a) and step. Update on entering any phase and at every phase gate. -->
+<!-- Examples: "Phase 5 -- Contract Writing (awaiting human approval)" -->
+<!--           "Phase 7 -- Launch Confirmation (awaiting human go-ahead)" -->
+<!--           "Phase 8 Task 3 -- Scrutiny Validation" -->
+<phase name and step>
+Last checkpoint: <ISO 8601 timestamp> -- <one-line description of where the session stopped>
+
 ## State Directory
 openspec/changes/<change-name>/mission/
 

@@ -1,6 +1,6 @@
 ---
 name: mission-resume
-description: Resume an interrupted Darkfactory mission from file state. Finds active missions, reconstructs the orchestrator plan from disk artifacts, detects orphaned commits, and continues the build loop from the next unchecked task.
+description: Resume an interrupted Darkfactory mission from file state. Finds active missions, restores the orchestrator plan, detects the orchestrator phase (from the plan file or progress.md markers), detects branch-scoped orphaned commits, and continues the build loop from the next unchecked task. Stops and defers to /mission when the interruption happened during a planning phase.
 ---
 
 # Mission Resume
@@ -30,10 +30,13 @@ Read all artifacts for the selected mission:
 |------|------|---------|
 | Tasks | `openspec/changes/<change-name>/tasks.md` | Which tasks are done, which remain |
 | Progress log | `mission/progress.md` | Chronological record of what happened |
-| Mission config | `mission/config.yaml` | Engine assignments |
+| Mission config | `mission/config.yaml` | Engine assignments, `base_branch`, `plan_file` |
+| Plan file | path from `config.yaml` `plan_file` | Authoritative state: orchestrator phase, current task/step, engine config, codebase deltas |
 | Contract | `contract.md` | Checks grouped by task for validators |
 | Proposal | `proposal.md` | What is being built and why |
 | Design | `design.md` | Architecture decisions |
+
+Read `plan_file` from `config.yaml`. If the field is present and the file exists, read that plan -- it is the authoritative record of where the mission stopped. If `plan_file` is missing (a mission started before this field existed), fall back to locating the plan by content: `ls ~/.claude/plans/*.md 2>/dev/null | xargs grep -l "Mission: <change-name>" 2>/dev/null | head -1`. If no plan file is found by either path, note it -- Phase 4 will write one from disk state.
 
 Also read existing handoff files in `mission/handoffs/` and validation reports in `mission/validations/` (including `task-N-scrutiny.md`, `task-N-usertest.md`). These reveal mid-cycle interruptions.
 
@@ -61,9 +64,18 @@ Log to progress.md: `<timestamp> -- Task N: resuming from <step name>. Previous 
 
 An orphaned commit is one where a worker committed code but no handoff file exists. This happens when the session died between the worker's commit and the orchestrator recording the result.
 
+First, scope the search to this mission's branch. Read `base_branch` from `config.yaml`, then compute the branch point:
+
+```bash
+BASE_BRANCH=$(awk -F: '/^[[:space:]]*base_branch[[:space:]]*:/ { gsub(/^[[:space:]]+|[[:space:]]+$/, "", $2); print $2; exit }' openspec/changes/<change-name>/mission/config.yaml)
+BASE_SHA=$(git merge-base "$BASE_BRANCH" HEAD)
+```
+
+If `base_branch` is missing or `git merge-base` fails (non-zero exit or empty `BASE_SHA`), **stop and ask the user** which branch this mission was built on. Do not fall back to a repo-wide search -- that returns false positives from older missions on other branches.
+
 For each unchecked task that did NOT have a handoff in step 3a:
 
-1. Run: `git log --oneline --grep="\[task-N\]" -1`
+1. Run: `git log "$BASE_SHA"..HEAD --oneline --grep="\[task-N\]" -1` (commits on this mission branch only).
 2. If a commit is found but no handoff exists, report it to the human.
 3. Ask: "This task has a commit but no handoff. Should I validate it (run full validation against this commit), or re-run the task from scratch?"
 
@@ -71,11 +83,46 @@ If validate: write a synthetic handoff file with the commit SHA, then run the fu
 
 If re-run: leave the task unchecked and start fresh.
 
-## Phase 4: Reconstruct the Orchestrator Plan
+### 3c: Detect the orchestrator phase
 
-Enter Claude Code **plan mode**. Write a complete orchestrator operating manual from file state. This plan must survive context compaction.
+Phases 3a and 3b only cover missions where a worker has run. A mission interrupted during planning (Phases 0-7) has no handoffs and no task commits, so without this step Phase 4 would wrongly assume the build loop is ready to start. Determine which orchestrator phase (0-9, 4a) was active when the session ended.
 
-The plan must include: mission identity, all file paths, engine configuration, the mission flow (matching the /mission skill's Phase 8 build loop and Phase 9 completion), and the rules.
+**Primary source -- the plan file.** If the plan read in Phase 2 has a populated `## Orchestrator Phase` field, use it. That field names the phase, step, and last-checkpoint timestamp. This is authoritative.
+
+**Fallback -- progress.md markers.** If no plan file was found, or its `## Orchestrator Phase` field is empty (a mission started before this field existed), scan `mission/progress.md` for these markers, taking the most recent (last) match:
+
+| progress.md marker | Inferred phase | Resume from |
+|---------------------|----------------|-------------|
+| `Draft PR created` | Phase 9 in progress | Phase 7 (completion) of this skill |
+| highest `Task N complete.` | Phase 8, Task N done | Phase 8, Task N+1 |
+| `Plan approved.` | Phase 7 complete | Phase 8, Task 1 |
+| `Mission directory created.` | Phase 6 complete | Phase 7 (launch confirmation) |
+| `Contract testability pre-flight:` | Phase 5 complete | Phase 6 (mission directory) |
+| none of the above | Planning, Phase 5 or earlier | report and ask (see Phase 4) |
+
+Report the detected phase to the user before continuing. Carry it into Phase 4.
+
+## Phase 4: Restore the Orchestrator Plan
+
+Enter Claude Code **plan mode**. The goal is an accurate operating manual that survives context compaction. Whether you restore or rebuild depends on what Phase 2 found.
+
+### If a plan file exists (restore + reconcile)
+
+Restore the plan from the existing file rather than re-deriving it. It already holds the orchestrator phase, current task/step, engine config, artifact paths, PRD issue number, and codebase deltas.
+
+Before trusting it, reconcile its state against disk reality:
+
+1. **Task completion.** Compare the plan's `## Current Task` against the count of `- [x]` tasks in `tasks.md` and the highest `Task N complete.` in `progress.md`. If they diverge, the plan is stale -- update Current Task to the true next unchecked task and note the correction.
+2. **Orchestrator phase.** Cross-check the plan's `## Orchestrator Phase` against the phase detected in Phase 3c. If they disagree, trust the Phase 3c detection (it is computed from current disk state) and update the field.
+
+### If no plan file exists (rebuild)
+
+Write a complete orchestrator operating manual from file state. Include: mission identity, all file paths, engine configuration, the detected `## Orchestrator Phase` (from Phase 3c), the mission flow (matching the /mission skill's Phase 8 build loop and Phase 9 completion), and the rules.
+
+### Branch on the detected phase
+
+- **Build phase (Phase 8 or later):** continue to Phase 5, then the build loop.
+- **Planning phase (Phase 7 or earlier):** do **not** enter the build loop. Report the detected phase to the user, for example: "This mission stopped in Phase 5 (contract writing), before the build loop started. Resuming planning needs `/mission`, which holds the planning-phase logic. Run `/mission` to continue from Phase 5, or tell me how you want to proceed." Then stop and wait. mission-resume does not contain planning-phase logic.
 
 ## Phase 5: Log the Resume
 
@@ -88,9 +135,11 @@ Previously completed: tasks <list of completed task numbers>.
 
 ## Phase 6: Continue the Build Loop
 
+Reached only when Phase 4 detected a build phase (Phase 8 or later). Planning-phase resumes already stopped in Phase 4.
+
 Follow the `/mission` skill's Phase 8 build loop exactly -- every step, every sub-step, every rule. Do not re-implement the loop here; read Phase 8 in `.claude/skills/mission/SKILL.md` and execute it as written.
 
-If Phase 3a detected a mid-cycle task, resume from the appropriate step in `/mission` Phase 8 rather than starting from Step 1.
+Start from the entry point established earlier: if Phase 3a detected a mid-cycle task, resume from the appropriate step in `/mission` Phase 8; otherwise start the next unchecked task (Task N+1 per Phase 3c) at Step 1.
 
 ## Phase 7: Mission Completion
 

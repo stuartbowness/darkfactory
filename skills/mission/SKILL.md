@@ -27,7 +27,7 @@ If `--basic` is not present, continue with full mission mode below.
 5. **File-backed state.** All decisions and status go to disk. The mission must be resumable from files alone.
 6. **Single commit per task.** One task, one worker, one commit, one validation cycle.
 7. **Draft PRs only.** Never create a ready-for-review PR. The human promotes it.
-8. **Plan is the operating manual.** Keep the plan updated after every phase and step. It must be accurate if context compacts.
+8. **Plan is the operating manual.** Keep the plan updated after every phase and step. It must be accurate if context compacts. On entering any major phase (0-9, 4a) and at every phase gate, set the plan's `## Orchestrator Phase` field to the current phase name, step, and an ISO 8601 `Last checkpoint` timestamp. This field is the primary re-entry point `mission-resume` reads.
 9. **Skipped tasks use `- [~]`.** The build loop treats `- [~]` as neither unchecked nor complete. Skipped tasks are not re-attempted.
 10. **Mark tasks done in tasks.md immediately.** After a task passes validation, change `- [ ]` to `- [x]` in tasks.md before moving to the next task. This is required for resume to work correctly.
 11. **Artifact review before human Q&A.** Every planning artifact (Phases 2-5 and 4a) is dispatched to Codex for review via `/artifact-review` before presenting to the human. Findings are shown alongside the artifact and the AI recommendation. If `/artifact-review` fails, note the failure and continue — review is non-blocking. The review result (or failure notice) must be persisted as a checkpoint before presenting the artifact to the human. For Phases 2-3, record checkpoints in the plan's Review Checkpoints section. For Phases 4+, write checkpoint files to `reviews/` in the change directory.
@@ -75,6 +75,7 @@ To fill in the **Darkfactory SHA** field, resolve the Darkfactory repo root from
 Check if `UBIQUITOUS_LANGUAGE.md` exists in the repo root. If it does, read it now so all phases use consistent terminology.
 
 **Gate -- proceed when:**
+- [ ] Plan's `## Orchestrator Phase` field updated to this phase, step, and timestamp
 - [ ] `/mission-init` passed (all skills symlinked, CLI tools present)
 - [ ] Plan is written and active in plan mode
 - [ ] Darkfactory SHA captured in plan
@@ -98,6 +99,7 @@ If the user says "skip":
 After the grill completes, summarize the key decisions in the plan.
 
 **Gate -- proceed when:**
+- [ ] Plan's `## Orchestrator Phase` field updated to this phase, step, and timestamp
 - [ ] Grill complete or explicitly skipped (with warning acknowledged)
 - [ ] Key decisions summarized in plan
 
@@ -118,6 +120,7 @@ Run `/language` to create or update `UBIQUITOUS_LANGUAGE.md`.
 Run `/artifact-review` on the generated UBIQUITOUS_LANGUAGE.md before presenting to the human.
 
 **Gate -- proceed when:**
+- [ ] Plan's `## Orchestrator Phase` field updated to this phase, step, and timestamp
 - [ ] UBIQUITOUS_LANGUAGE.md exists and is loaded into context
 - [ ] Review checkpoint recorded in plan (REVIEWED or FAILED)
 
@@ -137,6 +140,7 @@ After the issue is created, run `/artifact-review` on the PRD content. If the re
 Record both the issue URL and the issue number in the plan (under Spec Coverage Audit). The issue number is needed in Phase 9 to link the draft PR back to the issue.
 
 **Gate -- proceed when:**
+- [ ] Plan's `## Orchestrator Phase` field updated to this phase, step, and timestamp
 - [ ] PRD filed as GitHub issue
 - [ ] Issue URL and issue number recorded in plan
 - [ ] Review checkpoint recorded in plan (REVIEWED or FAILED)
@@ -339,6 +343,7 @@ Run `/artifact-review` on the generated `tasks.md`. Present the full task list (
 After all artifacts are reviewed and approved, update the plan with the actual artifact paths.
 
 **Gate -- proceed when:**
+- [ ] Plan's `## Orchestrator Phase` field updated to this phase, step, and timestamp
 - [ ] proposal.md human-approved
 - [ ] Review checkpoint exists: reviews/phase4.1-proposal.md
 - [ ] All specs/<capability>/spec.md files human-approved
@@ -402,6 +407,7 @@ The "Prerequisites met?" column applies to Substitutions only. For Interpretatio
 10. **Record the coverage audit** in the plan. Update the Spec Coverage Audit section with the PRD issue URL, gap count, and resolutions.
 
 **Gate -- proceed when:**
+- [ ] Plan's `## Orchestrator Phase` field updated to this phase, step, and timestamp
 - [ ] Coverage audit complete -- every PRD requirement mapped
 - [ ] All gaps resolved (added, deferred, or skipped)
 - [ ] All deviations classified and approved by human
@@ -483,6 +489,7 @@ Log the testability breakdown to progress.md: `<timestamp> -- Contract testabili
 Update the plan with the contract path after approval.
 
 **Gate -- proceed when:**
+- [ ] Plan's `## Orchestrator Phase` field updated to this phase, step, and timestamp
 - [ ] contract.md human-approved
 - [ ] Review checkpoint exists: reviews/phase5-contract.md
 - [ ] Testability pre-flight passed (inspection checks <=20%)
@@ -526,7 +533,19 @@ engines:
 
 # Auto-set to true during Phase 4.3a when any task has Skill: /frontend.
 browser_tools: false
+
+# Absolute path to the durable plan file (the one written in Phase 0, normally
+# ~/.claude/plans/<name>.md). mission-resume reads this directly to find the
+# plan without grepping. Fill in the real absolute path when creating this file.
+plan_file: <absolute path to the plan file>
+
+# The branch this mission merges into. Read by Phase 9 (adversarial review diff)
+# and mission-resume orphaned-commit detection. Resolved and written in Phase 7
+# when the feature branch is created off the default branch.
+base_branch: <default branch, e.g. main>
 ```
+
+Set `plan_file` to the absolute path of the plan written in Phase 0. Leave `base_branch` as the placeholder here; Phase 7 resolves and writes it when it creates the feature branch.
 
 ### progress.md
 
@@ -549,6 +568,7 @@ mkdir -p openspec/changes/<change-name>/mission/{briefs,handoffs,validations,iss
 `logs/` is load-bearing: the worker and adversarial dispatch scripts redirect to `mission/logs/*.log` and will fail if the directory does not exist.
 
 **Gate -- proceed when:**
+- [ ] Plan's `## Orchestrator Phase` field updated to this phase, step, and timestamp
 - [ ] mission/ directory exists with config.yaml and progress.md
 - [ ] briefs/, handoffs/, validations/, issues/, logs/ subdirectories created
 
@@ -561,7 +581,7 @@ mkdir -p openspec/changes/<change-name>/mission/{briefs,handoffs,validations,iss
 > **Inputs:** tasks.md, contract.md, coverage-audit.md, config.yaml
 > **Outputs:** Human approval, progress.md updated, plan status = BUILDING
 
-Ensure a feature branch. If `git rev-parse --abbrev-ref HEAD` equals `gh api repos/{owner}/{repo} --jq .default_branch` (abort Phase 7 if that gh call fails -- it means no GitHub remote or bad auth), run `git checkout -b mission/<change-name>` -- if that branch already exists, use `mission/<change-name>-$(date -u +%Y%m%d%H%M%S)`. Log the checkout to progress.md.
+Ensure a feature branch. Resolve the default branch with `gh api repos/{owner}/{repo} --jq .default_branch` (abort Phase 7 if that gh call fails -- it means no GitHub remote or bad auth). Write that value into config.yaml's `base_branch` field, replacing the placeholder. If `git rev-parse --abbrev-ref HEAD` equals the default branch, run `git checkout -b mission/<change-name>` -- if that branch already exists, use `mission/<change-name>-$(date -u +%Y%m%d%H%M%S)`. Log the checkout to progress.md.
 
 Show the user a summary dashboard:
 1. **Mission overview** -- change name, total tasks (feature + closing), total contract checks
@@ -574,6 +594,7 @@ Ask: "Everything has been reviewed. Ready to start the build?"
 - If the human wants to revisit something: loop back to the specific phase they name. Do not re-review everything.
 
 **Gate -- proceed when:**
+- [ ] Plan's `## Orchestrator Phase` field updated to this phase, step, and timestamp
 - [ ] Human confirms "ready to start the build"
 - [ ] progress.md updated with approval timestamp and task/check counts
 - [ ] Plan status = BUILDING
@@ -824,6 +845,7 @@ Spawn a Claude subagent to run `/demo-video`. The subagent should save the recor
 6. **If all tasks are done:** Proceed to Phase 9.
 
 **Gate -- proceed when:**
+- [ ] Plan's `## Orchestrator Phase` field updated to this phase, step, and timestamp
 - [ ] All tasks in tasks.md are `- [x]` (complete) or `- [~]` (skipped)
 - [ ] No unchecked `- [ ]` tasks remain
 - [ ] Each completed task has passing scrutiny and user-test reports
