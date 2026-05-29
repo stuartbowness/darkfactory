@@ -886,7 +886,7 @@ mod tests {
     #[test]
     fn codex_args_include_expected_flags() {
         let spec = DispatchSpec {
-            model: "gpt-5".to_string(),
+            model: "gpt-5.5".to_string(),
             effort: Some("high".to_string()),
             timeout_sec: 10,
             grace_sec: 0,
@@ -913,7 +913,7 @@ mod tests {
                 "-s",
                 "workspace-write",
                 "-m",
-                "gpt-5",
+                "gpt-5.5",
                 "-c",
                 "model_reasoning_effort=\"high\"",
                 "-c",
@@ -928,7 +928,7 @@ mod tests {
     #[test]
     fn codex_args_prepend_dispatch_context_at_depth_1() {
         let spec = DispatchSpec {
-            model: "gpt-5".to_string(),
+            model: "gpt-5.5".to_string(),
             effort: None,
             timeout_sec: 10,
             grace_sec: 0,
@@ -957,7 +957,7 @@ mod tests {
     #[test]
     fn codex_args_no_preamble_at_depth_0() {
         let spec = DispatchSpec {
-            model: "gpt-5".to_string(),
+            model: "gpt-5.5".to_string(),
             effort: None,
             timeout_sec: 10,
             grace_sec: 0,

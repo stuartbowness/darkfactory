@@ -410,7 +410,7 @@ fn spec(
     grace_sec: u64,
 ) -> DispatchSpec {
     DispatchSpec {
-        model: "gpt-5".to_string(),
+        model: "gpt-5.5".to_string(),
         effort: Some("low".to_string()),
         timeout_sec,
         grace_sec,

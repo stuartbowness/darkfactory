@@ -13,7 +13,7 @@ use crate::types::{
     DEFAULT_HEARTBEAT_INTERVAL_SECS,
 };
 
-const DEFAULT_MODEL: &str = "gpt-5";
+const DEFAULT_MODEL: &str = "gpt-5.5";
 const DISPATCH_RETENTION_SECS: u64 = 7 * 24 * 60 * 60;
 
 #[derive(Parser)]

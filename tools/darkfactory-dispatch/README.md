@@ -164,7 +164,7 @@ tail -f dispatch.log
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `--model` | `gpt-5` | Codex model to use |
+| `--model` | `gpt-5.5` | Codex model to use |
 | `--effort` | (none) | Reasoning effort (maps to `-c model_reasoning_effort`) |
 | `--timeout` | `900` | Seconds before soft timeout fires (SIGTERM) |
 | `--grace` | half of timeout, min 1s | Seconds between soft timeout and hard timeout (SIGKILL) |
