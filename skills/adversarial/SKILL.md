@@ -61,10 +61,12 @@ Start Codex first and do not wait for it before launching Claude. Dispatch with 
 
 Do NOT pass `--json` alongside `--async` -- they are mutually exclusive flags. Async mode prints its own JSON to stdout.
 
+`--output "<codex-report-path>"` writes Codex's **final message** to that path. So the prompt asks Codex to return the report as its final message and not write any files itself -- if Codex wrote the report to that path with its own tools, its closing assistant message would overwrite it. (Claude in Step 3 has no `--output`, so it writes its file directly.)
+
 Prompt:
 
 ```text
-You are an adversarial code reviewer. Review the following diff for bugs, logic errors, security issues, and missing edge cases. Group findings by severity: critical, warning, nit. Cite file:line for each finding. Write your report to: <codex-report-path>
+You are an adversarial code reviewer. Review the following diff for bugs, logic errors, security issues, and missing edge cases. Group findings by severity: critical, warning, nit. Cite file:line for each finding. Return the full report as your final message -- do not write any files.
 
 <diff content>
 ```
@@ -74,7 +76,7 @@ Dispatch command:
 ```bash
 PROMPT_PATH=$(mktemp /tmp/adversarial-prompt.XXXXXX)
 cat > "$PROMPT_PATH" << 'PROMPT'
-You are an adversarial code reviewer. Review the following diff for bugs, logic errors, security issues, and missing edge cases. Group findings by severity: critical, warning, nit. Cite file:line for each finding. Write your report to: <codex-report-path>
+You are an adversarial code reviewer. Review the following diff for bugs, logic errors, security issues, and missing edge cases. Group findings by severity: critical, warning, nit. Cite file:line for each finding. Return the full report as your final message -- do not write any files.
 
 <diff content>
 PROMPT
