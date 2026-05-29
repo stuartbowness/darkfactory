@@ -15,7 +15,7 @@ Search for OpenSpec changes that have a resumable mission (unchecked tasks remai
 2. For each match, read the corresponding `openspec/changes/<change-name>/tasks.md`.
 3. Determine whether each mission has **finished** (completed Phase 9). First locate its plan: read `plan_file` from `config.yaml`; if that field is missing (a mission started before it existed), fall back to the same content search Phase 2 uses: `find "$HOME/.claude/plans" -type f -name '*.md' -exec grep -l "Mission: <change-name>" {} + 2>/dev/null | head -1`.
    - If a plan is found and has a `## Status` field, that field is authoritative: the mission is finished only if the status is `COMPLETE`.
-   - If no plan is found or it has no `## Status` field (a true legacy mission), fall back to `mission/progress.md`: the mission is finished only if progress.md contains the completion log (`Draft PR created` and adversarial reviews complete). Do **not** consult this fallback when a plan status exists -- a `Draft PR created` line with a non-`COMPLETE` status means the mission crashed during completion, not that it finished.
+   - If no plan is found or it has no `## Status:` line (a true legacy mission), fall back to `mission/progress.md`: the mission is finished only if progress.md contains the completion log line, which `/mission` writes verbatim as `Draft PR created: <URL>. Adversarial reviews complete.` (match it case-sensitively, capital A). Do **not** consult this fallback when a plan status exists -- a `Draft PR created` line with a non-`COMPLETE` status means the mission crashed during completion, not that it finished.
 4. A mission is **active** (resumable) if `tasks.md` contains at least one unchecked item (`- [ ]`; `- [~]` skipped tasks do not count), OR the mission has not finished per step 3.
 5. Collect the list of active missions with their change name and progress count (checked vs total tasks), plus `completion pending` when all tasks are resolved but the mission has not finished.
 
@@ -54,13 +54,13 @@ Run this **once for the whole mission**, not per task (unlike 3b and 3c). Phases
 **Disk truth -- progress.md markers.** Always derive the phase from progress.md and tasks.md:
 
 - **No `mission/progress.md` file:** the mission never reached Phase 6 (progress.md is created there). It stopped during planning, Phase 5 or earlier. Resume target: report and ask (see Phase 4).
-- **progress.md exists:** scan it for these markers, taking the most recent (last) match. Every progress.md contains at least `Mission directory created.` (its first line), so one row always matches:
+- **progress.md exists:** check the markers in table order (top = most advanced phase); the **first row whose marker is present wins**. Every progress.md contains at least `Mission directory created.` (its first log entry), so the bottom row always matches as a floor:
 
 | progress.md marker | Phase reached | Resume target |
 |---------------------|----------------|-------------|
 | `Draft PR created` | Phase 9 (PR created) | this skill's Phase 7 (mission completion) |
-| highest `Task N complete.` | Phase 8, Task N done | If an unchecked task remains after N: Phase 8, Task N+1. If no unchecked task remains: this skill's Phase 7 (mission completion). |
-| `Plan approved.` | planning done, build ready | Phase 8, Task 1 |
+| `Task N complete.` (use the highest N present) | Phase 8, Task N done | If any unchecked `- [ ]` task remains in tasks.md: Phase 8, the first unchecked task. If none remains: this skill's Phase 7 (mission completion). |
+| `Plan approved.` | planning done, build ready | Phase 8, the first unchecked task |
 | `Mission directory created.` | Phase 6 done, build not started | /mission Phase 7 (launch confirmation) -- defer to /mission |
 
 This table reports the detected phase. **Phase 4 makes the actual routing decision on concrete facts** (see "Branch on the resume target"), so it does not depend on disambiguating the "Phase 7" label here.
@@ -151,7 +151,7 @@ Reached only when Phase 4 detected a build phase with unchecked tasks. Planning-
 
 Follow the `/mission` skill's Phase 8 build loop exactly -- every step, every sub-step, every rule. Do not re-implement the loop here; read Phase 8 in `.claude/skills/mission/SKILL.md` and execute it as written.
 
-Start from the entry point established earlier: if Phase 3b detected a mid-cycle task, resume from the appropriate step in `/mission` Phase 8; otherwise start the next unchecked task (Task N+1 per Phase 3a) at Step 1.
+Start from the entry point established earlier: if Phase 3b detected a mid-cycle task, resume from the appropriate step in `/mission` Phase 8; otherwise start the **first unchecked `- [ ]` task in tasks.md** (skipping `- [~]` tasks) at Step 1. Use the first unchecked task, not arithmetic on the last completed task number -- tasks may be skipped or inserted out of sequence.
 
 ## Phase 7: Mission Completion
 
@@ -172,10 +172,10 @@ Because the previous session may have finished part of Phase 9, **resume from th
 
 Two adjustments when running Phase 9 from here:
 
-- **Idempotent PR.** At the Create Draft PR sub-step, first check for an existing open draft PR and reuse it instead of creating a duplicate:
+- **Idempotent PR.** At the Create Draft PR sub-step, first check for **any** existing open PR on the branch -- draft or already promoted -- and reuse it instead of creating a duplicate:
   ```bash
   BRANCH=$(git rev-parse --abbrev-ref HEAD)
-  PR_URL=$(gh pr list --head "$BRANCH" --state open --json url,isDraft --jq '.[] | select(.isDraft == true) | .url' | head -1)
+  PR_URL=$(gh pr list --head "$BRANCH" --state open --json url --jq '.[].url' | head -1)
   ```
-  If `PR_URL` is non-empty, reuse it; otherwise create the draft PR as Phase 9 describes.
+  If `PR_URL` is non-empty, reuse it (do not try to demote a promoted PR back to draft); otherwise create the draft PR as Phase 9 describes. Matching only drafts would miss a PR a human already promoted, and `gh pr create` would then fail against the existing PR.
 - **base_sha guard.** Phase 9's adversarial review reads the pinned `base_sha` from config.yaml. If `base_sha` is missing or not a valid commit (`git cat-file -e "${BASE_SHA}^{commit}" 2>/dev/null` fails), do **not** abort -- stop and ask the user which commit this mission branched from (as in step 3c), then write it to config.yaml before running the review.
