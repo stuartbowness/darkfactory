@@ -24,6 +24,8 @@ description: Create new agent skills with proper structure, progressive disclosu
    - Anything missing or unclear?
    - Should any section be more/less detailed?
 
+4. **Automated review** - run `/skill-review` on the new skill directory
+
 ## Skill Structure
 
 ```
@@ -116,3 +118,9 @@ After drafting, verify:
 - [ ] Consistent terminology
 - [ ] Concrete examples included
 - [ ] References one level deep
+
+## Automated Review
+
+After the user approves the draft, run `/skill-review` against the new skill directory. Present the findings to the user and address any CRITICAL or WARNING items before finalizing.
+
+If `/skill-review` is not installed (no symlink at `~/.claude/skills/skill-review`), skip this step and note: "Run `/skill-review` for automated best-practices checking (install via darkfactory's install.sh)."

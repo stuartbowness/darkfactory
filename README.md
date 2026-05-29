@@ -199,7 +199,8 @@ Darkfactory is controlled through skills -- reusable prompt templates you invoke
 | `/domain-model` | Domain modeling with ADR and bounded context formats. Standalone -- not yet wired into missions. |
 | `/module-design` | Module design and boundary analysis. Standalone -- not yet wired into missions. |
 | `/qa` | QA review skill. Standalone -- not yet wired into missions. |
-| `/write-a-skill` | Meta-skill for writing new Darkfactory skills. Standalone -- not yet wired into missions. |
+| `/skill-review` | Audit a skill directory against Anthropic best practices. Checks naming, description, structure, content patterns, and anti-patterns. Runs inline (no Codex dispatch). Standalone -- also invoked automatically by `/write-a-skill` after drafting. |
+| `/write-a-skill` | Meta-skill for writing new Darkfactory skills. Runs `/skill-review` as a final step after drafting. Standalone -- not yet wired into missions. |
 
 ### Skill structure
 
