@@ -539,13 +539,15 @@ browser_tools: false
 # plan without grepping. Fill in the real absolute path when creating this file.
 plan_file: <absolute path to the plan file>
 
-# The branch this mission merges into. Read by Phase 9 (adversarial review diff)
-# and mission-resume orphaned-commit detection. Resolved and written in Phase 7
-# when the feature branch is created off the default branch.
-base_branch: <default branch, e.g. main>
+# The commit the mission builds on top of -- HEAD when the build branch was
+# established in Phase 7, before any task commit. Read by Phase 9 (adversarial
+# review diff scope) and mission-resume orphaned-commit detection. Stored as a
+# SHA, not a branch name, so the diff scope stays correct even when the branch
+# moves or the mission runs on a pre-existing (non-default) branch.
+base_sha: <full HEAD SHA, captured and written in Phase 7>
 ```
 
-Set `plan_file` to the absolute path of the plan written in Phase 0. Leave `base_branch` as the placeholder here; Phase 7 resolves and writes it when it creates the feature branch.
+Set `plan_file` to the absolute path of the plan written in Phase 0. Leave `base_sha` as the placeholder here; Phase 7 captures and writes it when the build branch is established.
 
 ### progress.md
 
@@ -581,7 +583,9 @@ mkdir -p openspec/changes/<change-name>/mission/{briefs,handoffs,validations,iss
 > **Inputs:** tasks.md, contract.md, coverage-audit.md, config.yaml
 > **Outputs:** Human approval, progress.md updated, plan status = BUILDING
 
-Ensure a feature branch. Resolve the default branch with `gh api repos/{owner}/{repo} --jq .default_branch` (abort Phase 7 if that gh call fails -- it means no GitHub remote or bad auth). Write that value into config.yaml's `base_branch` field, replacing the placeholder. If `git rev-parse --abbrev-ref HEAD` equals the default branch, run `git checkout -b mission/<change-name>` -- if that branch already exists, use `mission/<change-name>-$(date -u +%Y%m%d%H%M%S)`. Log the checkout to progress.md.
+Ensure a feature branch. Resolve the default branch with `gh api repos/{owner}/{repo} --jq .default_branch` (abort Phase 7 if that gh call fails -- it means no GitHub remote or bad auth). If `git rev-parse --abbrev-ref HEAD` equals the default branch, run `git checkout -b mission/<change-name>` -- if that branch already exists, use `mission/<change-name>-$(date -u +%Y%m%d%H%M%S)`. Log the checkout to progress.md.
+
+Then capture the build base: run `git rev-parse HEAD` and write the result into config.yaml's `base_sha` field, replacing the placeholder. This is the commit the first task builds on top of (a `checkout -b` does not change it). Phase 9 and `mission-resume` use this pinned SHA to scope the mission diff, so it must be captured before the first task commit.
 
 Show the user a summary dashboard:
 1. **Mission overview** -- change name, total tasks (feature + closing), total contract checks
@@ -915,19 +919,14 @@ Run two independent reviewers in parallel:
 - **Reviewer A** (engine from `adversarial_reviewer_a` in config.yaml, default: codex) -- dispatched via Bash with `run_in_background: true`
 - **Reviewer B** (engine from `adversarial_reviewer_b` in config.yaml, default: claude) -- dispatched via Agent tool
 
-Both receive a **pinned base SHA** (the merge-base of `<base-branch>` and HEAD, resolved once up front), the full contract.md, and the report path. The prompt instructs each reviewer to run `git log --reverse --format="%h %s" <base-sha>..HEAD` itself and iterate. Pinning avoids the review scope shifting if `<base-branch>` moves during the review.
+Both receive the **pinned base SHA** (`base_sha` from config.yaml, captured in Phase 7), the full contract.md, and the report path. The prompt instructs each reviewer to run `git log --reverse --format="%h %s" <base-sha>..HEAD` itself and iterate. Pinning to a SHA keeps the review scope fixed even if branches move during the review.
 
-Before dispatching either reviewer, read `base_branch` from `openspec/changes/<change-name>/mission/config.yaml` and use it in place of `<base-branch>`. Then compute the base SHA:
+Before dispatching either reviewer, read `base_sha` from `openspec/changes/<change-name>/mission/config.yaml`:
 
 ```bash
-BASE_BRANCH=$(awk -F: '/^[[:space:]]*base_branch[[:space:]]*:/ { gsub(/^[[:space:]]+|[[:space:]]+$/, "", $2); print $2; exit }' openspec/changes/<change-name>/mission/config.yaml)
-if [ -z "$BASE_BRANCH" ]; then
-  echo "ABORT: base_branch missing from openspec/changes/<change-name>/mission/config.yaml"
-  exit 1
-fi
-BASE_SHA=$(git merge-base "$BASE_BRANCH" HEAD)
-if [ -z "$BASE_SHA" ]; then
-  echo "ABORT: could not resolve merge-base for $BASE_BRANCH..HEAD"
+BASE_SHA=$(awk -F: '/^[[:space:]]*base_sha[[:space:]]*:/ { gsub(/^[[:space:]]+|[[:space:]]+$/, "", $2); print $2; exit }' openspec/changes/<change-name>/mission/config.yaml)
+if ! git cat-file -e "${BASE_SHA}^{commit}" 2>/dev/null; then
+  echo "ABORT: base_sha missing or not a valid commit in openspec/changes/<change-name>/mission/config.yaml"
   exit 1
 fi
 ```

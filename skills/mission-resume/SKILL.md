@@ -30,7 +30,7 @@ Read all artifacts for the selected mission:
 |------|------|---------|
 | Tasks | `openspec/changes/<change-name>/tasks.md` | Which tasks are done, which remain |
 | Progress log | `mission/progress.md` | Chronological record of what happened |
-| Mission config | `mission/config.yaml` | Engine assignments, `base_branch`, `plan_file` |
+| Mission config | `mission/config.yaml` | Engine assignments, `base_sha`, `plan_file` |
 | Plan file | path from `config.yaml` `plan_file` | Authoritative state: orchestrator phase, current task/step, engine config, codebase deltas |
 | Contract | `contract.md` | Checks grouped by task for validators |
 | Proposal | `proposal.md` | What is being built and why |
@@ -64,14 +64,13 @@ Log to progress.md: `<timestamp> -- Task N: resuming from <step name>. Previous 
 
 An orphaned commit is one where a worker committed code but no handoff file exists. This happens when the session died between the worker's commit and the orchestrator recording the result.
 
-First, scope the search to this mission's branch. Read `base_branch` from `config.yaml`, then compute the branch point:
+First, scope the search to this mission's commits. Read the pinned `base_sha` from `config.yaml`:
 
 ```bash
-BASE_BRANCH=$(awk -F: '/^[[:space:]]*base_branch[[:space:]]*:/ { gsub(/^[[:space:]]+|[[:space:]]+$/, "", $2); print $2; exit }' openspec/changes/<change-name>/mission/config.yaml)
-BASE_SHA=$(git merge-base "$BASE_BRANCH" HEAD)
+BASE_SHA=$(awk -F: '/^[[:space:]]*base_sha[[:space:]]*:/ { gsub(/^[[:space:]]+|[[:space:]]+$/, "", $2); print $2; exit }' openspec/changes/<change-name>/mission/config.yaml)
 ```
 
-If `base_branch` is missing or `git merge-base` fails (non-zero exit or empty `BASE_SHA`), **stop and ask the user** which branch this mission was built on. Do not fall back to a repo-wide search -- that returns false positives from older missions on other branches.
+If `base_sha` is missing or not a valid commit (`git cat-file -e "${BASE_SHA}^{commit}"` fails), **stop and ask the user** which commit this mission branched from. Do not fall back to a repo-wide search -- that returns false positives from older missions on other branches.
 
 For each unchecked task that did NOT have a handoff in step 3a:
 
