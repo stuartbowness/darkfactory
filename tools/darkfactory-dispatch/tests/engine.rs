@@ -324,6 +324,55 @@ async fn missing_output_recovered_from_final_response() -> Result<(), Box<dyn st
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn output_write_failure_reports_output_write_failed() -> Result<(), Box<dyn std::error::Error>>
+{
+    let _path_guard = TestPath::install("response_no_output").await?;
+    let tmp = temp_test_dir("output-write-failed")?;
+    // Parent directory does not exist, so the supervisor's fallback write fails.
+    let output = tmp.join("missing-subdir").join("result.md");
+
+    let result = engine::dispatch(
+        spec(&tmp, &output, None, 10, 0),
+        "dispatch-output-write-failed".to_string(),
+        emitter("dispatch-output-write-failed").0,
+    )
+    .await?;
+
+    assert_eq!(result.status, DispatchStatus::Failed);
+    assert!(!result.output_exists);
+    assert_eq!(
+        result.error.as_ref().map(|error| error.code.as_str()),
+        Some("output_write_failed")
+    );
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn empty_final_response_reports_missing_output() -> Result<(), Box<dyn std::error::Error>> {
+    let _path_guard = TestPath::install("empty_response_no_output").await?;
+    let tmp = temp_test_dir("empty-response")?;
+    let output = tmp.join("result.md");
+
+    let result = engine::dispatch(
+        spec(&tmp, &output, None, 10, 0),
+        "dispatch-empty-response".to_string(),
+        emitter("dispatch-empty-response").0,
+    )
+    .await?;
+
+    // An empty agent message must not be written as a recovered output.
+    assert_eq!(result.status, DispatchStatus::Failed);
+    assert!(!result.output_exists);
+    assert_eq!(
+        result.error.as_ref().map(|error| error.code.as_str()),
+        Some("missing_output")
+    );
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn soft_timeout_reports_timed_out_after_sigterm_exit(
 ) -> Result<(), Box<dyn std::error::Error>> {
     let _path_guard = TestPath::install("term_clean").await?;

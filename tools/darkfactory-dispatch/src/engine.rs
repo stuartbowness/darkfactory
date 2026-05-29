@@ -824,6 +824,11 @@ fn materialize_missing_output(
     let (Some(path), Some(response)) = (output, final_response) else {
         return None;
     };
+    // An empty final message is not a recovered output; let it fall through to
+    // missing_output rather than writing a 0-byte file and reporting success.
+    if response.is_empty() {
+        return None;
+    }
     if path.exists() {
         return None;
     }

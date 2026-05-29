@@ -222,7 +222,7 @@ In async mode, parent-death detection is disabled so the dispatcher survives the
 
 ```bash
 make build     # Debug build
-make test      # Run 66 Rust tests
+make test      # Run 78 Rust tests
 make lint      # cargo clippy -D warnings
 make fmt       # cargo fmt --check
 make check     # fmt + lint + test
