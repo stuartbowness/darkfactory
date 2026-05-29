@@ -180,7 +180,7 @@ Darkfactory is controlled through skills -- reusable prompt templates you invoke
 | Skill | Purpose |
 |-------|---------|
 | `/mission` | Start an autonomous mission from scratch. Walks you through planning, dispatches workers, validates, and delivers a draft PR. Pass `--basic` for a lightweight single-task mode (see [Basic mode](#basic-mode)). |
-| `/mission-resume` | Resume a mission that was interrupted (session crash, closed terminal). Detects which phase it left off in (from the plan file or progress log) and continues through to the draft PR and code review. If the interruption happened during planning, it tells you and hands back to `/mission` rather than skipping ahead to the build loop. |
+| `/mission-resume` | Resume a mission that was interrupted (session crash, closed terminal). Detects which phase it left off in (from the progress log, cross-checked against the plan file) and continues through to the draft PR and code review. If the interruption happened during planning, it tells you and hands back to `/mission` rather than skipping ahead to the build loop. |
 | `/mission-status` | Read-only progress check. Open a second terminal while a mission runs to see which tasks are done, in progress, or queued. |
 | `/mission-init` | Check your project setup. Verifies required skill symlinks, reports on optional bundled skills, checks CLI tools and coverage tools, checks chrome-devtools-mcp when `browser_tools: true`, and runs `openspec init` if needed. |
 | `/grill` | Alignment interview: asks pointed questions until the goals, constraints, and edge cases are clear. Used in the mission planning phase. |

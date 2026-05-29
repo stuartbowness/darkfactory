@@ -13,12 +13,11 @@ Search for OpenSpec changes that have a resumable mission (unchecked tasks remai
 
 1. Glob for `openspec/changes/*/mission/config.yaml` to find all mission directories.
 2. For each match, read the corresponding `openspec/changes/<change-name>/tasks.md`.
-3. Also read `plan_file` from `config.yaml` if present. If the plan exists, read its `## Status` field. Treat `COMPLETE` as the primary completion signal.
-4. Read `mission/progress.md` if present. For legacy missions with no usable plan status, treat the mission as finished only if progress.md contains a completion log showing both `Draft PR created` and adversarial reviews complete.
-5. A mission is **active** if either:
-   - `tasks.md` contains at least one unchecked item (`- [ ]`). Tasks marked `- [~]` (skipped) are not considered unchecked.
-   - all tasks are resolved, but the plan status is not `COMPLETE` and the legacy completion marker is absent.
-6. Collect the list of active missions with their change name and progress count (checked vs total tasks), plus `completion pending` when all tasks are resolved but Phase 9 completion is unfinished.
+3. Determine whether each mission has **finished** (completed Phase 9). Read `plan_file` from `config.yaml` if present:
+   - If the plan exists and has a `## Status` field, that field is authoritative: the mission is finished only if the status is `COMPLETE`.
+   - If there is no plan or no `## Status` field (a legacy mission), fall back to `mission/progress.md`: the mission is finished only if progress.md contains the completion log (`Draft PR created` and adversarial reviews complete). Do **not** consult this fallback when a plan status exists -- a `Draft PR created` line with a non-`COMPLETE` status means the mission crashed during completion, not that it finished.
+4. A mission is **active** (resumable) if `tasks.md` contains at least one unchecked item (`- [ ]`; `- [~]` skipped tasks do not count), OR the mission has not finished per step 3.
+5. Collect the list of active missions with their change name and progress count (checked vs total tasks), plus `completion pending` when all tasks are resolved but the mission has not finished.
 
 ### Handle results
 
@@ -40,7 +39,7 @@ Read all artifacts for the selected mission:
 | Proposal | `proposal.md` | What is being built and why |
 | Design | `design.md` | Architecture decisions |
 
-Read `plan_file` from `config.yaml`. If the field is present and the file exists, read that plan. If `plan_file` is missing (a mission started before this field existed), fall back to locating the plan by content: `find "$HOME/.claude/plans" -type f -name '*.md' -exec grep -l "Mission: <change-name>" {} + 2>/dev/null | head -1`. If no plan file is found by either path, note it -- Phase 4 will write one from disk state.
+Read `plan_file` from `config.yaml`. If the field is present and the file exists, read that plan. Otherwise -- the field is missing (a mission started before it existed), or it is set but the file is gone (moved or deleted) -- fall back to locating the plan by content: `find "$HOME/.claude/plans" -type f -name '*.md' -exec grep -l "Mission: <change-name>" {} + 2>/dev/null | head -1`. If no plan file is found by either path, note it -- Phase 4 will write one from disk state.
 
 Also read existing handoff files in `mission/handoffs/` and validation reports in `mission/validations/` (including `task-N-scrutiny.md`, `task-N-usertest.md`). These reveal mid-cycle interruptions.
 
@@ -59,12 +58,12 @@ Run this **once for the whole mission**, not per task (unlike 3b and 3c). Phases
 
 | progress.md marker | Phase reached | Resume target |
 |---------------------|----------------|-------------|
-| `Draft PR created` | Phase 9 (PR created) | Phase 7 (completion) of this skill |
-| highest `Task N complete.` | Phase 8, Task N done | If an unchecked task remains after N: Phase 8, Task N+1. If no unchecked task remains: Phase 7 (completion) of this skill. |
+| `Draft PR created` | Phase 9 (PR created) | this skill's Phase 7 (mission completion) |
+| highest `Task N complete.` | Phase 8, Task N done | If an unchecked task remains after N: Phase 8, Task N+1. If no unchecked task remains: this skill's Phase 7 (mission completion). |
 | `Plan approved.` | planning done, build ready | Phase 8, Task 1 |
-| `Mission directory created.` | Phase 6 done, build not started | Phase 7 (launch confirmation) |
+| `Mission directory created.` | Phase 6 done, build not started | /mission Phase 7 (launch confirmation) -- defer to /mission |
 
-If all tasks are resolved but the latest marker is not `Draft PR created`, the resume target is Phase 7 (completion) of this skill.
+This table reports the detected phase. **Phase 4 makes the actual routing decision on concrete facts** (see "Branch on the resume target"), so it does not depend on disambiguating the "Phase 7" label here.
 
 **Plan hint -- `## Orchestrator Phase`.** If the plan read in Phase 2 has a populated `## Orchestrator Phase` field, cross-check it against the disk-derived phase. "Populated" means the field is present, non-empty, and does not still contain the `<...>` placeholder text from the template. If the plan hint disagrees with the disk-derived phase, trust the disk-derived phase and note the correction for Phase 4.
 
@@ -129,11 +128,11 @@ Write a complete orchestrator operating manual from file state. Include: mission
 
 ### Branch on the resume target
 
-Use the **resume target** from Phase 3a, not the raw phase label. The branches below are mutually exclusive.
+Route on concrete disk facts, tested in this order. Exactly one branch matches every state. This decision -- not the marker table's target label -- governs where the resume goes.
 
-- **Planning never finished** -- resume target is launch confirmation (Phase 7) or earlier, i.e. `Plan approved.` was never logged. Do **not** enter the build loop. Report the detected phase to the user, for example: "This mission stopped in Phase 5 (contract writing), before the build loop started. Resuming planning needs `/mission`, which holds the planning-phase logic. Run `/mission` to continue from Phase 5, or tell me how you want to proceed." Then stop and wait. mission-resume does not contain planning-phase logic.
-- **Build loop has unchecked tasks** -- resume target is Phase 8 (Task 1 or later), and `tasks.md` still has at least one unchecked `- [ ]` task. Continue to Phase 5, then Phase 6.
-- **All tasks done but completion unfinished** -- no unchecked `- [ ]` tasks remain, but plan status is not `COMPLETE`. This covers `Draft PR created` logged but plan status not COMPLETE, and last task done with no PR yet. Continue to Phase 5, then go straight to Phase 7 completion. Skip Phase 6.
+1. **Planning never finished** -- `Plan approved.` was never logged in progress.md. Do **not** enter the build loop. Report the detected phase to the user, for example: "This mission stopped in Phase 5 (contract writing), before the build loop started. Resuming planning needs `/mission`, which holds the planning-phase logic. Run `/mission` to continue from Phase 5, or tell me how you want to proceed." Then stop and wait. mission-resume does not contain planning-phase logic.
+2. **Build loop has unchecked tasks** -- `Plan approved.` was logged and `tasks.md` still has at least one unchecked `- [ ]` task. Continue to Phase 5, then Phase 6 (the build loop). This also covers an inconsistent state where `Draft PR created` was logged but tasks remain unchecked: finish the tasks first, then complete.
+3. **Completion unfinished** -- `Plan approved.` was logged, no unchecked `- [ ]` tasks remain, and the mission is not finished (per Phase 1's test). Continue to Phase 5, then go straight to **this skill's Phase 7** (mission completion). Skip Phase 6.
 
 ## Phase 5: Log the Resume
 
@@ -156,24 +155,25 @@ Start from the entry point established earlier: if Phase 3b detected a mid-cycle
 
 ## Phase 7: Mission Completion
 
-When no unchecked tasks remain in tasks.md:
+Reached when all tasks are resolved but the mission has not finished (Phase 4 branch 3).
 
-1. Check for an existing open draft PR for the current branch before creating one:
-   ```bash
-   BRANCH=$(git rev-parse --abbrev-ref HEAD)
-   PR_URL=$(gh pr list --head "$BRANCH" --state open --json url,isDraft --jq '.[] | select(.isDraft == true) | .url' | head -1)
-   ```
-   If `PR_URL` is non-empty, reuse that PR URL. If no open draft PR exists, create one with `gh pr create --draft` using a mission summary (tasks, validation results, issues, stats), and store the new URL.
-2. Run dual adversarial review following `/mission` Phase 9's Dual Adversarial Review section. Do not re-implement it here. Before dispatching either reviewer, read and validate the pinned `base_sha` from config.yaml with the same guard:
-   ```bash
-   BASE_SHA=$(awk -F: '/^[[:space:]]*base_sha[[:space:]]*:/ { gsub(/^[[:space:]]+|[[:space:]]+$/, "", $2); print $2; exit }' openspec/changes/<change-name>/mission/config.yaml)
-   if ! git cat-file -e "${BASE_SHA}^{commit}" 2>/dev/null; then
-     echo "ABORT: base_sha missing or not a valid commit in openspec/changes/<change-name>/mission/config.yaml"
-     exit 1
-   fi
-   ```
-   Pass `$BASE_SHA` to both reviewers. They must walk commits one at a time with `git log --reverse --format="%h %s" <base-sha>..HEAD`, as described in `/mission` Phase 9.
-3. Present both reports to the human alongside the draft PR link.
-4. Log to progress.md and update plan status to COMPLETE.
+Run **`/mission` Phase 9 in full** -- do not re-implement it here. Read Phase 9 in `.claude/skills/mission/SKILL.md` and execute it as written. Phase 9 runs, in order: Final Gates (whole-repo build, test, lint, format) -> Spec Delta Check -> Create Draft PR -> Dual Adversarial Review -> Present to human -> mark plan status `COMPLETE`. A completion resume **must** run these gates; it must not jump straight to the PR, or it can mark a mission `COMPLETE` on a codebase that does not build.
 
-The adversarial review is a human-facing report, not an automated gate. The human decides what to address.
+Because the previous session may have finished part of Phase 9, **resume from the first sub-step whose completion marker is absent from progress.md**, skipping the ones already logged:
+
+| Last Phase 9 marker in progress.md | Resume from |
+|---|---|
+| none of the below | Final Gates |
+| `Final gates PASSED` | Spec Delta Check |
+| `Spec delta check CLEAN` | Create Draft PR |
+| `Draft PR created` | Present to human, then mark `COMPLETE` |
+
+Two adjustments when running Phase 9 from here:
+
+- **Idempotent PR.** At the Create Draft PR sub-step, first check for an existing open draft PR and reuse it instead of creating a duplicate:
+  ```bash
+  BRANCH=$(git rev-parse --abbrev-ref HEAD)
+  PR_URL=$(gh pr list --head "$BRANCH" --state open --json url,isDraft --jq '.[] | select(.isDraft == true) | .url' | head -1)
+  ```
+  If `PR_URL` is non-empty, reuse it; otherwise create the draft PR as Phase 9 describes.
+- **base_sha guard.** Phase 9's adversarial review reads the pinned `base_sha` from config.yaml. If `base_sha` is missing or not a valid commit (`git cat-file -e "${BASE_SHA}^{commit}" 2>/dev/null` fails), do **not** abort -- stop and ask the user which commit this mission branched from (as in step 3c), then write it to config.yaml before running the review.
