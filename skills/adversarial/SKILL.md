@@ -75,7 +75,8 @@ Dispatch command:
 
 ```bash
 PROMPT_PATH=$(mktemp /tmp/adversarial-prompt.XXXXXX)
-cat > "$PROMPT_PATH" << 'PROMPT'
+# Use >| : mktemp pre-creates the file, and zsh `noclobber` makes a bare `>` fail on it.
+cat >| "$PROMPT_PATH" << 'PROMPT'
 You are an adversarial code reviewer. Review the following diff for bugs, logic errors, security issues, and missing edge cases. Group findings by severity: critical, warning, nit. Cite file:line for each finding. Return the full report as your final message -- do not write any files.
 
 <diff content>

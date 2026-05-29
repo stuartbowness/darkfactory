@@ -35,7 +35,8 @@ Write the task description to a temp file:
 
 ```bash
 PROMPT_PATH=$(mktemp /tmp/dispatch-task.XXXXXX)
-cat > "$PROMPT_PATH" << 'TASK'
+# Use >| : mktemp pre-creates the file, and zsh `noclobber` makes a bare `>` fail on it.
+cat >| "$PROMPT_PATH" << 'TASK'
 <task description>
 TASK
 ```
