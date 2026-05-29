@@ -85,22 +85,23 @@ If re-run: leave the task unchecked and start fresh.
 
 ### 3c: Detect the orchestrator phase
 
-Phases 3a and 3b only cover missions where a worker has run. A mission interrupted during planning (Phases 0-7) has no handoffs and no task commits, so without this step Phase 4 would wrongly assume the build loop is ready to start. Determine which orchestrator phase (0-9, 4a) was active when the session ended.
+Run this **once for the whole mission**, not per task (unlike 3a/3b). Phases 3a and 3b only cover missions where a worker has run. A mission interrupted during planning (Phase 7 or earlier) has no handoffs and no task commits, so without this step Phase 4 would wrongly assume the build loop is ready to start. Determine which orchestrator phase (0-9, 4a) was active when the session ended, and the **resume target** (the phase to re-enter from).
 
 **Primary source -- the plan file.** If the plan read in Phase 2 has a populated `## Orchestrator Phase` field, use it. That field names the phase, step, and last-checkpoint timestamp. This is authoritative.
 
-**Fallback -- progress.md markers.** If no plan file was found, or its `## Orchestrator Phase` field is empty (a mission started before this field existed), scan `mission/progress.md` for these markers, taking the most recent (last) match:
+**Fallback -- progress.md markers.** If no plan file was found, or its `## Orchestrator Phase` field is empty (a mission started before this field existed):
 
-| progress.md marker | Inferred phase | Resume from |
+- **No `mission/progress.md` file:** the mission never reached Phase 6 (progress.md is created there). It stopped during planning, Phase 5 or earlier. Resume target: report and ask (see Phase 4).
+- **progress.md exists:** scan it for these markers, taking the most recent (last) match. Every progress.md contains at least `Mission directory created.` (its first line), so one row always matches:
+
+| progress.md marker | Phase reached | Resume target |
 |---------------------|----------------|-------------|
-| `Draft PR created` | Phase 9 in progress | Phase 7 (completion) of this skill |
+| `Draft PR created` | Phase 9 (PR done) | Phase 7 (completion) of this skill |
 | highest `Task N complete.` | Phase 8, Task N done | Phase 8, Task N+1 |
-| `Plan approved.` | Phase 7 complete | Phase 8, Task 1 |
-| `Mission directory created.` | Phase 6 complete | Phase 7 (launch confirmation) |
-| `Contract testability pre-flight:` | Phase 5 complete | Phase 6 (mission directory) |
-| none of the above | Planning, Phase 5 or earlier | report and ask (see Phase 4) |
+| `Plan approved.` | planning done, build ready | Phase 8, Task 1 |
+| `Mission directory created.` | Phase 6 done, build not started | Phase 7 (launch confirmation) |
 
-Report the detected phase to the user before continuing. Carry it into Phase 4.
+Report the detected phase and resume target to the user before continuing. Carry both into Phase 4.
 
 ## Phase 4: Restore the Orchestrator Plan
 
@@ -119,10 +120,12 @@ Before trusting it, reconcile its state against disk reality:
 
 Write a complete orchestrator operating manual from file state. Include: mission identity, all file paths, engine configuration, the detected `## Orchestrator Phase` (from Phase 3c), the mission flow (matching the /mission skill's Phase 8 build loop and Phase 9 completion), and the rules.
 
-### Branch on the detected phase
+### Branch on the resume target
 
-- **Build phase (Phase 8 or later):** continue to Phase 5, then the build loop.
-- **Planning phase (Phase 7 or earlier):** do **not** enter the build loop. Report the detected phase to the user, for example: "This mission stopped in Phase 5 (contract writing), before the build loop started. Resuming planning needs `/mission`, which holds the planning-phase logic. Run `/mission` to continue from Phase 5, or tell me how you want to proceed." Then stop and wait. mission-resume does not contain planning-phase logic.
+Use the **resume target** from Phase 3c, not the raw phase label. The boundary is whether the build loop is ready to run -- which is true once `Plan approved.` was logged (Phase 7 finished), even though that is still "Phase 7" by name.
+
+- **Build loop is ready** -- resume target is Phase 8 (Task 1 or later) or this skill's Phase 7 completion. This covers any mission where `Plan approved.` was logged or tasks are already complete. Continue to Phase 5, then the build loop.
+- **Planning never finished** -- resume target is launch confirmation (Phase 7) or earlier, i.e. `Plan approved.` was never logged. Do **not** enter the build loop. Report the detected phase to the user, for example: "This mission stopped in Phase 5 (contract writing), before the build loop started. Resuming planning needs `/mission`, which holds the planning-phase logic. Run `/mission` to continue from Phase 5, or tell me how you want to proceed." Then stop and wait. mission-resume does not contain planning-phase logic.
 
 ## Phase 5: Log the Resume
 
