@@ -259,6 +259,38 @@ fn async_dispatch_prunes_old_store_directories() -> Result<(), Box<dyn std::erro
     Ok(())
 }
 
+#[test]
+fn json_stdout_is_single_object() -> Result<(), Box<dyn std::error::Error>> {
+    let env = MockEnv::new("json-single-object")?;
+    let output = env.home.join("result.md");
+    let result = env
+        .dispatch_command()
+        .args([
+            "--json",
+            "--prompt",
+            "review",
+            "--output",
+            output.to_str().expect("utf-8 output path"),
+            "--cwd",
+            env.home.to_str().expect("utf-8 home path"),
+        ])
+        .env("CODEX_MOCK_MODE", "special_chars")
+        .output()?;
+
+    assert!(result.status.success(), "stderr: {:?}", result.stderr);
+    // Stdout must be exactly one parseable DispatchResult object -- no event or
+    // diagnostic leakage -- and special characters must round-trip through serde.
+    let parsed: Value = serde_json::from_slice(&result.stdout)?;
+    assert_eq!(parsed["status"], "completed");
+    let commands = parsed["activity"]["commands_run"]
+        .as_array()
+        .expect("commands_run array");
+    assert_eq!(commands.len(), 1);
+    assert_eq!(commands[0], r#"grep -n "foo\bar" baz | jq .x"#);
+
+    Ok(())
+}
+
 struct MockEnv {
     home: PathBuf,
     bin_dir: PathBuf,

@@ -280,6 +280,50 @@ async fn missing_output_file_reports_failed_result() -> Result<(), Box<dyn std::
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn no_output_requested_completes_on_clean_exit() -> Result<(), Box<dyn std::error::Error>> {
+    let _path_guard = TestPath::install("success").await?;
+    let tmp = temp_test_dir("no-output-requested")?;
+    let mut dispatch_spec = spec(&tmp, &tmp.join("unused.md"), None, 10, 0);
+    dispatch_spec.output = None;
+
+    let result = engine::dispatch(
+        dispatch_spec,
+        "dispatch-no-output-requested".to_string(),
+        emitter("dispatch-no-output-requested").0,
+    )
+    .await?;
+
+    assert_eq!(result.status, DispatchStatus::Completed);
+    assert_eq!(result.exit_code, Some(0));
+    assert!(!result.output_exists);
+    assert!(result.error.is_none());
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn missing_output_recovered_from_final_response() -> Result<(), Box<dyn std::error::Error>> {
+    let _path_guard = TestPath::install("response_no_output").await?;
+    let tmp = temp_test_dir("recovered-output")?;
+    let output = tmp.join("result.md");
+
+    let result = engine::dispatch(
+        spec(&tmp, &output, None, 10, 0),
+        "dispatch-recovered-output".to_string(),
+        emitter("dispatch-recovered-output").0,
+    )
+    .await?;
+
+    assert_eq!(result.status, DispatchStatus::Completed);
+    assert!(result.output_exists);
+    assert!(result.error.is_none());
+    let written = std::fs::read_to_string(&output)?;
+    assert_eq!(written, "recovered analysis content");
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn soft_timeout_reports_timed_out_after_sigterm_exit(
 ) -> Result<(), Box<dyn std::error::Error>> {
     let _path_guard = TestPath::install("term_clean").await?;

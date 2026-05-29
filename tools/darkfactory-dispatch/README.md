@@ -89,7 +89,7 @@ darkfactory-dispatch \
   --json 2>>dispatch.log
 ```
 
-The dispatch result is a single JSON object on stdout:
+The dispatch result is a single JSON object on stdout. In `--json` mode stdout carries **only** that one object; all events, heartbeats, and diagnostics go to stderr. Do not merge the two streams (`2>&1`) when parsing the result -- the concatenated event lines will make `jq` or `serde_json` fail. Redirect stderr elsewhere (e.g. `2>>dispatch.log`), as the examples above do.
 
 ```json
 {

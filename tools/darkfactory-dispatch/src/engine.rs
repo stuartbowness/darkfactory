@@ -215,6 +215,16 @@ pub(crate) async fn dispatch(
         .await
         .map_err(|error| DispatchError::Other(format!("stderr capture task failed: {error}")))??;
 
+    // If the worker exited cleanly but never created the requested output file,
+    // materialize it from the final agent message captured off the NDJSON stream.
+    // This recovers analysis-only runs and sandbox-blocked writes. Never overwrite
+    // a file the worker already wrote.
+    let mut terminal_error = terminal_error;
+    if terminal_error.is_none() && !timed_out && exit.code == Some(0) {
+        terminal_error =
+            materialize_missing_output(output_path.as_deref(), tracker.final_response.as_deref());
+    }
+
     let result = finalize_result(ResultFinalization {
         dispatch_id,
         duration_ms: started.elapsed().as_millis() as u64,
@@ -576,6 +586,7 @@ struct ActivityTracker {
     tokens: TokenUsage,
     last_activity: String,
     response_seen: bool,
+    final_response: Option<String>,
 }
 
 impl ActivityTracker {
@@ -585,6 +596,7 @@ impl ActivityTracker {
             tokens: TokenUsage::default(),
             last_activity: "dispatch started".to_string(),
             response_seen: false,
+            final_response: None,
         }
     }
 
@@ -636,6 +648,7 @@ impl ActivityTracker {
             }
             EventKind::Response => {
                 self.response_seen = true;
+                self.final_response = event.text;
                 self.last_activity = "agent response".to_string();
             }
             EventKind::TurnComplete => {
@@ -688,12 +701,15 @@ struct ResultFinalization {
 }
 
 fn finalize_result(input: ResultFinalization) -> DispatchResult {
+    let output_requested = input.output.is_some();
     let output_exists = input.output.as_deref().is_some_and(Path::exists);
+    // A run with no requested output file is satisfied by a clean exit alone.
+    let output_satisfied = !output_requested || output_exists;
     let mut status = if input.terminal_error.is_some() {
         DispatchStatus::Failed
     } else if input.timed_out {
         DispatchStatus::TimedOut
-    } else if input.exit.code == Some(0) && output_exists {
+    } else if input.exit.code == Some(0) && output_satisfied {
         DispatchStatus::Completed
     } else {
         DispatchStatus::Failed
@@ -710,13 +726,18 @@ fn finalize_result(input: ResultFinalization) -> DispatchResult {
                 retryable: true,
             }),
             DispatchStatus::Failed => Some(DispatchErrorInfo {
-                code: if input.exit.code == Some(0) && !output_exists {
+                code: if input.exit.code == Some(0) && output_requested && !output_exists {
                     "missing_output"
                 } else {
                     "process_failed"
                 }
                 .to_string(),
-                message: failure_message(input.exit, output_exists, &input.stderr),
+                message: failure_message(
+                    input.exit,
+                    output_requested,
+                    output_exists,
+                    &input.stderr,
+                ),
                 retryable: true,
             }),
         }
@@ -769,8 +790,13 @@ fn abort_error(reason: Option<String>) -> DispatchErrorInfo {
     }
 }
 
-fn failure_message(exit: ExitResult, output_exists: bool, stderr: &str) -> String {
-    if exit.code == Some(0) && !output_exists {
+fn failure_message(
+    exit: ExitResult,
+    output_requested: bool,
+    output_exists: bool,
+    stderr: &str,
+) -> String {
+    if exit.code == Some(0) && output_requested && !output_exists {
         return "child exited successfully but output file was not created".to_string();
     }
     let stderr = stderr.trim();
@@ -785,6 +811,48 @@ fn failure_message(exit: ExitResult, output_exists: bool, stderr: &str) -> Strin
             exit.code, exit.signal, stderr
         )
     }
+}
+
+// Worker exited cleanly but the requested output file is absent. If a final agent
+// message was captured off the NDJSON stream, write it to the output path from the
+// supervisor (which is not subject to the worker's sandbox). Returns a terminal
+// error only when the write itself fails.
+fn materialize_missing_output(
+    output: Option<&Path>,
+    final_response: Option<&str>,
+) -> Option<DispatchErrorInfo> {
+    let (Some(path), Some(response)) = (output, final_response) else {
+        return None;
+    };
+    if path.exists() {
+        return None;
+    }
+    if let Err(error) = write_output_atomic(path, response) {
+        return Some(DispatchErrorInfo {
+            code: "output_write_failed".to_string(),
+            message: format!(
+                "failed to write captured response to {}: {error}",
+                path.display()
+            ),
+            retryable: true,
+        });
+    }
+    None
+}
+
+fn write_output_atomic(path: &Path, contents: &str) -> std::io::Result<()> {
+    let dir = path
+        .parent()
+        .filter(|parent| !parent.as_os_str().is_empty())
+        .unwrap_or_else(|| Path::new("."));
+    let file_name = path
+        .file_name()
+        .and_then(|name| name.to_str())
+        .unwrap_or("output");
+    let tmp_path = dir.join(format!(".{file_name}.tmp.{}", std::process::id()));
+    std::fs::write(&tmp_path, contents)?;
+    std::fs::rename(&tmp_path, path)?;
+    Ok(())
 }
 
 fn write_status_json_atomic(

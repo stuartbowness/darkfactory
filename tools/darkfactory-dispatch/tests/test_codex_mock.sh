@@ -58,6 +58,17 @@ case "$mode" in
     echo '{"type":"thread.started","thread_id":"no-output"}'
     echo '{"type":"turn.completed","usage":{"input_tokens":10,"output_tokens":5,"reasoning_tokens":0}}'
     ;;
+  response_no_output)
+    echo '{"type":"thread.started","thread_id":"resp-no-output"}'
+    echo '{"type":"item.completed","item":{"type":"agent_message","text":"recovered analysis content"}}'
+    echo '{"type":"turn.completed","usage":{"input_tokens":1,"output_tokens":2,"reasoning_tokens":3}}'
+    ;;
+  special_chars)
+    echo '{"type":"thread.started","thread_id":"special-chars"}'
+    echo '{"type":"item.started","item":{"type":"function_call","command":"grep -n \"foo\\bar\" baz | jq .x"}}'
+    echo '{"type":"turn.completed","usage":{"input_tokens":1,"output_tokens":2,"reasoning_tokens":3}}'
+    write_output
+    ;;
   term_clean)
     trap 'exit 0' TERM
     sleep 300
