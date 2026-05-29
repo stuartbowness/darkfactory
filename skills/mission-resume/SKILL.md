@@ -13,9 +13,9 @@ Search for OpenSpec changes that have a resumable mission (unchecked tasks remai
 
 1. Glob for `openspec/changes/*/mission/config.yaml` to find all mission directories.
 2. For each match, read the corresponding `openspec/changes/<change-name>/tasks.md`.
-3. Determine whether each mission has **finished** (completed Phase 9). Read `plan_file` from `config.yaml` if present:
-   - If the plan exists and has a `## Status` field, that field is authoritative: the mission is finished only if the status is `COMPLETE`.
-   - If there is no plan or no `## Status` field (a legacy mission), fall back to `mission/progress.md`: the mission is finished only if progress.md contains the completion log (`Draft PR created` and adversarial reviews complete). Do **not** consult this fallback when a plan status exists -- a `Draft PR created` line with a non-`COMPLETE` status means the mission crashed during completion, not that it finished.
+3. Determine whether each mission has **finished** (completed Phase 9). First locate its plan: read `plan_file` from `config.yaml`; if that field is missing (a mission started before it existed), fall back to the same content search Phase 2 uses: `find "$HOME/.claude/plans" -type f -name '*.md' -exec grep -l "Mission: <change-name>" {} + 2>/dev/null | head -1`.
+   - If a plan is found and has a `## Status` field, that field is authoritative: the mission is finished only if the status is `COMPLETE`.
+   - If no plan is found or it has no `## Status` field (a true legacy mission), fall back to `mission/progress.md`: the mission is finished only if progress.md contains the completion log (`Draft PR created` and adversarial reviews complete). Do **not** consult this fallback when a plan status exists -- a `Draft PR created` line with a non-`COMPLETE` status means the mission crashed during completion, not that it finished.
 4. A mission is **active** (resumable) if `tasks.md` contains at least one unchecked item (`- [ ]`; `- [~]` skipped tasks do not count), OR the mission has not finished per step 3.
 5. Collect the list of active missions with their change name and progress count (checked vs total tasks), plus `completion pending` when all tasks are resolved but the mission has not finished.
 
@@ -71,7 +71,7 @@ Report the detected phase and resume target to the user before continuing. Carry
 
 ### 3b: Check for handoff with missing validations
 
-Only run this step when Phase 3a's resume target is a build phase with unchecked tasks. For planning-phase missions, skip per-task handoff checks and let Phase 4 defer to `/mission`. For completion-phase missions with no unchecked tasks, skip them because there is no next task to reconcile.
+Only run this step for a build-loop resume -- `Plan approved.` was logged AND `tasks.md` has at least one unchecked `- [ ]` task (Phase 4 branch 2's condition). Skip it otherwise: planning-phase resumes (`Plan approved.` never logged) defer to `/mission`, and completion resumes (no unchecked tasks) have no next task to reconcile.
 
 For each unchecked task (skip `- [~]` skipped tasks), if `mission/handoffs/task-N.md` exists (worker finished), check which validation reports exist:
 
@@ -89,7 +89,7 @@ Log to progress.md: `<timestamp> -- Task N: resuming from <step name>. Previous 
 
 An orphaned commit is one where a worker committed code but no handoff file exists. This happens when the session died between the worker's commit and the orchestrator recording the result.
 
-Only run this step when Phase 3a's resume target is a build phase with unchecked tasks. For planning-phase missions, skip orphaned-commit detection entirely -- no task commits exist yet, and Phase 4 will defer to `/mission`. For completion-phase missions with no unchecked tasks, skip it because there is no next task to reconcile.
+Only run this step for a build-loop resume -- `Plan approved.` was logged AND `tasks.md` has at least one unchecked `- [ ]` task (Phase 4 branch 2's condition). Skip it otherwise: planning-phase resumes (`Plan approved.` never logged) have no task commits yet and defer to `/mission`, and completion resumes (no unchecked tasks) have no next task to reconcile.
 
 First, scope the search to this mission's commits. Read the pinned `base_sha` from `config.yaml`:
 
@@ -165,8 +165,10 @@ Because the previous session may have finished part of Phase 9, **resume from th
 |---|---|
 | none of the below | Final Gates |
 | `Final gates PASSED` | Spec Delta Check |
-| `Spec delta check CLEAN` | Create Draft PR |
-| `Draft PR created` | Present to human, then mark `COMPLETE` |
+| `Spec delta check CLEAN` | Create Draft PR, then the Dual Adversarial Review |
+| `Draft PR created: <URL>. Adversarial reviews complete.` | Present to human, then mark `COMPLETE` |
+
+`/mission` logs the draft PR and the adversarial review together on one line, and only after the review finishes (mission/SKILL.md Present-to-Human step) -- there is no separate "PR created, review pending" marker. So a crash any time between the spec-delta check and that combined line resumes at Create Draft PR: the idempotent PR step (below) reuses the existing PR, then the Dual Adversarial Review re-runs. The review is a human-facing report, so re-running it is safe.
 
 Two adjustments when running Phase 9 from here:
 
