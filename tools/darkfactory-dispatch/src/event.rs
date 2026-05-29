@@ -398,7 +398,7 @@ mod tests {
         let (emitter, buffer) = emitter_with_buffer(StreamMode::Normal);
 
         emitter
-            .emit_dispatch_start("codex", "gpt-5")
+            .emit_dispatch_start("codex", "gpt-5.5")
             .expect("emit dispatch start");
         emitter
             .emit_dispatch_end("completed", 123)
