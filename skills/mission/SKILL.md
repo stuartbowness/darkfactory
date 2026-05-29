@@ -27,7 +27,7 @@ If `--basic` is not present, continue with full mission mode below.
 5. **File-backed state.** All decisions and status go to disk. The mission must be resumable from files alone.
 6. **Single commit per task.** One task, one worker, one commit, one validation cycle.
 7. **Draft PRs only.** Never create a ready-for-review PR. The human promotes it.
-8. **Plan is the operating manual.** Keep the plan updated after every phase and step. It must be accurate if context compacts. On entering any major phase (0-9, 4a) and at every phase gate, set the plan's `## Orchestrator Phase` field to the current phase name, step, and an ISO 8601 `Last checkpoint` timestamp. This field is the primary re-entry point `mission-resume` reads.
+8. **Plan is the operating manual.** Keep the plan updated after every phase and step. It must be accurate if context compacts. On entering any major phase (0-9, 4a) and at every phase gate, set the plan's `## Orchestrator Phase` field to the current phase name, step, and an ISO 8601 `Last checkpoint` timestamp. `mission-resume` cross-checks this field against disk state when choosing a re-entry point.
 9. **Skipped tasks use `- [~]`.** The build loop treats `- [~]` as neither unchecked nor complete. Skipped tasks are not re-attempted.
 10. **Mark tasks done in tasks.md immediately.** After a task passes validation, change `- [ ]` to `- [x]` in tasks.md before moving to the next task. This is required for resume to work correctly.
 11. **Artifact review before human Q&A.** Every planning artifact (Phases 2-5 and 4a) is dispatched to Codex for review via `/artifact-review` before presenting to the human. Findings are shown alongside the artifact and the AI recommendation. If `/artifact-review` fails, note the failure and continue — review is non-blocking. The review result (or failure notice) must be persisted as a checkpoint before presenting the artifact to the human. For Phases 2-3, record checkpoints in the plan's Review Checkpoints section. For Phases 4+, write checkpoint files to `reviews/` in the change directory.
@@ -585,7 +585,7 @@ mkdir -p openspec/changes/<change-name>/mission/{briefs,handoffs,validations,iss
 
 Ensure a feature branch. Resolve the default branch with `gh api repos/{owner}/{repo} --jq .default_branch` (abort Phase 7 if that gh call fails -- it means no GitHub remote or bad auth). If `git rev-parse --abbrev-ref HEAD` equals the default branch, run `git checkout -b mission/<change-name>` -- if that branch already exists, use `mission/<change-name>-$(date -u +%Y%m%d%H%M%S)`. Log the checkout to progress.md.
 
-Then capture the build base: run `git rev-parse HEAD` and write the result into config.yaml's `base_sha` field, replacing the placeholder. This is the commit the first task builds on top of (a `checkout -b` does not change it). Phase 9 and `mission-resume` use this pinned SHA to scope the mission diff, so it must be captured before the first task commit.
+Regardless of whether a checkout happened, capture the build base: run `git rev-parse HEAD` and write the result into config.yaml's `base_sha` field, replacing the placeholder. This is the commit the first task builds on top of (a `checkout -b` does not change it). Phase 9 and `mission-resume` use this pinned SHA to scope the mission diff, so it must be captured before the first task commit.
 
 Show the user a summary dashboard:
 1. **Mission overview** -- change name, total tasks (feature + closing), total contract checks
