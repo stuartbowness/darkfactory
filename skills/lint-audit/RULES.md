@@ -25,6 +25,23 @@ Type-safety rules prevent agents from escaping the type system.
 
 Agents commonly use `any`, non-null assertions, or unsafe calls when they cannot immediately prove a value's shape. That makes the code look complete while moving the risk to runtime. These rules force the agent to model the value honestly or handle the uncertain case.
 
+Without these rules, agents write:
+
+```ts
+function process(data: any) {
+  return data.items!.map((x: any) => x.value);
+}
+```
+
+With these rules, the linter forces:
+
+```ts
+function process(data: unknown) {
+  if (!isDataShape(data)) throw new Error("unexpected shape");
+  return data.items.map((x) => x.value);
+}
+```
+
 Rules in this category:
 
 - `typescript/no-explicit-any`
@@ -45,6 +62,24 @@ Error-handling rules prevent agents from dropping failures.
 
 Agents often leave promises floating, put async functions where a plain callback was expected, or create empty blocks while reshaping code. These patterns hide failed work from the caller. The code may pass a quick smoke test and still fail under real data.
 
+Without these rules, agents write:
+
+```ts
+async function save(data: FormData) {
+  fetch("/api/save", { method: "POST", body: data });
+  showSuccess();
+}
+```
+
+With these rules, the linter forces:
+
+```ts
+async function save(data: FormData) {
+  await fetch("/api/save", { method: "POST", body: data });
+  showSuccess();
+}
+```
+
 Rules in this category:
 
 - `typescript/no-floating-promises`
@@ -56,6 +91,19 @@ Rules in this category:
 Code-quality rules catch unfinished edits and impossible branches.
 
 Agents tend to leave behind unused variables, unused expressions, and constant conditions during iterative edits. These are not style issues. They are signs that a branch, call, or assignment was deleted without finishing the surrounding behavior.
+
+Without these rules, agents leave behind:
+
+```ts
+const result = compute(input);
+if (true) { handleSpecial(); }
+```
+
+With these rules, the linter catches the unused `result` and the constant `true` condition:
+
+```ts
+handleSpecial();
+```
 
 Rules in this category:
 
@@ -69,6 +117,17 @@ Rules in this category:
 Import rules prevent module graph problems that TypeScript may not catch early enough.
 
 Agents frequently move code between files and update imports by pattern matching. That can create circular imports or named imports that do not exist. These failures are expensive because they may appear only after bundling, test execution, or a specific runtime path.
+
+Without these rules, agents create:
+
+```ts
+// a.ts
+import { helper } from "./b";
+// b.ts
+import { util } from "./a";  // circular
+```
+
+With these rules, the linter catches the cycle before it causes runtime issues.
 
 Rules in this category:
 

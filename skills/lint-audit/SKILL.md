@@ -8,18 +8,35 @@ description: Audit a TypeScript project's oxlint config and tsconfig strictness 
 
 Audit a TypeScript project against the agent-friendly oxlint and TypeScript strictness ruleset, then offer to apply the missing mechanical safeguards.
 
+## Contents
+
+1. [Inputs](#inputs)
+2. [Run the Audit](#step-1-run-the-audit)
+3. [Handle Outcomes](#step-2-handle-outcomes)
+4. [Present the Report](#step-3-present-the-report)
+5. [Choose Apply Mode](#step-4-choose-apply-mode)
+6. [Build the Accepted Change Set](#step-5-build-the-accepted-change-set)
+7. [Apply Oxlint Rule Changes](#step-6-apply-oxlint-rule-changes)
+8. [Apply TypeScript Strictness Changes](#step-7-apply-typescript-strictness-changes)
+9. [Apply Type-Aware Linting](#step-8-apply-type-aware-linting)
+10. [Verify and Report](#step-9-verify-and-report)
+
 ## Inputs
 
 - Use the project directory the user named.
 - If the user did not name a project directory, use the current workspace directory.
-- Resolve `<skill-dir>` as the directory containing this `SKILL.md`.
+- Resolve `<skill-dir>` by following the skill symlink:
+
+```sh
+SKILL_DIR="$(cd "$(readlink "$HOME/.claude/skills/lint-audit")" 2>/dev/null && pwd -P)"
+```
 
 ## Step 1: Run the Audit
 
 Run:
 
 ```sh
-bash <skill-dir>/audit.sh <project-dir>
+bash "$SKILL_DIR/audit.sh" <project-dir>
 ```
 
 Parse stdout as JSON. The audit script is the source of truth for detection and comparison. Do not reimplement config discovery or rule comparison in the skill workflow.
@@ -55,7 +72,7 @@ Multiple oxlint config files exist. List the matching config files in the projec
 Ask the user which one to audit. Re-run:
 
 ```sh
-bash <skill-dir>/audit.sh <project-dir> --oxlint-config <selected-config>
+bash "$SKILL_DIR/audit.sh" <project-dir> --oxlint-config <selected-config>
 ```
 
 Parse the new JSON output and handle its outcome from the start of this step.

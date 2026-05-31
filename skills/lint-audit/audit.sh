@@ -292,6 +292,7 @@ fi
 tsconfig_list="${tmp_dir}/tsconfigs.txt"
 (
   cd "$project_abs"
+  # depth 3: covers root, subproject (pkg/tsconfig), and nested workspace (apps/web/tsconfig)
   find . \( -path './*/*/*/*' -prune \) -o -type f -name 'tsconfig*.json' -print
 ) | sed 's#^\./##' | sort >"$tsconfig_list"
 
