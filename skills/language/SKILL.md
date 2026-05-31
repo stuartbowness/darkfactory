@@ -28,13 +28,13 @@ Write a `UBIQUITOUS_LANGUAGE.md` file with this structure:
 
 ## Order lifecycle
 
-- **Order** -- A customer's request to purchase one or more items. *Avoid:* Purchase, transaction
-- **Invoice** -- A request for payment sent to a customer after delivery. *Avoid:* Bill, payment request
+- **Order** -- A customer's request to purchase one or more items. *Avoid:* purchase, transaction
+- **Invoice** -- A request for payment sent to a customer after delivery. *Avoid:* bill, payment request
 
 ## People
 
-- **Customer** -- A person or organization that places orders. *Avoid:* Client, buyer, account
-- **User** -- An authentication identity in the system. *Avoid:* Login, account
+- **Customer** -- A person or organization that places orders. *Avoid:* client, buyer, account
+- **User** -- An authentication identity in the system. *Avoid:* login, account
 
 ## Relationships
 
@@ -59,7 +59,7 @@ Write a `UBIQUITOUS_LANGUAGE.md` file with this structure:
 - **Flag conflicts explicitly.** If a term is used ambiguously in the conversation, call it out in the "Flagged ambiguities" section with a clear recommendation.
 - **Only include terms relevant for domain experts.** Skip the names of modules or classes unless they have meaning in the domain language.
 - **Keep definitions tight.** One sentence max. Define what it IS, not what it does.
-- **One bullet per term.** Format each entry as `- **Term** -- definition. *Avoid:* alias1, alias2`. Drop the `*Avoid:*` clause when a term has no aliases worth flagging. Never use tables -- definitions hold prose and code (including `|`), which tables mangle.
+- **One bullet per term.** Format each entry as `- **Term** -- definition. *Avoid:* alias1, alias2`. Aliases are lowercase except proper nouns and acronyms (QA, PRD, TypeScript). Drop the `*Avoid:*` clause when a term has no aliases worth flagging. Never use tables -- definitions hold prose and code (including `|`), which tables mangle.
 - **Show relationships.** Use bold term names and express cardinality where obvious.
 - **Only include domain terms.** Skip generic programming concepts (array, function, endpoint) unless they have domain-specific meaning.
 - **Group terms into multiple sections** when natural clusters emerge (e.g. by subdomain, lifecycle, or actor). Each group gets its own heading and bullet list. If all terms belong to a single cohesive domain, one section is fine -- don't force groupings.
