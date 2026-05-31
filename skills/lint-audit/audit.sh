@@ -229,7 +229,7 @@ else
       $rules[0].rules
       | map(
           . as $rule
-          | ($config[0].rules[$rule.name] | explicit_status) as $status
+          | (if ($config[0].rules | type) == "object" then ($config[0].rules[$rule.name] | explicit_status) else null end) as $status
           | {
               name: $rule.name,
               status: (
@@ -352,7 +352,7 @@ while IFS= read -r tsconfig_path; do
   settings_items="${tmp_dir}/settings-$(printf '%s' "$tsconfig_path" | tr '/.' '__').jsonl"
   : >"$settings_items"
   for setting in strict noUncheckedIndexedAccess erasableSyntaxOnly; do
-    setting_enabled=$(jq -r --arg setting "$setting" '.compilerOptions[$setting] == true' "$effective_config")
+    setting_enabled=$(jq -r --arg setting "$setting" 'if type != "object" then false elif (.compilerOptions // {} | type) != "object" then false else .compilerOptions[$setting] == true end' "$effective_config")
     if [ "$setting_enabled" = "true" ]; then
       jq -n --arg name "$setting" '
         {
