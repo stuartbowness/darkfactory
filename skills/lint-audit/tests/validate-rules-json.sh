@@ -11,7 +11,7 @@ fi
 jq -e '
   def semver: test("^[0-9]+\\.[0-9]+\\.[0-9]+$");
   def canonical_rule_name: test("^[a-z0-9-]+/[a-z0-9-]+$");
-  def allowed_category: IN("type-safety", "error-handling", "code-quality", "imports");
+  def allowed_category: . as $c | ["type-safety", "error-handling", "code-quality", "imports"] | any(. == $c);
   def required_rules: [
     "typescript/no-explicit-any",
     "typescript/no-non-null-assertion",

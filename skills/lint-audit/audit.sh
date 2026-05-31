@@ -123,7 +123,11 @@ fi
 strip_json_comments() {
   perl -0777 -pe '
     s{/\*.*?\*/}{}gs;
-    s{(^|[^:])//[^\n\r]*}{$1}gm;
+    s{
+      ("(?:[^"\\\\]|\\\\.)*")
+      |
+      (//[^\n\r]*)
+    }{defined($1) ? $1 : ""}gex;
   ' "$1"
 }
 
@@ -199,7 +203,9 @@ if [ -n "$config_abs" ]; then
 fi
 
 oxlint_findings="${tmp_dir}/oxlint-findings.json"
+outcome_override=
 if [ -n "$config_parse_error" ]; then
+  outcome_override="error"
   jq -n --arg rationale "$config_parse_error" '[
     {
       name: "oxlint-config",
@@ -239,6 +245,7 @@ else
                 end
               ),
               category: $rule.category,
+              severity: $rule.severity,
               rationale: (if (($status == null) and ($rule.default_enabled | not)) then $rule.rationale else "" end)
             }
         )
@@ -250,6 +257,7 @@ else
           name,
           status: (if .default_enabled then "enabled" else "missing" end),
           category,
+          severity,
           rationale: (if .default_enabled then "" else .rationale end)
         })
     ' >"$oxlint_findings"
@@ -305,8 +313,17 @@ while IFS= read -r tsconfig_path; do
   effective_config="${tmp_dir}/effective-$(printf '%s' "$tsconfig_path" | tr '/.' '__').json"
   showconfig_note=
   if [ "$has_tsc" = "true" ]; then
-    if ! (cd "$project_abs" && tsc --showConfig -p "$tsconfig_path") >"$effective_config" 2>"${tmp_dir}/tsc-showconfig-error.txt"; then
+    tsc_ok=false
+    if (cd "$project_abs" && tsc --showConfig -p "$tsconfig_path") >"$effective_config" 2>"${tmp_dir}/tsc-showconfig-error.txt"; then
+      if jq '.' "$effective_config" >/dev/null 2>&1; then
+        tsc_ok=true
+      else
+        showconfig_note="tsc --showConfig produced non-JSON output; fell back to raw tsconfig"
+      fi
+    else
       showconfig_note="tsc --showConfig failed; fell back to raw tsconfig: $(cat "${tmp_dir}/tsc-showconfig-error.txt")"
+    fi
+    if [ "$tsc_ok" = "false" ]; then
       if ! strip_json_comments "${project_abs}/${tsconfig_path}" | jq '.' >"$effective_config" 2>"${tmp_dir}/tsconfig-parse-error.txt"; then
         jq -n --arg path "$tsconfig_path" --arg rationale "$(cat "${tmp_dir}/tsconfig-parse-error.txt")" '
           {
@@ -416,4 +433,4 @@ if [ -n "$config_path" ]; then
   config_path_json=$(json_string "$config_path")
 fi
 
-emit_report "ok" "oxlint" "$config_path_json" "$oxlint_findings" "$tsconfig_findings" "$type_aware" "null"
+emit_report "${outcome_override:-ok}" "oxlint" "$config_path_json" "$oxlint_findings" "$tsconfig_findings" "$type_aware" "null"

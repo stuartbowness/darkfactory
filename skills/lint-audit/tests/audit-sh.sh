@@ -193,10 +193,76 @@ EOF
   ' "enabled tsconfig setting should be reported"
 }
 
+test_jsonc_config_parses_correctly() {
+  project="${tmp_root}/jsonc-config"
+  output="${tmp_root}/jsonc-config.json"
+  write_package_json "$project" oxlint
+  cat >"${project}/.oxlintrc.jsonc" <<'JSONC'
+{
+  // Enable strict rules
+  /* Block comment */
+  "rules": {
+    "typescript/no-explicit-any": "error"
+  },
+  "description": "path with // slashes"
+}
+JSONC
+
+  run_audit "$project" "$output"
+
+  assert_jq "$output" '.outcome == "ok"' "jsonc config should audit successfully"
+  assert_jq "$output" '.config_path == ".oxlintrc.jsonc"' "jsonc config path should be reported"
+  assert_jq "$output" '
+    any(.oxlint_findings[];
+      .name == "typescript/no-explicit-any"
+      and .status == "enabled"
+    )
+  ' "jsonc config rule should be read correctly"
+}
+
+test_requires_selection_with_multiple_configs() {
+  project="${tmp_root}/multi-config"
+  output="${tmp_root}/multi-config.json"
+  write_package_json "$project" oxlint
+  printf '%s\n' '{"rules":{}}' >"${project}/.oxlintrc.json"
+  printf '%s\n' 'export default {}' >"${project}/oxlint.config.ts"
+
+  run_audit "$project" "$output"
+
+  assert_jq "$output" '.outcome == "requires_selection"' "multiple configs should require selection"
+}
+
+test_oxlint_config_override() {
+  project="${tmp_root}/config-override"
+  output="${tmp_root}/config-override.json"
+  write_package_json "$project" oxlint
+  printf '%s\n' '{"rules":{}}' >"${project}/.oxlintrc.json"
+  printf '%s\n' 'export default {}' >"${project}/oxlint.config.ts"
+
+  "$audit_sh" "$project" --oxlint-config "${project}/.oxlintrc.json" >"$output"
+
+  assert_jq "$output" '.outcome == "ok"' "override should resolve to ok"
+  assert_jq "$output" '(.config_path | endswith(".oxlintrc.json"))' "override config path should be reported"
+}
+
+test_missing_config_override_returns_error() {
+  project="${tmp_root}/missing-override"
+  output="${tmp_root}/missing-override.json"
+  write_package_json "$project" oxlint
+
+  "$audit_sh" "$project" --oxlint-config "${project}/nonexistent.json" >"$output"
+
+  assert_jq "$output" '.outcome == "error"' "missing config override should return error outcome"
+}
+
 test_oxlint_project_without_config_reports_defaults
 test_eslint_only_project_skips
 test_project_without_package_json_skips
 test_json_config_reports_enabled_and_disabled_rules
 test_tsconfig_missing_strict_reports_migration_scope
+test_jsonc_config_parses_correctly
+test_requires_selection_with_multiple_configs
+test_oxlint_config_override
+test_missing_config_override_returns_error
 
 printf 'audit-sh tests passed\n'
