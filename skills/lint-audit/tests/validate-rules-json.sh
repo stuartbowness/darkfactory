@@ -27,7 +27,7 @@ jq -e '
     | all(
       (.name | type == "string" and canonical_rule_name)
       and (.category | type == "string" and allowed_category)
-      and (.severity | IN("error", "warn"))
+      and (.severity | . as $s | ["error", "warn"] | any(. == $s))
       and (.default_enabled | type == "boolean")
       and (.rationale | type == "string" and length > 0)
     )

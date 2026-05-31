@@ -122,12 +122,13 @@ fi
 
 strip_json_comments() {
   perl -0777 -pe '
-    s{/\*.*?\*/}{}gs;
     s{
-      ("(?:[^"\\\\]|\\\\.)*")
+      ("(?:[^"\\\\]|\\\\.)*")   # group 1: double-quoted string (preserve)
       |
-      (//[^\n\r]*)
-    }{defined($1) ? $1 : ""}gex;
+      (/\*.*?\*/)               # group 2: block comment (remove)
+      |
+      (//[^\n\r]*)              # group 3: line comment (remove)
+    }{defined($1) ? $1 : ""}gsex;
   ' "$1"
 }
 
@@ -205,7 +206,10 @@ fi
 oxlint_findings="${tmp_dir}/oxlint-findings.json"
 outcome_override=
 if [ -n "$config_parse_error" ]; then
-  outcome_override="error"
+  case "$config_kind" in
+    ts) outcome_override="ok" ;;
+    *) outcome_override="error" ;;
+  esac
   jq -n --arg rationale "$config_parse_error" '[
     {
       name: "oxlint-config",
