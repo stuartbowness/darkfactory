@@ -1,0 +1,103 @@
+{
+  "oxlint_version": "1.67.0",
+  "rules": [
+    {
+      "name": "typescript/no-explicit-any",
+      "category": "type-safety",
+      "severity": "error",
+      "default_enabled": false,
+      "rationale": "Prevents agents from bypassing TypeScript with explicit any annotations."
+    },
+    {
+      "name": "typescript/no-non-null-assertion",
+      "category": "type-safety",
+      "severity": "error",
+      "default_enabled": false,
+      "rationale": "Forces nullable values to be handled instead of asserted away."
+    },
+    {
+      "name": "typescript/no-unsafe-assignment",
+      "category": "type-safety",
+      "severity": "error",
+      "default_enabled": false,
+      "rationale": "Stops any-typed values from leaking into typed variables and properties."
+    },
+    {
+      "name": "typescript/no-unsafe-call",
+      "category": "type-safety",
+      "severity": "error",
+      "default_enabled": false,
+      "rationale": "Prevents calling any-typed values that may not be functions."
+    },
+    {
+      "name": "typescript/no-unsafe-member-access",
+      "category": "type-safety",
+      "severity": "error",
+      "default_enabled": false,
+      "rationale": "Prevents property access on any-typed values that can fail at runtime."
+    },
+    {
+      "name": "typescript/no-floating-promises",
+      "category": "error-handling",
+      "severity": "error",
+      "default_enabled": true,
+      "rationale": "Forces promises to be awaited, returned, or explicitly handled."
+    },
+    {
+      "name": "typescript/no-misused-promises",
+      "category": "error-handling",
+      "severity": "error",
+      "default_enabled": false,
+      "rationale": "Catches promises used where a boolean, void callback, or plain value was expected."
+    },
+    {
+      "name": "typescript/switch-exhaustiveness-check",
+      "category": "code-quality",
+      "severity": "error",
+      "default_enabled": false,
+      "rationale": "Forces every union case to be handled when switch statements evolve."
+    },
+    {
+      "name": "eslint/no-empty",
+      "category": "error-handling",
+      "severity": "error",
+      "default_enabled": false,
+      "rationale": "Prevents empty blocks and catch handlers from hiding unfinished error handling."
+    },
+    {
+      "name": "eslint/no-unused-vars",
+      "category": "code-quality",
+      "severity": "error",
+      "default_enabled": true,
+      "rationale": "Catches dead declarations left behind by incomplete edits."
+    },
+    {
+      "name": "eslint/no-unused-expressions",
+      "category": "code-quality",
+      "severity": "error",
+      "default_enabled": true,
+      "rationale": "Flags expressions that do nothing and often indicate a mistaken edit."
+    },
+    {
+      "name": "eslint/no-constant-condition",
+      "category": "code-quality",
+      "severity": "error",
+      "default_enabled": true,
+      "rationale": "Catches always-true or always-false branches that hide logic mistakes."
+    },
+    {
+      "name": "import/no-cycle",
+      "category": "imports",
+      "severity": "error",
+      "default_enabled": false,
+      "rationale": "Prevents circular imports that can produce undefined values at runtime."
+    },
+    {
+      "name": "import/named",
+      "category": "imports",
+      "severity": "error",
+      "default_enabled": false,
+      "rationale": "Catches imports and re-exports that reference names a module does not provide."
+    }
+  ]
+}
