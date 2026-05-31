@@ -2,126 +2,104 @@
 
 ## Mission system
 
-| Term | Definition | Aliases to avoid |
-| --- | --- | --- |
-| **Mission** | An autonomous run of the full plan-build-validate cycle for a single OpenSpec change | Job, run, session, task |
-| **Orchestrator** | The main Claude Code session that plans work, dispatches workers, reads results, and decides what to do next | Coordinator, manager, controller |
-| **Worker** | A subagent (default: Codex) that implements a single task and commits the result | Builder, implementer, coder |
-| **Validator** | A Claude subagent that checks a worker's output against the contract without having seen the code before | Reviewer, checker, tester |
+- **Mission** -- An autonomous run of the full plan-build-validate cycle for a single OpenSpec change. *Avoid:* Job, run, session, task
+- **Orchestrator** -- The main Claude Code session that plans work, dispatches workers, reads results, and decides what to do next. *Avoid:* Coordinator, manager, controller
+- **Worker** -- A subagent (default: Codex) that implements a single task and commits the result. *Avoid:* Builder, implementer, coder
+- **Validator** -- A Claude subagent that checks a worker's output against the contract without having seen the code before. *Avoid:* Reviewer, checker, tester
 
 ## Planning and contracts
 
-| Term | Definition | Aliases to avoid |
-| --- | --- | --- |
-| **Contract** | A set of checks written during planning that define "done" independently of implementation, consumed only by validators | Test plan, acceptance criteria, spec |
-| **Check** | A single verifiable statement in a contract that a validator can verify from outside the code | Assertion (in contract context), test case, requirement |
-| **Brief** | A self-contained markdown file the orchestrator writes for a worker, containing the task description, project context, and procedures | Prompt, instructions, spec |
-| **Handoff** | A structured report a worker writes to disk after completing a task, including the commit SHA, approach taken, and any concerns | Report, summary, output |
-| **Vertical slice** | The default task quality standard. Each task must produce a concrete, testable output. When the approved strategy is vertical, tasks cross all layers. When layered or hybrid, tasks may be scoped to a single layer with a clear done state and test surface. | Horizontal slice, layer |
-| **Deviation classification** | Categorization of spec deviations during the coverage audit as Interpretation (ambiguous spec, reasonable reading), Substitution (replacing specified approach with a different one), or Removal (not implementing a specified feature). Substitutions and removals require explicit human approval. | Deviation type, deviation level |
-| **Spec delta check** | A post-build verification step (Phase 9) where a Claude subagent checks that every item marked COVERED in the coverage audit is actually present in the built codebase. APPROVED-DEVIATION items are listed but not re-litigated. | Final spec check, compliance check, coverage verification |
+- **Contract** -- A set of checks written during planning that define "done" independently of implementation, consumed only by validators. *Avoid:* Test plan, acceptance criteria, spec
+- **Check** -- A single verifiable statement in a contract that a validator can verify from outside the code. *Avoid:* Assertion (in contract context), test case, requirement
+- **Brief** -- A self-contained markdown file the orchestrator writes for a worker, containing the task description, project context, and procedures. *Avoid:* Prompt, instructions, spec
+- **Handoff** -- A structured report a worker writes to disk after completing a task, including the commit SHA, approach taken, and any concerns. *Avoid:* Report, summary, output
+- **Vertical slice** -- The default task quality standard. Each task must produce a concrete, testable output. When the approved strategy is vertical, tasks cross all layers. When layered or hybrid, tasks may be scoped to a single layer with a clear done state and test surface. *Avoid:* Horizontal slice, layer
+- **Deviation classification** -- Categorization of spec deviations during the coverage audit as Interpretation (ambiguous spec, reasonable reading), Substitution (replacing specified approach with a different one), or Removal (not implementing a specified feature). Substitutions and removals require explicit human approval. *Avoid:* Deviation type, deviation level
+- **Spec delta check** -- A post-build verification step (Phase 9) where a Claude subagent checks that every item marked COVERED in the coverage audit is actually present in the built codebase. APPROVED-DEVIATION items are listed but not re-litigated. *Avoid:* Final spec check, compliance check, coverage verification
 
 ## Validation
 
-| Term | Definition | Aliases to avoid |
-| --- | --- | --- |
-| **Gate** | A numbered step in the scrutiny validator's sequence (e.g., gate 3: tests, gate 11: contract checks). Gates report PASS, FAIL, WARN, SKIP, or N/A. | Check (in validator-step context), step, stage |
-| **Scrutiny validator** | The first validator type that runs build, test, lint, code review, code simplify, and test health gates against the contract | Code reviewer, linter, static validator |
-| **User-test validator** | The second validator type that tests behavior by hitting the API (HTTP tests) or driving a browser (agent-browser) | QA, E2E tester, integration tester |
-| **Behavioral conformance** | A scrutiny validator gate (gate 12) that verifies observable behavior by writing and executing a test script rather than reading the code. Falls back to "verified by inspection" if execution is inconclusive. | Behavioral test, execution test, runtime check |
-| **Final gates** | Whole-repo build, test, lint, and format gates run after the last task completes but before PR creation. Catches regressions introduced by later tasks (e.g., documentation or CI tasks) after the cleanup task ran. | Final checks, post-build gates, repo gates |
-| **Module shape re-check** | A mandatory closing task that compares design.md module descriptions and Type Catalog names to what the code actually exposes, catching cumulative drift across tasks that per-task scrutiny cannot see | Shape check, surface audit, drift check |
-| **Demo video** | A recording of frontend functionality captured after both validators pass, created for human review | Screencast, screen recording |
-| **Fix loop** | The cycle where a validation failure spawns a fix worker, then both validators re-run, up to 3 attempts before asking the human | Retry, repair cycle |
-| **Circuit breaker** | The rule that stops the fix loop after 3 failed attempts on the same task and asks the human for guidance | Retry limit, fail-safe |
+- **Gate** -- A numbered step in the scrutiny validator's sequence (e.g., gate 3: tests, gate 11: contract checks). Gates report PASS, FAIL, WARN, SKIP, or N/A. *Avoid:* Check (in validator-step context), step, stage
+- **Scrutiny validator** -- The first validator type that runs build, test, lint, code review, code simplify, and test health gates against the contract. *Avoid:* Code reviewer, linter, static validator
+- **User-test validator** -- The second validator type that tests behavior by hitting the API (HTTP tests) or driving a browser (agent-browser). *Avoid:* QA, E2E tester, integration tester
+- **Behavioral conformance** -- A scrutiny validator gate (gate 12) that verifies observable behavior by writing and executing a test script rather than reading the code. Falls back to "verified by inspection" if execution is inconclusive. *Avoid:* Behavioral test, execution test, runtime check
+- **Final gates** -- Whole-repo build, test, lint, and format gates run after the last task completes but before PR creation. Catches regressions introduced by later tasks (e.g., documentation or CI tasks) after the cleanup task ran. *Avoid:* Final checks, post-build gates, repo gates
+- **Module shape re-check** -- A mandatory closing task that compares design.md module descriptions and Type Catalog names to what the code actually exposes, catching cumulative drift across tasks that per-task scrutiny cannot see. *Avoid:* Shape check, surface audit, drift check
+- **Demo video** -- A recording of frontend functionality captured after both validators pass, created for human review. *Avoid:* Screencast, screen recording
+- **Fix loop** -- The cycle where a validation failure spawns a fix worker, then both validators re-run, up to 3 attempts before asking the human. *Avoid:* Retry, repair cycle
+- **Circuit breaker** -- The rule that stops the fix loop after 3 failed attempts on the same task and asks the human for guidance. *Avoid:* Retry limit, fail-safe
 
 ## Test health
 
-| Term | Definition | Aliases to avoid |
-| --- | --- | --- |
-| **Silent skip** | A test that conditionally returns early without testing anything but reports PASS to the test runner, hiding missing coverage | Conditional skip, soft skip, hidden skip |
-| **Diff coverage** | Line coverage measured only on added lines in a task's git diff, not the entire codebase | New code coverage, incremental coverage |
-| **Error handling smell** | A language-specific anti-pattern in error handling code (e.g., `.unwrap()` in Rust, `catch {}` in TypeScript, `except: pass` in Python) counted per KLOC of changed code | Code smell, anti-pattern, bad practice |
-| **File size pre-pass** | A deterministic line count on touched files injected into the module depth review, ensuring the LLM reviewer cannot overlook large files | Line count check, size gate |
-| **Test quality review** | An LLM-based semantic review (owned skill: `/test-quality`) that evaluates whether tests verify meaningful behavior, checking for tautological assertions, implementation coupling, untested branches, and missing edge cases | Test review, test audit, test assessment |
-| **Tautological assertion** | A test assertion that passes regardless of whether the code works correctly (e.g., `assert!(true)`, `expect(x).toBeDefined()` without checking the value) | Empty assertion, no-op test, fake test |
-| **Self-skipping gate** | A scrutiny gate that naturally skips itself when the diff contains no relevant files, requiring no explicit closing-task exemption | Auto-skip, conditional gate, self-gating check |
+- **Silent skip** -- A test that conditionally returns early without testing anything but reports PASS to the test runner, hiding missing coverage. *Avoid:* Conditional skip, soft skip, hidden skip
+- **Diff coverage** -- Line coverage measured only on added lines in a task's git diff, not the entire codebase. *Avoid:* New code coverage, incremental coverage
+- **Error handling smell** -- A language-specific anti-pattern in error handling code (e.g., `.unwrap()` in Rust, `catch {}` in TypeScript, `except: pass` in Python) counted per KLOC of changed code. *Avoid:* Code smell, anti-pattern, bad practice
+- **File size pre-pass** -- A deterministic line count on touched files injected into the module depth review, ensuring the LLM reviewer cannot overlook large files. *Avoid:* Line count check, size gate
+- **Test quality review** -- An LLM-based semantic review (owned skill: `/test-quality`) that evaluates whether tests verify meaningful behavior, checking for tautological assertions, implementation coupling, untested branches, and missing edge cases. *Avoid:* Test review, test audit, test assessment
+- **Tautological assertion** -- A test assertion that passes regardless of whether the code works correctly (e.g., `assert!(true)`, `expect(x).toBeDefined()` without checking the value). *Avoid:* Empty assertion, no-op test, fake test
+- **Self-skipping gate** -- A scrutiny gate that naturally skips itself when the diff contains no relevant files, requiring no explicit closing-task exemption. *Avoid:* Auto-skip, conditional gate, self-gating check
 
 ## Execution model
 
-| Term | Definition | Aliases to avoid |
-| --- | --- | --- |
-| **Serial execution** | The rule that only one worker runs at a time to prevent conflicts | Sequential, single-threaded |
-| **Engine** | The configurable AI model/tool used for a given role (e.g. Codex for workers, Claude for validators) | Model, provider, backend |
-| **Plan mode** | The Claude Code plan that serves as the orchestrator's durable operating manual, guaranteed to survive context compaction | System prompt, instructions |
+- **Serial execution** -- The rule that only one worker runs at a time to prevent conflicts. *Avoid:* Sequential, single-threaded
+- **Engine** -- The configurable AI model/tool used for a given role (e.g. Codex for workers, Claude for validators). *Avoid:* Model, provider, backend
+- **Plan mode** -- The Claude Code plan that serves as the orchestrator's durable operating manual, guaranteed to survive context compaction. *Avoid:* System prompt, instructions
 
 ## File artifacts
 
-| Term | Definition | Aliases to avoid |
-| --- | --- | --- |
-| **Mission directory** | The `mission/` folder nested inside an OpenSpec change directory that holds all runtime state for a mission | State folder, workspace |
-| **Progress log** | The `progress.md` file where the orchestrator records task status, decisions, and issues as the mission runs | Status file, mission log |
-| **Mission config** | The `config.yaml` file specifying which engine to use for each role in the mission | Settings, preferences |
+- **Mission directory** -- The `mission/` folder nested inside an OpenSpec change directory that holds all runtime state for a mission. *Avoid:* State folder, workspace
+- **Progress log** -- The `progress.md` file where the orchestrator records task status, decisions, and issues as the mission runs. *Avoid:* Status file, mission log
+- **Mission config** -- The `config.yaml` file specifying which engine to use for each role in the mission. *Avoid:* Settings, preferences
 
 ## OpenSpec integration
 
-| Term | Definition | Aliases to avoid |
-| --- | --- | --- |
-| **Change** | An OpenSpec unit of work with its own proposal, design, tasks, and now contract and mission directory | Feature, epic, project |
-| **Proposal** | The OpenSpec artifact describing what is being built and why | PRD, requirements doc |
-| **Design** | The OpenSpec artifact describing how it will be built (architecture decisions) | Architecture doc, technical spec |
-| **Tasks** | The OpenSpec artifact listing tasks as checkboxes, each representing one worker's worth of work (should follow the approved task quality standard) | Checklist, todo list, backlog |
+- **Change** -- An OpenSpec unit of work with its own proposal, design, tasks, and now contract and mission directory. *Avoid:* Feature, epic, project
+- **Proposal** -- The OpenSpec artifact describing what is being built and why. *Avoid:* PRD, requirements doc
+- **Design** -- The OpenSpec artifact describing how it will be built (architecture decisions). *Avoid:* Architecture doc, technical spec
+- **Tasks** -- The OpenSpec artifact listing tasks as checkboxes, each representing one worker's worth of work (should follow the approved task quality standard). *Avoid:* Checklist, todo list, backlog
 
 ## Dispatch
 
-| Term | Definition | Aliases to avoid |
-| --- | --- | --- |
-| **Dispatcher** | The `darkfactory-dispatch` Rust binary that sits between the orchestrator and a Codex worker as a process supervisor | Wrapper, harness, runner, proxy |
-| **Dispatch** | The act of spawning a supervised Codex subprocess through the dispatcher, including process group setup, timeout management, and structured result reporting | Launch, invoke, run |
-| **Heartbeat** | A periodic NDJSON event emitted by the dispatcher to stderr, carrying elapsed time and last activity, used to distinguish "working" from "dead" | Ping, keepalive, pulse |
-| **Two-phase timeout** | The dispatcher's timeout strategy: a soft timeout sends SIGTERM and arms a grace period (default: half the timeout, minimum 1 second), then a hard timeout sends SIGKILL | Timeout, deadline, kill timer |
-| **Process group** | An OS-level grouping (via `setpgid`) that ensures killing the Codex process also kills any grandchild processes it spawned | Process tree, child processes |
-| **Dispatch store** | A minimal filesystem directory at `~/.darkfactory/dispatches/<ulid>/` holding `status.json`, `result.json`, `host.pid`, and `events.jsonl` for async dispatch lifecycle management | State directory, result store |
-| **Dispatch result** | A structured JSON object emitted on stdout when a dispatch completes, containing status, exit code, signal, duration, output path, token usage, and activity | Result, outcome, response |
+- **Dispatcher** -- The `darkfactory-dispatch` Rust binary that sits between the orchestrator and a Codex worker as a process supervisor. *Avoid:* Wrapper, harness, runner, proxy
+- **Dispatch** -- The act of spawning a supervised Codex subprocess through the dispatcher, including process group setup, timeout management, and structured result reporting. *Avoid:* Launch, invoke, run
+- **Heartbeat** -- A periodic NDJSON event emitted by the dispatcher to stderr, carrying elapsed time and last activity, used to distinguish "working" from "dead". *Avoid:* Ping, keepalive, pulse
+- **Two-phase timeout** -- The dispatcher's timeout strategy: a soft timeout sends SIGTERM and arms a grace period (default: half the timeout, minimum 1 second), then a hard timeout sends SIGKILL. *Avoid:* Timeout, deadline, kill timer
+- **Process group** -- An OS-level grouping (via `setpgid`) that ensures killing the Codex process also kills any grandchild processes it spawned. *Avoid:* Process tree, child processes
+- **Dispatch store** -- A minimal filesystem directory at `~/.darkfactory/dispatches/<ulid>/` holding `status.json`, `result.json`, `host.pid`, and `events.jsonl` for async dispatch lifecycle management. *Avoid:* State directory, result store
+- **Dispatch result** -- A structured JSON object emitted on stdout when a dispatch completes, containing status, exit code, signal, duration, output path, token usage, and activity. *Avoid:* Result, outcome, response
 
 ## Planning determinism
 
-| Term | Definition | Aliases to avoid |
-| --- | --- | --- |
-| **Deterministic Anchors** | One-liner pointers in the plan to the six highest-leverage design decisions, positioned to survive context compaction | Anchors, plan summary, design cache |
-| **Architecture Candidate Scoring** | Evaluating 2-3 architecture options against a four-dimension rubric (separation of concerns, testability, task independence, module depth) to select an architecture deterministically | Architecture review, arch comparison |
-| **Task Independence** | A scoring dimension measuring how well an architecture allows tasks to be completed without cross-task coordination on conventions | Worker task-ability, decomposability |
-| **Task Topology** | Per-task metadata declaring which prior tasks it depends on, which surfaces it consumes, which surfaces it produces, and which architectural layers it touches | Task graph, dependency map |
-| **Foundation Audit** | A one-time check after task 1 passes validation, verifying that committed code matches the design's module inventory and type catalog for task 1's declared produces | Post-task-1 check, foundation check |
-| **Type Catalog** | A design.md section listing domain types with name, purpose, and owning module -- no field-level detail. Type names are drawn from this glossary when a matching term exists; types not in the glossary are named by the worker | Type registry, type list, types.md |
-| **Domain type** | A type that models the problem space. Excludes technical helpers (CLI parsers, test fixtures, generic containers) unless they are public compatibility surfaces | Helper type, utility type, internal type |
-| **Module Inventory** | A design.md section listing modules with interface width, what they hide, and why the boundary exists | Module table, module list |
-| **Design Template** | A reference document defining mandatory design.md sections and scoring rubrics, used by the orchestrator alongside openspec config rules | Design spec, design schema |
-| **Spec Reference** | A capability/scenario identifier (e.g., add-todo/1) used to trace contract checks back to formal spec requirements | REQ-ID, requirement ID, spec ID |
+- **Deterministic Anchors** -- One-liner pointers in the plan to the six highest-leverage design decisions, positioned to survive context compaction. *Avoid:* Anchors, plan summary, design cache
+- **Architecture Candidate Scoring** -- Evaluating 2-3 architecture options against a four-dimension rubric (separation of concerns, testability, task independence, module depth) to select an architecture deterministically. *Avoid:* Architecture review, arch comparison
+- **Task Independence** -- A scoring dimension measuring how well an architecture allows tasks to be completed without cross-task coordination on conventions. *Avoid:* Worker task-ability, decomposability
+- **Task Topology** -- Per-task metadata declaring which prior tasks it depends on, which surfaces it consumes, which surfaces it produces, and which architectural layers it touches. *Avoid:* Task graph, dependency map
+- **Foundation Audit** -- A one-time check after task 1 passes validation, verifying that committed code matches the design's module inventory and type catalog for task 1's declared produces. *Avoid:* Post-task-1 check, foundation check
+- **Type Catalog** -- A design.md section listing domain types with name, purpose, and owning module -- no field-level detail. Type names are drawn from this glossary when a matching term exists; types not in the glossary are named by the worker. *Avoid:* Type registry, type list, types.md
+- **Domain type** -- A type that models the problem space. Excludes technical helpers (CLI parsers, test fixtures, generic containers) unless they are public compatibility surfaces. *Avoid:* Helper type, utility type, internal type
+- **Module Inventory** -- A design.md section listing modules with interface width, what they hide, and why the boundary exists. *Avoid:* Module table, module list
+- **Design Template** -- A reference document defining mandatory design.md sections and scoring rubrics, used by the orchestrator alongside openspec config rules. *Avoid:* Design spec, design schema
+- **Spec Reference** -- A capability/scenario identifier (e.g., add-todo/1) used to trace contract checks back to formal spec requirements. *Avoid:* REQ-ID, requirement ID, spec ID
 
 ## Frontend architecture
 
-| Term | Definition | Aliases to avoid |
-| --- | --- | --- |
-| **Deep component** | A React component with a small prop interface that hides significant state, effects, and rendering logic, owning one user-facing workflow end-to-end | Smart component, container component, feature component |
-| **Allowed-shallow exception** | A component that is intentionally thin and exempt from depth rules: design system leaves, route/layout glue, adapter components, or headless behavior primitives | Dumb component, presentational component, wrapper |
-| **Component contract** | A lightweight per-component declaration written before implementation, specifying name, deep/shallow classification, prop interface, and key render states | Component spec, component design, component plan |
-| **Design-implement-test** | The `/frontend` skill's implementation workflow: design component interfaces, build with visual verification, then write behavioral tests. Replaces red-green-refactor for React components. | Frontend TDD, component TDD |
-| **Visual verification** | Using chrome-devtools-mcp during the Build phase to confirm a component renders correctly before writing tests | Visual testing, screenshot testing, visual QA |
-| **Frontend depth gate** | A self-skipping scrutiny validator gate (gate 7) that evaluates React component structure against the four deep-component rules when `.tsx`/`.jsx` files are in the diff | Component review, React lint, frontend lint |
-| **Methodology** | The implementation workflow skill assigned to a task -- either `/tdd` (red-green-refactor) or `/frontend` (design-implement-test). Mutually exclusive per task. | Implementation skill, build skill, workflow |
-| **Constraint** | An additive design-guidance skill layered on top of a methodology -- `/ui-system`, `/react-perf`, or future `/backend-ts`. Zero or more per task. | Supplementary skill, pattern skill |
-| **Task layer** | A specific vocabulary value in task topology metadata that determines which methodology applies. `frontend/component`, `frontend/page`, `frontend/layout` map to `/frontend`; `frontend/hooks`, `backend`, `shared/*` map to `/tdd`. | Task type, task category |
-| **Browser tools** | A mission config flag (`browser_tools: true/false`) indicating whether chrome-devtools-mcp is required. Auto-set by the orchestrator when any task has `Skill: /frontend`. | Browser testing, visual tools |
+- **Deep component** -- A React component with a small prop interface that hides significant state, effects, and rendering logic, owning one user-facing workflow end-to-end. *Avoid:* Smart component, container component, feature component
+- **Allowed-shallow exception** -- A component that is intentionally thin and exempt from depth rules: design system leaves, route/layout glue, adapter components, or headless behavior primitives. *Avoid:* Dumb component, presentational component, wrapper
+- **Component contract** -- A lightweight per-component declaration written before implementation, specifying name, deep/shallow classification, prop interface, and key render states. *Avoid:* Component spec, component design, component plan
+- **Design-implement-test** -- The `/frontend` skill's implementation workflow: design component interfaces, build with visual verification, then write behavioral tests. Replaces red-green-refactor for React components. *Avoid:* Frontend TDD, component TDD
+- **Visual verification** -- Using chrome-devtools-mcp during the Build phase to confirm a component renders correctly before writing tests. *Avoid:* Visual testing, screenshot testing, visual QA
+- **Frontend depth gate** -- A self-skipping scrutiny validator gate (gate 7) that evaluates React component structure against the four deep-component rules when `.tsx`/`.jsx` files are in the diff. *Avoid:* Component review, React lint, frontend lint
+- **Methodology** -- The implementation workflow skill assigned to a task -- either `/tdd` (red-green-refactor) or `/frontend` (design-implement-test). Mutually exclusive per task. *Avoid:* Implementation skill, build skill, workflow
+- **Constraint** -- An additive design-guidance skill layered on top of a methodology -- `/ui-system`, `/react-perf`, or future `/backend-ts`. Zero or more per task. *Avoid:* Supplementary skill, pattern skill
+- **Task layer** -- A specific vocabulary value in task topology metadata that determines which methodology applies. `frontend/component`, `frontend/page`, `frontend/layout` map to `/frontend`; `frontend/hooks`, `backend`, `shared/*` map to `/tdd`. *Avoid:* Task type, task category
+- **Browser tools** -- A mission config flag (`browser_tools: true/false`) indicating whether chrome-devtools-mcp is required. Auto-set by the orchestrator when any task has `Skill: /frontend`. *Avoid:* Browser testing, visual tools
 
 ## Frontend: deep component rules
 
-| Term | Definition | Aliases to avoid |
-| --- | --- | --- |
-| **Small semantic interface** | A component prop interface where each prop represents a domain concept, not an implementation knob. Count concepts, not props. Audit hidden inputs (context, URL, cache). | Narrow props, minimal API |
-| **Derive don't sync** | Computing values during render (useMemo, inline computation) instead of syncing state with useEffect. Effects that transform data without I/O are a depth violation. | Computed state, reactive state |
-| **Composition over configuration** | Using compound component slots and children instead of config objects with many options. Callers compose behavior without understanding internals. | Compound components, slots pattern |
-| **Collapse coordination** | A deep component owns one workflow end-to-end, exposing semantic events (onSubmit) not coordination knobs (onValidate, onStep1Complete). Parents choose what happens, not how. | Single responsibility, workflow ownership |
+- **Small semantic interface** -- A component prop interface where each prop represents a domain concept, not an implementation knob. Count concepts, not props. Audit hidden inputs (context, URL, cache). *Avoid:* Narrow props, minimal API
+- **Derive don't sync** -- Computing values during render (useMemo, inline computation) instead of syncing state with useEffect. Effects that transform data without I/O are a depth violation. *Avoid:* Computed state, reactive state
+- **Composition over configuration** -- Using compound component slots and children instead of config objects with many options. Callers compose behavior without understanding internals. *Avoid:* Compound components, slots pattern
+- **Collapse coordination** -- A deep component owns one workflow end-to-end, exposing semantic events (onSubmit) not coordination knobs (onValidate, onStep1Complete). Parents choose what happens, not how. *Avoid:* Single responsibility, workflow ownership
 
 ## Relationships
 
@@ -219,6 +197,15 @@
 > **Dev:** "And if the project is Rust, none of this applies?"
 >
 > **Orchestrator:** "Correct. Every task gets `/tdd`, no **Constraints**, no **Browser tools**. The **Frontend depth gate** self-skips because there are no `.tsx` files in the diff."
+
+## Mechanical enforcement
+
+- **Mechanical enforcement** -- Binary pass/fail rules enforced by tooling (hooks, linters, compiler flags) rather than advisory instructions the agent might forget. Inspired by Armin Ronacher / Christina's friction talk. *Avoid:* Best practices, guidelines, conventions
+- **Lint audit** -- A darkfactory skill (`/lint-audit`) that audits a TypeScript project's oxlint config and tsconfig strictness against an agent-friendly ruleset, reports gaps, and offers to apply fixes. *Avoid:* Lint check, config review
+- **Agent-friendly ruleset** -- The recommended set of oxlint rules and tsconfig settings that mechanically enforce patterns agents tend to violate: type safety bypasses, silent failures, error suppression, dead code. *Avoid:* Recommended rules, best practice rules
+- **ts-quality hook** -- A Claude Code PostToolUse hook (`ts-quality.sh`) that rejects Edit/Write of `.ts`/`.tsx` files containing banned patterns via `fileRejection`. Complementary to the lint audit -- hook catches patterns at edit time, linter catches them at build time. *Avoid:* TypeScript hook, quality hook
+- **Strictness settings** -- tsconfig.json compiler options that strengthen the type system: `strict`, `noUncheckedIndexedAccess`, `erasableSyntaxOnly`. Without these, the compiler accepts code that the linter and hook assume is rejected. *Avoid:* Strict mode, compiler flags
+- **Migration scope** -- The number of compiler errors surfaced by enabling a strictness setting in an existing project, measured by `tsc --strict --noEmit 2>&1 | wc -l`. Used to estimate effort before committing to a strictness migration. *Avoid:* Error count, migration cost
 
 ## Flagged ambiguities
 

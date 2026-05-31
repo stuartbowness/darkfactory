@@ -28,17 +28,13 @@ Write a `UBIQUITOUS_LANGUAGE.md` file with this structure:
 
 ## Order lifecycle
 
-| Term        | Definition                                              | Aliases to avoid      |
-| ----------- | ------------------------------------------------------- | --------------------- |
-| **Order**   | A customer's request to purchase one or more items      | Purchase, transaction |
-| **Invoice** | A request for payment sent to a customer after delivery | Bill, payment request |
+- **Order** -- A customer's request to purchase one or more items. *Avoid:* Purchase, transaction
+- **Invoice** -- A request for payment sent to a customer after delivery. *Avoid:* Bill, payment request
 
 ## People
 
-| Term         | Definition                                  | Aliases to avoid       |
-| ------------ | ------------------------------------------- | ---------------------- |
-| **Customer** | A person or organization that places orders | Client, buyer, account |
-| **User**     | An authentication identity in the system    | Login, account         |
+- **Customer** -- A person or organization that places orders. *Avoid:* Client, buyer, account
+- **User** -- An authentication identity in the system. *Avoid:* Login, account
 
 ## Relationships
 
@@ -63,9 +59,10 @@ Write a `UBIQUITOUS_LANGUAGE.md` file with this structure:
 - **Flag conflicts explicitly.** If a term is used ambiguously in the conversation, call it out in the "Flagged ambiguities" section with a clear recommendation.
 - **Only include terms relevant for domain experts.** Skip the names of modules or classes unless they have meaning in the domain language.
 - **Keep definitions tight.** One sentence max. Define what it IS, not what it does.
+- **One bullet per term.** Format each entry as `- **Term** -- definition. *Avoid:* alias1, alias2`. Drop the `*Avoid:*` clause when a term has no aliases worth flagging. Never use tables -- definitions hold prose and code (including `|`), which tables mangle.
 - **Show relationships.** Use bold term names and express cardinality where obvious.
 - **Only include domain terms.** Skip generic programming concepts (array, function, endpoint) unless they have domain-specific meaning.
-- **Group terms into multiple tables** when natural clusters emerge (e.g. by subdomain, lifecycle, or actor). Each group gets its own heading and table. If all terms belong to a single cohesive domain, one table is fine — don't force groupings.
+- **Group terms into multiple sections** when natural clusters emerge (e.g. by subdomain, lifecycle, or actor). Each group gets its own heading and bullet list. If all terms belong to a single cohesive domain, one section is fine -- don't force groupings.
 - **Write an example dialogue.** A short conversation (3-5 exchanges) between a dev and a domain expert that demonstrates how the terms interact naturally. The dialogue should clarify boundaries between related concepts and show terms being used precisely.
 
 <example>
