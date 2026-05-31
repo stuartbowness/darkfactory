@@ -194,6 +194,7 @@ Darkfactory is controlled through skills -- reusable prompt templates you invoke
 | `/security` | Security review. The scrutiny validator runs this when the diff touches auth, secrets, user input, or network/filesystem boundaries. |
 | `/adversarial` | Dual-agent code review: dispatches a Codex reviewer and a Claude reviewer with identical input, then surfaces disagreements. |
 | `/artifact-review` | Review a planning artifact (language glossary, PRD, spec, design, tasks, contract) via Codex. Checks for ambiguity, terminology drift, contradictions, missing edge cases, coverage gaps, and feasibility. Used standalone or as a review gate in `/mission`. |
+| `/lint-audit` | Audit a TypeScript project's oxlint config and tsconfig strictness against an agent-friendly ruleset. Reports gaps and offers to apply fixes per-item or all-at-once. Oxlint only -- skips ESLint projects. Standalone. |
 | `/dispatch` | Run a coding task via `darkfactory-dispatch`. Accepts a task description inline or prompts for one. Presents structured outcome. |
 | `/arch-review` | Architecture review with guides for deepening modules, interface design, and language precision. Standalone -- not yet wired into missions. |
 | `/domain-model` | Domain modeling with ADR and bounded context formats. Standalone -- not yet wired into missions. |

@@ -50,7 +50,9 @@ The mission skill is intentionally monolithic (~900 lines). Companion files are 
 - `templates/` -- artifact formats (plan, contract, worker brief, design, etc.)
 - `prompts/` -- instructions handed to validator and reviewer subagents
 
-23 skills total: mission (with basic sub-skill), mission-resume, mission-status, mission-init, grill, language, prd, tdd, test-quality, security, adversarial, dispatch, artifact-review, skill-review, arch-review, domain-model, module-design, qa, write-a-skill, frontend, ui-system, react-perf.
+24 skills total: mission (with basic sub-skill), mission-resume, mission-status, mission-init, grill, language, prd, tdd, test-quality, security, adversarial, dispatch, artifact-review, lint-audit, skill-review, arch-review, domain-model, module-design, qa, write-a-skill, frontend, ui-system, react-perf.
+
+lint-audit audits a TypeScript project's oxlint config and tsconfig strictness against an agent-friendly ruleset. Part of the mechanical enforcement stack alongside the ts-quality.sh PostToolUse hook: the hook catches patterns at edit time (grep-based), the linter catches them at build time (AST-level via oxlint), and the compiler catches them at type-check time (tsconfig strictness). Gate 4 of the scrutiny validator runs the project's linter, so rules added by lint-audit are automatically enforced during missions.
 
 ## Build loop
 
