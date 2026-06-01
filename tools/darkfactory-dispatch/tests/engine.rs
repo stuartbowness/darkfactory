@@ -324,6 +324,31 @@ async fn missing_output_recovered_from_final_response() -> Result<(), Box<dyn st
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn worker_output_survives_when_final_response_differs(
+) -> Result<(), Box<dyn std::error::Error>> {
+    let _path_guard = TestPath::install("response_with_output").await?;
+    let tmp = temp_test_dir("worker-output-wins")?;
+    let output = tmp.join("result.md");
+
+    let result = engine::dispatch(
+        spec(&tmp, &output, None, 10, 0),
+        "dispatch-worker-output-wins".to_string(),
+        emitter("dispatch-worker-output-wins").0,
+    )
+    .await?;
+
+    assert_eq!(result.status, DispatchStatus::Completed);
+    assert!(result.output_exists);
+    assert!(result.error.is_none());
+    // The worker wrote the file, so the supervisor's fallback must not clobber it.
+    let written = std::fs::read_to_string(&output)?;
+    assert!(written.contains("mock output"));
+    assert!(!written.contains("fallback response text"));
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn output_write_failure_reports_output_write_failed() -> Result<(), Box<dyn std::error::Error>>
 {
     let _path_guard = TestPath::install("response_no_output").await?;

@@ -185,7 +185,7 @@ The dispatcher enforces a configurable two-phase timeout:
 1. **Soft timeout** (at `--timeout` seconds): Sends SIGTERM to the process group and emits a `timeout_warning` event. The worker has a chance to flush partial results.
 2. **Hard timeout** (at `--timeout` + `--grace` seconds): Sends SIGKILL to the process group. The worker is forcibly terminated.
 
-The grace period defaults to half the timeout with a minimum of 1 second. The hard timeout has a floor of 10 seconds to allow the worker time to flush final events.
+The grace period defaults to half the timeout with a minimum of 1 second.
 
 If the worker exits cleanly after SIGTERM (during the grace period), the dispatch result reports `timed_out` with the worker's final output preserved.
 

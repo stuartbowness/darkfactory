@@ -63,6 +63,14 @@ case "$mode" in
     echo '{"type":"item.completed","item":{"type":"agent_message","text":"recovered analysis content"}}'
     echo '{"type":"turn.completed","usage":{"input_tokens":1,"output_tokens":2,"reasoning_tokens":3}}'
     ;;
+  response_with_output)
+    # Worker writes its own output file AND emits a different final message. The
+    # supervisor must keep the worker's file, not overwrite it with the message.
+    echo '{"type":"thread.started","thread_id":"resp-with-output"}'
+    echo '{"type":"item.completed","item":{"type":"agent_message","text":"fallback response text"}}'
+    echo '{"type":"turn.completed","usage":{"input_tokens":1,"output_tokens":2,"reasoning_tokens":3}}'
+    write_output
+    ;;
   empty_response_no_output)
     echo '{"type":"thread.started","thread_id":"empty-resp"}'
     echo '{"type":"item.completed","item":{"type":"agent_message","text":""}}'

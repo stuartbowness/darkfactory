@@ -829,35 +829,31 @@ fn materialize_missing_output(
     if response.is_empty() {
         return None;
     }
-    if path.exists() {
-        return None;
-    }
-    if let Err(error) = write_output_atomic(path, response) {
-        return Some(DispatchErrorInfo {
+    match write_output_no_clobber(path, response) {
+        Ok(()) => None,
+        // The worker's own write wins. `create_new` fails with AlreadyExists when
+        // the file already exists, so the supervisor never overwrites worker output.
+        Err(error) if error.kind() == io::ErrorKind::AlreadyExists => None,
+        Err(error) => Some(DispatchErrorInfo {
             code: "output_write_failed".to_string(),
             message: format!(
                 "failed to write captured response to {}: {error}",
                 path.display()
             ),
             retryable: true,
-        });
+        }),
     }
-    None
 }
 
-fn write_output_atomic(path: &Path, contents: &str) -> std::io::Result<()> {
-    let dir = path
-        .parent()
-        .filter(|parent| !parent.as_os_str().is_empty())
-        .unwrap_or_else(|| Path::new("."));
-    let file_name = path
-        .file_name()
-        .and_then(|name| name.to_str())
-        .unwrap_or("output");
-    let tmp_path = dir.join(format!(".{file_name}.tmp.{}", std::process::id()));
-    std::fs::write(&tmp_path, contents)?;
-    std::fs::rename(&tmp_path, path)?;
-    Ok(())
+// Write the captured response only if the output path does not already exist.
+// `create_new` (O_EXCL) fuses the existence check and the create into one atomic
+// step, so a file the worker wrote is never clobbered -- no time-of-check gap.
+fn write_output_no_clobber(path: &Path, contents: &str) -> io::Result<()> {
+    let mut file = std::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(path)?;
+    file.write_all(contents.as_bytes())
 }
 
 fn write_status_json_atomic(
