@@ -89,7 +89,7 @@ darkfactory-dispatch \
   --json 2>>dispatch.log
 ```
 
-The dispatch result is a single JSON object on stdout:
+The dispatch result is a single JSON object on stdout. In `--json` mode stdout carries **only** that one object; all events, heartbeats, and diagnostics go to stderr. Do not merge the two streams (`2>&1`) when parsing the result -- the concatenated event lines will make `jq` or `serde_json` fail. Redirect stderr elsewhere (e.g. `2>>dispatch.log`), as the examples above do.
 
 ```json
 {
@@ -185,7 +185,7 @@ The dispatcher enforces a configurable two-phase timeout:
 1. **Soft timeout** (at `--timeout` seconds): Sends SIGTERM to the process group and emits a `timeout_warning` event. The worker has a chance to flush partial results.
 2. **Hard timeout** (at `--timeout` + `--grace` seconds): Sends SIGKILL to the process group. The worker is forcibly terminated.
 
-The grace period defaults to half the timeout with a minimum of 1 second. The hard timeout has a floor of 10 seconds to allow the worker time to flush final events.
+The grace period defaults to half the timeout with a minimum of 1 second.
 
 If the worker exits cleanly after SIGTERM (during the grace period), the dispatch result reports `timed_out` with the worker's final output preserved.
 
@@ -222,7 +222,7 @@ In async mode, parent-death detection is disabled so the dispatcher survives the
 
 ```bash
 make build     # Debug build
-make test      # Run 66 Rust tests
+make test      # Run 78 Rust tests
 make lint      # cargo clippy -D warnings
 make fmt       # cargo fmt --check
 make check     # fmt + lint + test

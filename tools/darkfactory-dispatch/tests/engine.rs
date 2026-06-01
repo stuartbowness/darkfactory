@@ -280,6 +280,124 @@ async fn missing_output_file_reports_failed_result() -> Result<(), Box<dyn std::
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn no_output_requested_completes_on_clean_exit() -> Result<(), Box<dyn std::error::Error>> {
+    let _path_guard = TestPath::install("success").await?;
+    let tmp = temp_test_dir("no-output-requested")?;
+    let mut dispatch_spec = spec(&tmp, &tmp.join("unused.md"), None, 10, 0);
+    dispatch_spec.output = None;
+
+    let result = engine::dispatch(
+        dispatch_spec,
+        "dispatch-no-output-requested".to_string(),
+        emitter("dispatch-no-output-requested").0,
+    )
+    .await?;
+
+    assert_eq!(result.status, DispatchStatus::Completed);
+    assert_eq!(result.exit_code, Some(0));
+    assert!(!result.output_exists);
+    assert!(result.error.is_none());
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn missing_output_recovered_from_final_response() -> Result<(), Box<dyn std::error::Error>> {
+    let _path_guard = TestPath::install("response_no_output").await?;
+    let tmp = temp_test_dir("recovered-output")?;
+    let output = tmp.join("result.md");
+
+    let result = engine::dispatch(
+        spec(&tmp, &output, None, 10, 0),
+        "dispatch-recovered-output".to_string(),
+        emitter("dispatch-recovered-output").0,
+    )
+    .await?;
+
+    assert_eq!(result.status, DispatchStatus::Completed);
+    assert!(result.output_exists);
+    assert!(result.error.is_none());
+    let written = std::fs::read_to_string(&output)?;
+    assert_eq!(written, "recovered analysis content");
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn worker_output_survives_when_final_response_differs(
+) -> Result<(), Box<dyn std::error::Error>> {
+    let _path_guard = TestPath::install("response_with_output").await?;
+    let tmp = temp_test_dir("worker-output-wins")?;
+    let output = tmp.join("result.md");
+
+    let result = engine::dispatch(
+        spec(&tmp, &output, None, 10, 0),
+        "dispatch-worker-output-wins".to_string(),
+        emitter("dispatch-worker-output-wins").0,
+    )
+    .await?;
+
+    assert_eq!(result.status, DispatchStatus::Completed);
+    assert!(result.output_exists);
+    assert!(result.error.is_none());
+    // The worker wrote the file, so the supervisor's fallback must not clobber it.
+    let written = std::fs::read_to_string(&output)?;
+    assert!(written.contains("mock output"));
+    assert!(!written.contains("fallback response text"));
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn output_write_failure_reports_output_write_failed() -> Result<(), Box<dyn std::error::Error>>
+{
+    let _path_guard = TestPath::install("response_no_output").await?;
+    let tmp = temp_test_dir("output-write-failed")?;
+    // Parent directory does not exist, so the supervisor's fallback write fails.
+    let output = tmp.join("missing-subdir").join("result.md");
+
+    let result = engine::dispatch(
+        spec(&tmp, &output, None, 10, 0),
+        "dispatch-output-write-failed".to_string(),
+        emitter("dispatch-output-write-failed").0,
+    )
+    .await?;
+
+    assert_eq!(result.status, DispatchStatus::Failed);
+    assert!(!result.output_exists);
+    assert_eq!(
+        result.error.as_ref().map(|error| error.code.as_str()),
+        Some("output_write_failed")
+    );
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn empty_final_response_reports_missing_output() -> Result<(), Box<dyn std::error::Error>> {
+    let _path_guard = TestPath::install("empty_response_no_output").await?;
+    let tmp = temp_test_dir("empty-response")?;
+    let output = tmp.join("result.md");
+
+    let result = engine::dispatch(
+        spec(&tmp, &output, None, 10, 0),
+        "dispatch-empty-response".to_string(),
+        emitter("dispatch-empty-response").0,
+    )
+    .await?;
+
+    // An empty agent message must not be written as a recovered output.
+    assert_eq!(result.status, DispatchStatus::Failed);
+    assert!(!result.output_exists);
+    assert_eq!(
+        result.error.as_ref().map(|error| error.code.as_str()),
+        Some("missing_output")
+    );
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn soft_timeout_reports_timed_out_after_sigterm_exit(
 ) -> Result<(), Box<dyn std::error::Error>> {
     let _path_guard = TestPath::install("term_clean").await?;

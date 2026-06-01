@@ -706,7 +706,23 @@ Use the Agent tool to spawn a subagent. Pass the full brief content as the promp
 
 Read the handoff file at `mission/handoffs/task-N.md`.
 
-- **TASK_COMPLETE** (handoff exists and contains a commit SHA): Extract the commit SHA. Log to progress.md: `<timestamp> -- Task N: worker completed. Commit: <SHA>`. Proceed to Step 4.
+- **TASK_COMPLETE** (handoff exists and contains a commit SHA): Extract the commit SHA. **Guard -- keep mission bookkeeping out of the task commit.** The worker commit must not touch `openspec/changes/<change-name>/`: the plan and `mission/` files are bookkeeping the orchestrator owns, and committing them pollutes the `base_sha..HEAD` mission diff (the review and orphaned-commit scope). Check it:
+
+  ```bash
+  git show --name-only --format= <SHA> | grep "^openspec/changes/<change-name>/"
+  ```
+
+  If that prints any path, the worker violated the staging rule. The worker commit is HEAD (serial execution), so strip those paths and re-commit code-only, preserving the original message, then use the new SHA from here on:
+
+  ```bash
+  git reset --soft HEAD~1
+  git restore --staged -- 'openspec/changes/<change-name>/'
+  git commit -C <SHA>
+  ```
+
+  The stripped files stay on disk uncommitted, as intended. Re-read HEAD as the new commit SHA and log: `<timestamp> -- Task N: stripped mission bookkeeping from worker commit; re-committed as <new SHA>.`
+
+  Then log to progress.md: `<timestamp> -- Task N: worker completed. Commit: <SHA>` (the re-committed SHA if the guard fired, otherwise the original). Proceed to Step 4.
 - **TASK_FAILED** (handoff missing or no commit SHA):
   1. If engine is `codex` and this is the first failure for this task: log to progress.md: `<timestamp> -- Task N: codex worker failed. Falling back to claude worker.` Append a line to `mission/fallbacks.log`: `task-N|<task-name>|<reason for failure>`. Then dispatch a claude worker (Opus 4.6, extended thinking high) using the existing "If engine is `claude`" dispatch path with the same brief. Wait for the result.
      - If the claude fallback produces `TASK_COMPLETE`: log to progress.md: `<timestamp> -- Task N: claude fallback succeeded. Commit: <SHA>.` Proceed to Step 4.

@@ -23,8 +23,8 @@ Also invoke the `<constraint Skill: value>` skill and follow its rules alongside
 Browser tools are disabled for this mission. Skip the chrome-devtools-mcp visual verification step in the /frontend workflow.
 
 - Do not refactor or change anything unrelated
-- Commit as a single commit with message: "[task-N] fix: <description of what was fixed>"
-- Write handoff report to openspec/changes/<change-name>/mission/handoffs/task-N-fix-v<attempt+1>.md
+- Commit as a single commit with message: "[task-N] fix: <description of what was fixed>". Stage only the files you changed for this fix. Do **not** run `git add -A` or `git add .`, and never stage anything under `openspec/changes/<change-name>/` — that directory is mission bookkeeping the orchestrator owns.
+- Write handoff report to openspec/changes/<change-name>/mission/handoffs/task-N-fix-v<attempt+1>.md (write the file, do not commit it)
 
 ## Handoff Report Format
 - Task: Task N - <name> (Fix attempt <attempt+1>)

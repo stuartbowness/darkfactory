@@ -59,8 +59,8 @@ Also invoke the `<constraint Skill: value>` skill and follow its rules alongside
 <If task Skill: is /frontend and browser_tools is false, include this line:>
 Browser tools are disabled for this mission. Skip the chrome-devtools-mcp visual verification step in the /frontend workflow.
 
-- Commit all changes (code + tests) in a single commit with message: "[task-N] <description>"
-- Write your handoff report to openspec/changes/<change-name>/mission/handoffs/task-N.md
+- Commit your implementation and test files in a single commit with message: "[task-N] <description>". Stage only the files you created or changed for this task. Do **not** run `git add -A` or `git add .`, and never stage anything under `openspec/changes/<change-name>/` — that directory is mission bookkeeping the orchestrator owns. Committing it pollutes the mission diff and corrupts the review scope.
+- Write your handoff report to openspec/changes/<change-name>/mission/handoffs/task-N.md (write the file, do not commit it)
 
 ## Handoff Report Format
 - Task: Task N - <name>

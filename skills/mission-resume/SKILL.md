@@ -99,6 +99,28 @@ BASE_SHA=$(awk -F: '/^[[:space:]]*base_sha[[:space:]]*:/ { gsub(/^[[:space:]]+|[
 
 If `base_sha` is missing or not a valid commit (`git cat-file -e "${BASE_SHA}^{commit}" 2>/dev/null` fails), **stop and ask the user** which commit this mission branched from. Do not fall back to a repo-wide search -- that returns false positives from older missions on other branches.
 
+**Stale `base_sha` check.** A valid `base_sha` can still be stale: if the plan or `mission/` bookkeeping was committed *after* `base_sha` was pinned, those commits sit above it and pollute the `base_sha..HEAD` scope (the symptom behind missions that needed a manual "pin base_sha" fix). Detect it:
+
+```bash
+FIRST_TASK=$(git log "$BASE_SHA"..HEAD --grep='\[task-' --reverse --format='%H' | head -1)
+if [ -n "$FIRST_TASK" ]; then
+  # Task commits exist: stale if anything sits between base_sha and the first one.
+  if [ "$(git rev-list "$BASE_SHA".."$FIRST_TASK" | wc -l | tr -d ' ')" -gt 1 ]; then
+    echo "MAYBE STALE -- candidate first task commit:"; git log --oneline -1 "$FIRST_TASK"
+    echo "Commits between base_sha and it:"; git log --oneline "$BASE_SHA".."${FIRST_TASK}^"
+  fi
+else
+  # No task commits yet: stale if bookkeeping was already committed above base_sha.
+  git log --oneline "$BASE_SHA"..HEAD -- "openspec/changes/<change-name>/"
+fi
+```
+
+Interpret the result:
+
+- **Task commits exist and the gap is non-empty.** The commits between `base_sha` and the first `[task-N]` commit *may* be bookkeeping that belongs below the base. First confirm the candidate commit shown is actually this mission's first task -- not a `[task-N]` commit merged in from another branch or left by a polluted/hand-repaired history. If it is, **stop and ask the user** to confirm advancing `base_sha` to its parent (`${FIRST_TASK}^`), then write that SHA into `config.yaml`. Do **not** advance automatically, and do not trust `${FIRST_TASK}^` if the candidate is not this mission's first task.
+- **No task commits yet but bookkeeping commits sit above `base_sha`.** The mission was interrupted before the first worker ran, but the plan or `mission/` files were already committed above the pinned base. **Stop and ask the user** to confirm advancing `base_sha` to `HEAD` before the build loop starts, then write it to `config.yaml`.
+- **Otherwise** (no gap, or nothing above `base_sha`): `base_sha` is clean; continue.
+
 For each unchecked task that did NOT have a handoff in step 3b:
 
 1. Run: `git log "$BASE_SHA"..HEAD --oneline --grep="\[task-N\]" -1` (commits on this mission branch only).
@@ -178,4 +200,4 @@ Two adjustments when running Phase 9 from here:
   PR_URL=$(gh pr list --head "$BRANCH" --state open --json url --jq '.[].url' | head -1)
   ```
   If `PR_URL` is non-empty, reuse it (do not try to demote a promoted PR back to draft); otherwise create the draft PR as Phase 9 describes. Matching only drafts would miss a PR a human already promoted, and `gh pr create` would then fail against the existing PR.
-- **base_sha guard.** Phase 9's adversarial review reads the pinned `base_sha` from config.yaml. If `base_sha` is missing or not a valid commit (`git cat-file -e "${BASE_SHA}^{commit}" 2>/dev/null` fails), do **not** abort -- stop and ask the user which commit this mission branched from (as in step 3c), then write it to config.yaml before running the review.
+- **base_sha guard.** Phase 9's adversarial review reads the pinned `base_sha` from config.yaml. If `base_sha` is missing or not a valid commit (`git cat-file -e "${BASE_SHA}^{commit}" 2>/dev/null` fails), do **not** abort -- stop and ask the user which commit this mission branched from (as in step 3c), then write it to config.yaml before running the review. Also run the **stale `base_sha` check** from step 3c: if bookkeeping commits sit between `base_sha` and the first `[task-N]` commit, the review walks them as if they were mission work. Stop, confirm the corrected `base_sha` with the user, and write it to config.yaml before running the review.

@@ -52,6 +52,8 @@ RESULT JSON:
      \"output\":\"/path\", \"output_exists\":true,
      \"tokens\":{\"input\":N,\"output\":N,\"reasoning\":N},
      \"activity\":{\"files_changed\":[...],\"commands_run\":[...]}}
+    Stdout carries ONLY this object; all events and diagnostics go to stderr.
+    Do not merge the streams (2>&1) when parsing -- redirect stderr (e.g. 2>>log).
 
     Async mode (--async) emits {\"kind\":\"async_started\",\"dispatch_id\":\"...\"}
     then continues in the background. Use 'result <id>' to collect."
