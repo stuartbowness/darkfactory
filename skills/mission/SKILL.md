@@ -1,6 +1,6 @@
 ---
 name: mission
-description: Start an autonomous Darkfactory mission. Grills the user for alignment, creates OpenSpec artifacts, writes a contract, writes the mission directory, dispatches workers serially, validates each task against the contract, runs fix loops with circuit breakers, and creates a draft PR on completion.
+description: Start an autonomous Darkfactory mission. Full mode grills the user for alignment, creates OpenSpec artifacts, writes a contract, dispatches workers serially, validates each task against the contract, runs fix loops with circuit breakers, and creates a draft PR on completion. Pass --basic for a lightweight single-task build-validate-fix loop with no planning, no workers, and no PR, configurable with --no-tdd and --instruction <path> or an inline task description.
 flow: align -> spec -> contract -> build -> validate -> ship
 ---
 
