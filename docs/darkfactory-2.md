@@ -86,6 +86,28 @@ Beyond what a mechanical projection can see:
 - **Contract** -- checks that do not actually falsify the behavior, vague "appropriate error" assertions, missing observability, a check that would pass even if the feature did not exist.
 - **Coverage** -- the mechanical join only finds *missing* task links. Codex finds *wrong* ones: a requirement mapped to a task that cannot satisfy it, two conflicting requirements piled on one task, a "covered" item that needs work no task does.
 
+## Human-review gates
+
+The human step of the loop above is a gate. Two rules and one format.
+
+**Never auto-skip a gate.** Default to interactive: every gate is a hard stop that waits for the human. Autonomous is an explicit mode the human turns on at the start of the run ("run it autonomously"). The orchestrator never decides per-gate to skip -- it either stops (default) or the whole run was pre-authorized to flow.
+
+**Show the digest, not the transcript.** The raw Codex review is internal sausage; it lives in the `reviews/<phase>.md` checkpoint, linked but not shown inline. The gate surfaces a one-line synopsis of *material* findings only -- a CRITICAL/HIGH, or a finding the orchestrator dismissed as a false positive -- so a real gotcha is never buried inside "auto-fixed." When nothing material was found, the links alone suffice.
+
+**Changes are viewable on GitHub.** Open the draft PR as soon as the build branch exists (not at the end), and commit each artifact together with its review note. Then the gate links straight into GitHub: the commit diff is what Codex changed, the committed review note is why.
+
+Gate format:
+
+```
+Created:           <one-line summary of what was generated>
+Review + changes:  <GitHub commit link>   [+ one line if a material finding]
+For your review:   <file link(s)>
+
+Approve and continue?  Reply `yes` to proceed, or `no` with what you'd change.
+```
+
+`yes` proceeds. `no` carries the feedback and loops back to revise and re-present. The close is a true binary, not an open-ended "any feedback?" that mixes two asks.
+
 ## Non-goals and caveats
 
 - **Review gates are a separate dial from document count.** Some v1 artifacts exist so the human can approve at that point, not because their content is unique. How many gates to keep is a product decision driven by how costly a wrong build is, decided independently of this consolidation.
