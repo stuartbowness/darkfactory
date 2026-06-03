@@ -1,5 +1,5 @@
 engines:
-  worker: codex
+  worker: claude
   scrutiny_validator: claude
   usertest_validator: claude
   adversarial_reviewer_a: codex
@@ -14,4 +14,4 @@ plan_file: /Users/home/.claude/plans/darkfactory-2.md
 
 # The commit the mission builds on top of. Captured and written in Phase 7
 # (HEAD when the build branch is established, before any task commit).
-base_sha: <pending Phase 7>
+base_sha: 540e1953cff20bb58e9e759412dab91306dd9ac3

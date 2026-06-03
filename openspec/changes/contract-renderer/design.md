@@ -47,10 +47,10 @@ No recommended-candidate dimension scores 0. Recommendation: **Candidate A** —
 | Module name | Interface width | What it hides | Why this boundary |
 |-------------|-----------------|---------------|-------------------|
 | `core::types` | narrow (type definitions + `RenderError`) | nothing (data + error enum) | One home for the domain vocabulary every other module shares |
-| `core::parse` | narrow (`parse_specs`, `parse_tasks`, `parse_fragment` → typed model or `RenderError`) | all markdown parsing, the acceptance-block grammar, spec-ref and status extraction, task numbers and `Closing:` kinds | Isolates fragile text parsing so render logic works on typed data only |
-| `core::render` | narrow (`render(model) -> Result<RenderedContract, RenderError>`; `RenderedContract::to_markdown() -> String`) | grouping by task, Spec Reference comment grammar (dedupe/order/DEVIATED), check formatting, inspection-cap warning, closing-kind→task join | The deterministic projection lives behind one call; this is the deep core |
-| `core::shadow` | narrow (`compare(rendered, existing) -> Diff`) | diffing strategy | Keeps the read-only comparison separate from rendering |
-| `cli` (bin) | moderate (subcommands `render`, `shadow`; flags for paths) | file IO, exit codes, stderr warnings | Thin transport over the pure core; no domain logic |
+| `core::parse` | narrow (`parse_specs`, `parse_tasks`, `parse_fragment`, `validate_closing_kinds` → typed model or `RenderError`) | all markdown parsing, the acceptance-block grammar, spec-ref and status extraction, task numbers and `Closing:` kinds, and the `UnknownClosingKind` cross-check (TaskList × fragment) | Isolates fragile text parsing so render logic works on typed data only. (Reconciled Task 9: `validate_closing_kinds` lives here and is called by the renderer; D5 envisaged the check at render time, but co-locating it with the other parse-side validators is the as-built choice.) |
+| `core::render` | narrow (`build_model(specs, tasks, fragment) -> Result<ContractModel, RenderError>`, then `render(&ContractModel) -> Result<RenderedContract, RenderError>`; `RenderedContract::to_markdown()` / `warnings()`) | grouping by task, Spec Reference comment grammar (dedupe/order/DEVIATED), check formatting, inspection-cap warning, closing-kind→task join | The deterministic projection. (Reconciled Task 9: split into `build_model` = assemble + fail-loud validation, and `render` = pure projection; the original single-`render` shape was elaborated into this two-step for testability and a clean fail-loud boundary.) |
+| `core::shadow` | narrow (`compare(rendered, existing) -> Diff`) | diffing strategy (in-house LCS line diff) | Keeps the read-only comparison separate from rendering |
+| `cli` (lib module `cli` + thin `main.rs` bin) | moderate (subcommands `render`, `shadow`; path flags; `run(args, out, err) -> i32` entry) | file IO, exit codes, stderr warnings, stdlib arg parsing | Thin transport over the pure core; no domain logic. (Reconciled Task 9: the CLI logic lives in a `cli` lib module so it is unit-testable; `main.rs` is a thin wrapper.) |
 
 ## Type Catalog
 
@@ -65,6 +65,10 @@ No recommended-candidate dimension scores 0. Recommendation: **Candidate A** —
 | `TaskList` | The ordered tasks (from tasks.md), each a feature or closing task | `core::types` |
 | `RenderedContract` | The output contract document model | `core::types` |
 | `RenderError` | The fail-loud error enum | `core::types` |
+| `ClosingTaskKind` | One closing-task kind and its operational checks (sub-element of `ClosingTaskFragment`) — added Task 9 | `core::types` |
+| `Task` | One task from tasks.md: number, name, optional closing kind (element of `TaskList`) — added Task 9 | `core::types` |
+| `ContractModel` | The assembled, validated, ordered model `build_model` produces and `render` projects — added Task 9 | `core::render` |
+| `Diff` | The shadow comparison result (`Identical` / `Different(text)`); already named in the Module Inventory — added to catalog Task 9 | `core::shadow` |
 
 Type names align with `UBIQUITOUS_LANGUAGE.md`: `AcceptanceEntry`↔Acceptance (field), `VerificationMethod`↔Verification method, `SpecReference`↔Spec Reference, `ScenarioStatus`'s `deviated`↔Deviated status.
 
@@ -80,9 +84,10 @@ Type names align with `UBIQUITOUS_LANGUAGE.md`: `AcceptanceEntry`↔Acceptance (
 | Caller | Callee | Method/interface | Direction |
 |--------|--------|------------------|-----------|
 | `cli` | `core::parse` | `parse_specs/parse_tasks/parse_fragment` | outbound |
-| `cli` | `core::render` | `render(model)` then `RenderedContract::to_markdown()` | outbound |
+| `cli` | `core::render` | `build_model(specs, tasks, fragment)` then `render(&model)` then `RenderedContract::to_markdown()` / `warnings()` | outbound |
 | `cli` (shadow) | `core::shadow` | `compare(rendered, existing)` | outbound |
-| `core::render` | `core::types` | constructs `RenderedContract` | internal |
+| `core::render` | `core::parse` | `validate_closing_kinds(tasks, fragment)` (UnknownClosingKind check inside `build_model`) | internal |
+| `core::render` | `core::types` | constructs `ContractModel` then `RenderedContract` | internal |
 | `cli` | filesystem | reads `specs/**/*.md`, `tasks.md`, closing-task fragment, existing `contract.md` | inbound |
 
 No integration with the live mission skill in Stage 1. A later change adds a Phase 5 → `cli render` call.
@@ -115,6 +120,7 @@ No integration with the live mission skill in Stage 1. A later change adds a Pha
 - **Closing-task fragment can drift from the mission's actual closing tasks** → mitigation: tasks.md tags each closing task with a fragment-known `Closing:` kind; an unknown kind fails loud (`UnknownClosingKind`), and a test asserts the fixture's closing-task checks reproduce from the fragment.
 - **A v1 feature-task check may have no spec source** (e.g. a bespoke README task) → mitigation: D6 — migration authors a scenario for it or models it as a documentation closing task; the parity test is equivalence, not byte-identity.
 - **Determinism regressions** → mitigation: a byte-identical repeat-run test and pinned ordering (task-list order, then Spec Reference, then source order).
+- **Closing-task checks are standardized, so closing-task parity is NOT proven in Stage 1** → the renderer sources closing-task checks from the generic fragment, which differ from hand-authored mission-specific closing checks; the migration parity test (Task 6) proves FEATURE-task parity only and compares closing tasks structurally. Consequence for cutover: closing-task validator-outcome parity must be evaluated and accepted separately at cutover (confirm the generic checks give equivalent operational coverage, or enrich the fragment). Made explicit in the tool README cutover-gate section. (Surfaced by adversarial review; recorded here so the cutover decision is not made on a false full-parity assumption.)
 
 ## Migration Plan
 
