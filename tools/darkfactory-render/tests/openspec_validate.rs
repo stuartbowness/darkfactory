@@ -35,13 +35,15 @@ fn write_file(path: &Path, contents: &str) {
 
 #[test]
 fn acceptance_carrying_spec_passes_openspec_validate() {
-    if !openspec_available() {
-        // Env limitation, not a code defect: skip loudly via the test name.
-        // The fixture is still exercised by `parse_specs` below in CI envs
-        // where openspec is present. See the handoff for why this can occur.
-        eprintln!("openspec not found on PATH; skipping validate-compatibility assertion");
-        return;
-    }
+    // `openspec` is a required tool of this pipeline. A Rust `#[test]` that
+    // returns early still reports `ok`, so a conditional skip would let this
+    // test pass without verifying anything. Require the tool instead: fail
+    // loud when it is missing so the gap is visible, not silently green.
+    assert!(
+        openspec_available(),
+        "openspec not found on PATH; this validate-compatibility test requires it. \
+         Install openspec (the pipeline uses 1.3.1) and re-run."
+    );
 
     let project = tempdir();
     let openspec_root = project.join("openspec");

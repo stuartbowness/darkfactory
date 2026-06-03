@@ -119,13 +119,10 @@ fn parse_scenario(
         return Ok(None);
     };
 
-    let acceptance = parse_acceptance(&lines[acceptance_start..])?;
+    let identifier = scenario_identifier(capability, spec_ref_number, title);
+    let acceptance = parse_acceptance(&lines[acceptance_start..], &identifier)?;
     if acceptance.is_empty() {
-        return Err(RenderError::EmptyAcceptanceList(scenario_identifier(
-            capability,
-            spec_ref_number,
-            title,
-        )));
+        return Err(RenderError::EmptyAcceptanceList(identifier));
     }
 
     let number = spec_ref_number.ok_or(RenderError::MissingSpecRef)?;
@@ -169,9 +166,12 @@ fn parse_spec_ref_number(value: &str) -> Result<u32, RenderError> {
 
 /// Parse the acceptance entry lines following the `**Acceptance:**` marker.
 ///
+/// `identifier` names the enclosing scenario (`capability/N` or its title) so a
+/// per-entry error can point the author at the offending scenario.
+///
 /// Stops at the first blank line or next heading; non-entry lines inside the
 /// block are ignored so trailing prose does not break parsing.
-fn parse_acceptance(lines: &[&str]) -> Result<Vec<AcceptanceEntry>, RenderError> {
+fn parse_acceptance(lines: &[&str], identifier: &str) -> Result<Vec<AcceptanceEntry>, RenderError> {
     let mut entries = Vec::new();
     for raw in lines {
         let line = raw.trim();
@@ -184,7 +184,7 @@ fn parse_acceptance(lines: &[&str]) -> Result<Vec<AcceptanceEntry>, RenderError>
         if !line.starts_with("- ") {
             continue;
         }
-        entries.push(parse_acceptance_entry(line)?);
+        entries.push(parse_acceptance_entry(line, identifier)?);
     }
     Ok(entries)
 }
@@ -192,25 +192,31 @@ fn parse_acceptance(lines: &[&str]) -> Result<Vec<AcceptanceEntry>, RenderError>
 /// Parse one acceptance entry `- [task:N] [<method>] <statement>`.
 ///
 /// An unrecognized method surfaces as
-/// [`RenderError::UnknownVerificationMethod`] and an empty statement as
-/// [`RenderError::EmptyStatement`]. A structurally broken entry (missing
-/// `[task:N]` or `[<method>]` brackets, or a non-numeric task number) also
-/// fails loud as [`RenderError::EmptyStatement`]: Stage 1's `RenderError` has
-/// no dedicated "malformed entry" variant, and such a line yields no usable
-/// check statement, so it is treated as empty rather than silently dropped.
-fn parse_acceptance_entry(line: &str) -> Result<AcceptanceEntry, RenderError> {
+/// [`RenderError::UnknownVerificationMethod`]. A genuinely empty or
+/// whitespace-only statement surfaces as
+/// [`RenderError::EmptyStatement`], carrying `identifier` so the error names the
+/// offending scenario. A structurally broken entry (missing `[task:N]` or
+/// `[<method>]` brackets, or a non-numeric task number) is NOT an empty
+/// statement: Stage 1's `RenderError` has no dedicated "malformed entry"
+/// variant, so such a line fails loud as
+/// [`RenderError::UnknownVerificationMethod`] carrying the offending entry
+/// text. Reporting the verbatim line keeps the error accurate — the parser
+/// could not extract a valid verification method from it — instead of
+/// mislabelling a populated line as "empty".
+fn parse_acceptance_entry(line: &str, identifier: &str) -> Result<AcceptanceEntry, RenderError> {
     let body = line.trim_start_matches("- ").trim_start();
 
-    let (task_token, after_task) = bracketed(body).ok_or(RenderError::EmptyStatement)?;
-    let task_link = parse_task_link(task_token).ok_or(RenderError::EmptyStatement)?;
+    let malformed = || RenderError::UnknownVerificationMethod(body.to_string());
 
-    let (method_token, after_method) =
-        bracketed(after_task.trim_start()).ok_or(RenderError::EmptyStatement)?;
+    let (task_token, after_task) = bracketed(body).ok_or_else(malformed)?;
+    let task_link = parse_task_link(task_token).ok_or_else(malformed)?;
+
+    let (method_token, after_method) = bracketed(after_task.trim_start()).ok_or_else(malformed)?;
     let method = VerificationMethod::parse(method_token)?;
 
     let statement = after_method.trim();
     if statement.is_empty() {
-        return Err(RenderError::EmptyStatement);
+        return Err(RenderError::EmptyStatement(identifier.to_string()));
     }
 
     Ok(AcceptanceEntry {
@@ -335,7 +341,7 @@ mod tests {
     }
 
     #[test]
-    fn empty_statement_fails_loud() {
+    fn empty_statement_fails_loud_naming_the_offender() {
         let markdown = "\
 #### Scenario: Has an empty statement
 <!-- spec-ref: 1 -->
@@ -347,7 +353,79 @@ mod tests {
 ";
         assert_eq!(
             parse_specs("widget", markdown),
-            Err(RenderError::EmptyStatement)
+            Err(RenderError::EmptyStatement("widget/1".to_string()))
+        );
+    }
+
+    #[test]
+    fn whitespace_only_statement_fails_loud_naming_the_offender() {
+        // A statement that is only whitespace is as empty as a missing one,
+        // and the error must still name the offending scenario.
+        let markdown = "\
+#### Scenario: Has a whitespace-only statement
+<!-- spec-ref: 5 -->
+- **WHEN** invoked
+- **THEN** done
+
+**Acceptance:**
+- [task:2] [execution]    \t
+";
+        let err = parse_specs("widget", markdown).expect_err("whitespace statement fails loud");
+        assert_eq!(err, RenderError::EmptyStatement("widget/5".to_string()));
+        assert!(
+            err.to_string().contains("widget/5"),
+            "the error message must name the offending scenario, got: {err}"
+        );
+    }
+
+    #[test]
+    fn structurally_malformed_entry_is_not_reported_as_empty_statement() {
+        // A non-numeric task link is a structurally broken entry, not an empty
+        // statement: it must fail loud with an accurate, non-empty-statement
+        // error that names the offending line.
+        let markdown = "\
+#### Scenario: Has a malformed entry
+<!-- spec-ref: 1 -->
+- **WHEN** invoked
+- **THEN** done
+
+**Acceptance:**
+- [task:two] [execution] a real-looking statement
+";
+        let err = parse_specs("widget", markdown).expect_err("malformed entry fails loud");
+        assert!(
+            !matches!(err, RenderError::EmptyStatement(_)),
+            "a non-empty malformed entry must not be reported as an empty statement, got: {err:?}"
+        );
+        assert_eq!(
+            err,
+            RenderError::UnknownVerificationMethod(
+                "[task:two] [execution] a real-looking statement".to_string()
+            )
+        );
+    }
+
+    #[test]
+    fn entry_missing_method_bracket_is_not_reported_as_empty_statement() {
+        // Missing the [<method>] bracket is structural breakage, not an empty
+        // statement.
+        let markdown = "\
+#### Scenario: Missing method bracket
+<!-- spec-ref: 1 -->
+- **WHEN** invoked
+- **THEN** done
+
+**Acceptance:**
+- [task:2] no method bracket here
+";
+        let err = parse_specs("widget", markdown).expect_err("malformed entry fails loud");
+        assert!(
+            !matches!(err, RenderError::EmptyStatement(_)),
+            "a non-empty malformed entry must not be reported as an empty statement, got: {err:?}"
+        );
+        assert_eq!(
+            err,
+            RenderError::UnknownVerificationMethod("[task:2] no method bracket here".to_string())
         );
     }
 

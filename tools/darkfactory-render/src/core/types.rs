@@ -174,8 +174,8 @@ pub struct RenderedContract {
 pub enum RenderError {
     #[error("unknown verification method: {0}")]
     UnknownVerificationMethod(String),
-    #[error("acceptance statement is empty")]
-    EmptyStatement,
+    #[error("acceptance statement is empty for scenario {0}")]
+    EmptyStatement(String),
     #[error("scenario {0} has no acceptance entries")]
     EmptyAcceptanceList(String),
     #[error("acceptance entry is missing a spec reference")]
