@@ -76,6 +76,25 @@ Design phase scores 2-3 architecture candidates on a four-dimension rubric (sepa
 
 Before task generation, the orchestrator presents a decomposition strategy (layered, vertical, or hybrid) for human approval. Each task carries topology metadata: depends-on, consumes, produces, layers.
 
+## Contract renderer (darkfactory-render)
+
+A deterministic tool that *renders* `contract.md` from authored sources instead of having an LLM re-author it. Today Phase 5 hand-writes the contract by re-stating behaviors the specs already define, which drifts. The renderer projects the contract from those sources so the same statement lives in one place. Stage 1 of a larger roadmap.
+
+`tools/darkfactory-render` is a Rust crate built/installed/tested like `darkfactory-dispatch` (Makefile, `~/.local/bin`, `tests/`), pinned at v1.0.0, one dependency (`thiserror`). A pure `core` library does the work behind a thin CLI:
+- `core::types` -- domain types and the `RenderError` enum
+- `core::parse` -- markdown parsing into a typed model (specs, tasks, fragment) plus fail-loud validation
+- `core::render` -- `build_model` (assemble + validate) then `render` (pure projection to the contract)
+- `core::shadow` -- line-based diff of rendered vs existing contract
+- `cli` (with a thin `main.rs`) -- `render` and `shadow` subcommands; file IO, exit codes, stderr warnings
+
+It composes the contract from two authored sources, carrying check statements verbatim and never inventing checks:
+- per-scenario `acceptance` entries in the specs, grouped by their `[task:N]` link
+- a standing closing-task fragment (`templates/closing-task-checks.md`) joined to each `Closing: <kind>` task
+
+Workers still never see the contract; the worker brief projects `behavior` only. The information walls are unchanged.
+
+**Shadow mode / cutover.** In this stage the renderer is READ-ONLY: `darkfactory-render shadow` renders the contract and diffs it against the existing hand-authored one without changing anything. The live mission skill's Phase 5 hand-authoring is NOT wired to the renderer. A later, gated change cuts Phase 5 over to `darkfactory-render render` once the cutover gate holds (validator-outcome parity across diverse missions, separate-session authoring, a seeded failure plus a real defect caught, a rollback path).
+
 ## Configuration
 
 Global defaults in `~/.darkfactory/config.yaml`. Per-mission engine assignments in `mission/config.yaml` (worker, scrutiny_validator, usertest_validator, adversarial reviewers).
@@ -88,6 +107,7 @@ One version for the whole repo: the GitHub release tag (v1.x). Internal tools (d
 
 - Claude Code (orchestrator, Claude workers, validators)
 - Codex CLI (Codex workers, adversarial reviewer)
-- darkfactory-dispatch (Rust supervisor: process isolation, timeout, heartbeat, structured results)
+- darkfactory-dispatch (Rust supervisor: process isolation, timeout, heartbeat, structured results) -- pinned at v1.0.0
+- darkfactory-render (Rust contract renderer: deterministic projection of contract.md, shadow-mode diff) -- pinned at v1.0.0
 - OpenSpec CLI (planning artifact generation)
 - GitHub CLI (PRD issues, draft PRs)
