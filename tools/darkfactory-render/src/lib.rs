@@ -8,5 +8,6 @@
 //! `core` crate is reached via `::core`. Reference this tree as
 //! `crate::core::types`.
 pub mod core {
+    pub mod parse;
     pub mod types;
 }
