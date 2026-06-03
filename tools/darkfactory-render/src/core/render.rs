@@ -244,17 +244,14 @@ fn closing_section(task: &Task, kind: &str, fragment: &ClosingTaskFragment) -> T
         .kinds
         .iter()
         .find(|known| known.name == kind)
-        .map(|known| {
-            known
-                .checks
-                .iter()
-                .map(|check| CheckLine {
-                    body: check.clone(),
-                    method: fragment_check_method(check),
-                })
-                .collect()
+        .expect("validate_closing_kinds guarantees the closing kind exists in the fragment")
+        .checks
+        .iter()
+        .map(|check| CheckLine {
+            body: check.clone(),
+            method: fragment_check_method(check),
         })
-        .unwrap_or_default();
+        .collect();
 
     TaskSection {
         number: task.number,
@@ -302,15 +299,16 @@ fn method_token(method: VerificationMethod) -> &'static str {
 }
 
 /// The verification method named by a verbatim fragment check's `[<method>]`
-/// tag. The fragment was validated by `parse_fragment`, so the tag is always a
-/// known method; an unexpected shape falls back to a non-inspection method
-/// rather than panicking (it cannot inflate the inspection-cap count).
+/// tag. `parse_fragment` validated every fragment check's method tag, so the tag
+/// here is always a known method; an unparseable tag is an invariant violation
+/// (a bug), and this panics loudly rather than silently defaulting.
 fn fragment_check_method(check: &str) -> VerificationMethod {
     let token = check
         .strip_prefix('[')
         .and_then(|rest| rest.split(']').next())
         .unwrap_or("");
-    VerificationMethod::parse(token).unwrap_or(VerificationMethod::Execution)
+    VerificationMethod::parse(token)
+        .expect("parse_fragment validated every fragment check's method tag")
 }
 
 /// The inspection-cap warning for a section, or `None` when it is at or under
