@@ -96,6 +96,44 @@ fn render_byte_matches_the_captured_contract_fixture() {
 }
 
 #[test]
+fn render_orders_two_capabilities_deterministically_alpha_before_zulu() {
+    // Two capability subdirs, `alpha/` and `zulu/`, each with a scenario whose
+    // acceptance links to feature Task 2. `read_scenarios` sorts the capability
+    // directories before parsing, and the feature section sorts checks by Spec
+    // Reference (capability asc), so the rendered output must list alpha before
+    // zulu regardless of filesystem directory order. This locks in the
+    // `capabilities.sort()` behaviour.
+    let output = run(&[
+        "render",
+        "--specs",
+        &fixture("multi_specs"),
+        "--tasks",
+        &fixture("multi_tasks.md"),
+        "--fragment",
+        &fixture("fragment.md"),
+    ]);
+    assert_eq!(code(&output), 0, "a valid multi-capability set renders");
+
+    let stdout = String::from_utf8(output.stdout).expect("utf8 stdout");
+    // The deduped Specs comment lists the capabilities in sorted order.
+    assert!(
+        stdout.contains("<!-- Specs: alpha/1, zulu/1 -->\n"),
+        "capabilities must be sorted alpha before zulu, got:\n{stdout}"
+    );
+    // The alpha check line must precede the zulu check line.
+    let alpha_at = stdout
+        .find("[execution] alpha check runs and exits 0")
+        .expect("alpha check present");
+    let zulu_at = stdout
+        .find("[execution] zulu check runs and exits 0")
+        .expect("zulu check present");
+    assert!(
+        alpha_at < zulu_at,
+        "alpha's check must render before zulu's, got:\n{stdout}"
+    );
+}
+
+#[test]
 fn render_maps_a_render_error_to_stderr_and_a_nonzero_exit() {
     let output = run(&[
         "render",

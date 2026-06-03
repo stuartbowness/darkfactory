@@ -17,7 +17,9 @@
 /// [`Identical`](Diff::Identical) means the two documents are byte-for-byte
 /// equal. [`Different`](Diff::Different) carries a readable line diff: lines only
 /// in `existing` are prefixed `- `, lines only in `rendered` are prefixed `+ `,
-/// in the order they appear.
+/// in the order they appear. When the bytes differ but the line content is
+/// identical (a trailing-newline or LF-vs-CRLF difference), `Different` instead
+/// carries the explicit [`NEWLINE_ONLY_MESSAGE`] so the diff is never empty.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Diff {
     /// The rendered and existing contracts match exactly.
@@ -25,6 +27,17 @@ pub enum Diff {
     /// The contracts differ; the `String` is a readable line diff.
     Different(String),
 }
+
+/// The explicit message carried by [`Diff::Different`] when the two documents
+/// have identical line content and differ only in a trailing newline or in line
+/// endings (LF vs CRLF).
+///
+/// The line diff is computed with [`str::lines`], which strips the trailing
+/// newline and `\r`, so a newline-only difference would otherwise yield an empty
+/// diff. `compare` substitutes this message instead, so the operator NEVER sees
+/// a blank diff.
+pub const NEWLINE_ONLY_MESSAGE: &str =
+    "contents are identical; the files differ only in trailing newline or line endings";
 
 /// Compare a freshly rendered contract against an existing one, line by line.
 ///
@@ -36,7 +49,14 @@ pub fn compare(rendered: &str, existing: &str) -> Diff {
     if rendered == existing {
         return Diff::Identical;
     }
-    Diff::Different(line_diff(existing, rendered))
+    let diff = line_diff(existing, rendered);
+    // The bytes differ but the line diff is empty: the only difference is a
+    // trailing newline or line endings (`lines()` strips both). Report it
+    // explicitly so the operator never sees a blank `Different` diff.
+    if diff.is_empty() {
+        return Diff::Different(NEWLINE_ONLY_MESSAGE.to_string());
+    }
+    Diff::Different(diff)
 }
 
 /// Build a readable line diff between `existing` (old) and `rendered` (new).
@@ -141,6 +161,35 @@ mod tests {
         assert_eq!(
             compare(rendered, existing),
             Diff::Different("- - [ ] [execution] old check".to_string()),
+        );
+    }
+
+    #[test]
+    fn a_trailing_newline_only_difference_is_reported_explicitly_not_empty() {
+        // Line content is byte-identical; the only difference is the missing
+        // final newline on `existing`. `lines()` strips it, so the line diff is
+        // empty. `compare` must NEVER hand back `Different("")`.
+        let rendered = "# Contract\n## Task 1: Greet\n- [ ] [execution] greets\n";
+        let existing = "# Contract\n## Task 1: Greet\n- [ ] [execution] greets";
+        let Diff::Different(diff) = compare(rendered, existing) else {
+            panic!("a trailing-newline-only difference must compare Different");
+        };
+        assert!(
+            !diff.is_empty(),
+            "the diff must never be empty for differing inputs"
+        );
+        assert_eq!(diff, NEWLINE_ONLY_MESSAGE);
+    }
+
+    #[test]
+    fn a_crlf_vs_lf_only_difference_is_reported_explicitly_not_empty() {
+        // Same line content, different line endings (CRLF vs LF). `lines()`
+        // strips the `\r`, so the line diff is empty. Must be explicit, not "".
+        let rendered = "# Contract\nline two\n";
+        let existing = "# Contract\r\nline two\r\n";
+        assert_eq!(
+            compare(rendered, existing),
+            Diff::Different(NEWLINE_ONLY_MESSAGE.to_string()),
         );
     }
 
