@@ -12,8 +12,8 @@
 use std::collections::HashSet;
 
 use crate::core::types::{
-    AcceptanceEntry, RenderError, RequirementScenario, ScenarioStatus, SpecReference,
-    VerificationMethod,
+    AcceptanceEntry, ClosingTaskFragment, ClosingTaskKind, RenderError, RequirementScenario,
+    ScenarioStatus, SpecReference, Task, TaskList, VerificationMethod,
 };
 
 const SCENARIO_HEADING: &str = "#### Scenario:";
@@ -68,6 +68,135 @@ pub fn parse_specs(
     }
 
     Ok(scenarios)
+}
+
+const CLOSING_PREFIX: &str = "Closing:";
+
+/// Parse `tasks.md` content into a [`TaskList`].
+///
+/// A task begins at a `Task N: <name>` heading line (optionally prefixed with a
+/// `- [ ]`/`- [x]`/`- [~]` checkbox). The heading's number and name are read
+/// from the `Task N:` part. A `Closing: <kind>` line anywhere in the task's body
+/// (before the next heading) sets that task's [`Task::closing_kind`]; a task
+/// without one is a feature task (`None`).
+///
+/// Content before the first task heading is ignored. This does no file IO.
+pub fn parse_tasks(tasks_markdown: &str) -> Result<TaskList, RenderError> {
+    let mut tasks: Vec<Task> = Vec::new();
+    for line in tasks_markdown.lines() {
+        if let Some((number, name)) = task_heading(line) {
+            tasks.push(Task {
+                number,
+                name: name.to_string(),
+                closing_kind: None,
+            });
+        } else if let Some(kind) = closing_field(line) {
+            if let Some(current) = tasks.last_mut() {
+                current.closing_kind = Some(kind.to_string());
+            }
+        }
+    }
+    Ok(TaskList { tasks })
+}
+
+/// The `<kind>` of a `Closing: <kind>` body line, or `None`.
+fn closing_field(line: &str) -> Option<&str> {
+    let kind = line.trim().strip_prefix(CLOSING_PREFIX)?.trim();
+    (!kind.is_empty()).then_some(kind)
+}
+
+const KIND_HEADING: &str = "### ";
+
+/// Parse the closing-task fragment into a [`ClosingTaskFragment`].
+///
+/// The fragment groups operational checks under per-kind sections. A section
+/// begins at a `### <kind>` heading; the lines beneath it, up to the next `###`
+/// heading, are its checks. Each check is a `- [<method>] <statement>` bullet
+/// stored verbatim as its `[<method>] <statement>` text (the `- ` bullet prefix
+/// is stripped); the renderer (Task 4) prefixes `- [ ] `. Non-bullet lines and
+/// content before the first `### ` heading are ignored. This does no file IO.
+///
+/// # Errors
+///
+/// A check whose `[<method>]` tag is not a recognized [`VerificationMethod`]
+/// surfaces as [`RenderError::UnknownVerificationMethod`], matching `parse_specs`.
+pub fn parse_fragment(fragment_markdown: &str) -> Result<ClosingTaskFragment, RenderError> {
+    let mut kinds: Vec<ClosingTaskKind> = Vec::new();
+    for line in fragment_markdown.lines() {
+        let trimmed = line.trim();
+        if let Some(name) = trimmed.strip_prefix(KIND_HEADING) {
+            kinds.push(ClosingTaskKind {
+                name: name.trim().to_string(),
+                checks: Vec::new(),
+            });
+        } else if let Some(check) = fragment_check(trimmed) {
+            validate_check_method(check)?;
+            if let Some(current) = kinds.last_mut() {
+                current.checks.push(check.to_string());
+            }
+        }
+    }
+    Ok(ClosingTaskFragment { kinds })
+}
+
+/// Check every closing task's kind against the fragment's declared kinds.
+///
+/// A closing task is one whose [`Task::closing_kind`] is `Some`. Each such
+/// kind must name a [`ClosingTaskKind`] in `fragment`; the first that does not
+/// surfaces as [`RenderError::UnknownClosingKind`] carrying the offending kind.
+/// Feature tasks (`closing_kind == None`) are ignored.
+pub fn validate_closing_kinds(
+    tasks: &TaskList,
+    fragment: &ClosingTaskFragment,
+) -> Result<(), RenderError> {
+    for task in &tasks.tasks {
+        let Some(kind) = &task.closing_kind else {
+            continue;
+        };
+        if !fragment.kinds.iter().any(|known| &known.name == kind) {
+            return Err(RenderError::UnknownClosingKind(kind.clone()));
+        }
+    }
+    Ok(())
+}
+
+/// The verbatim `[<method>] <statement>` text of a `- [<method>] ...` bullet,
+/// or `None` for a non-bullet line.
+fn fragment_check(line: &str) -> Option<&str> {
+    let body = line.strip_prefix("- ")?.trim_start();
+    body.starts_with('[').then_some(body)
+}
+
+/// Fail loud if a fragment check's `[<method>]` tag is not a known method.
+fn validate_check_method(check: &str) -> Result<(), RenderError> {
+    let malformed = || RenderError::UnknownVerificationMethod(check.to_string());
+    let (method_token, _) = bracketed(check).ok_or_else(malformed)?;
+    VerificationMethod::parse(method_token)?;
+    Ok(())
+}
+
+/// Parse a `Task N: <name>` heading into its number and name.
+///
+/// The line may carry a checkbox prefix (`- [ ]`, `- [x]`, `- [~]`); it is
+/// stripped before reading `Task N:`. Returns `None` for any non-heading line.
+fn task_heading(line: &str) -> Option<(u32, &str)> {
+    let after_checkbox = strip_checkbox(line.trim_start());
+    let rest = after_checkbox.strip_prefix("Task ")?;
+    let colon = rest.find(':')?;
+    let number = rest[..colon].trim().parse::<u32>().ok()?;
+    let name = rest[colon + 1..].trim();
+    Some((number, name))
+}
+
+/// Strip a leading task checkbox (`- [ ]`, `- [x]`, `- [~]`) if present.
+fn strip_checkbox(line: &str) -> &str {
+    let Some(rest) = line.strip_prefix("- [") else {
+        return line;
+    };
+    let Some(close) = rest.find(']') else {
+        return line;
+    };
+    rest[close + 1..].trim_start()
 }
 
 /// Split the markdown into one slice of lines per `#### Scenario:` heading.
@@ -255,6 +384,148 @@ fn scenario_identifier(capability: &str, number: Option<u32>, title: &str) -> St
 mod tests {
     use super::*;
     use crate::core::types::{ScenarioStatus, SpecReference, VerificationMethod};
+
+    #[test]
+    fn parse_tasks_extracts_number_and_name_from_a_feature_task() {
+        let markdown = "\
+- [ ] Task 1: Crate skeleton
+  Depends on: none
+";
+        let tasks = parse_tasks(markdown).expect("valid tasks parse");
+        assert_eq!(tasks.tasks.len(), 1);
+        assert_eq!(tasks.tasks[0].number, 1);
+        assert_eq!(tasks.tasks[0].name, "Crate skeleton");
+        assert_eq!(tasks.tasks[0].closing_kind, None);
+    }
+
+    #[test]
+    fn parse_fragment_yields_kinds_mapped_to_verbatim_checks() {
+        let markdown = "\
+# Closing-task checks
+
+### smoke-test
+- [execution] the primary user flow runs end to end and passes
+
+### cleanup
+- [execution] the linter is clean
+- [inspection] no leftover scaffolding or temporary artifacts remain
+";
+        let fragment = parse_fragment(markdown).expect("valid fragment parses");
+        assert_eq!(fragment.kinds.len(), 2);
+
+        assert_eq!(fragment.kinds[0].name, "smoke-test");
+        assert_eq!(
+            fragment.kinds[0].checks,
+            vec!["[execution] the primary user flow runs end to end and passes".to_string()],
+            "a check is stored verbatim as its `[<method>] <statement>` text"
+        );
+
+        assert_eq!(fragment.kinds[1].name, "cleanup");
+        assert_eq!(
+            fragment.kinds[1].checks,
+            vec![
+                "[execution] the linter is clean".to_string(),
+                "[inspection] no leftover scaffolding or temporary artifacts remain".to_string(),
+            ]
+        );
+    }
+
+    #[test]
+    fn validate_closing_kinds_accepts_a_fragment_known_kind() {
+        // Downstream integration check from the brief: a feature task (no kind)
+        // and a closing task tagged with a fragment-known kind validate OK.
+        let tasks = TaskList {
+            tasks: vec![
+                Task {
+                    number: 1,
+                    name: "Feature".to_string(),
+                    closing_kind: None,
+                },
+                Task {
+                    number: 7,
+                    name: "Smoke test".to_string(),
+                    closing_kind: Some("smoke-test".to_string()),
+                },
+            ],
+        };
+        let fragment = ClosingTaskFragment {
+            kinds: vec![ClosingTaskKind {
+                name: "smoke-test".to_string(),
+                checks: vec!["[execution] the flow runs".to_string()],
+            }],
+        };
+        assert_eq!(validate_closing_kinds(&tasks, &fragment), Ok(()));
+    }
+
+    #[test]
+    fn validate_closing_kinds_rejects_a_kind_absent_from_the_fragment() {
+        let tasks = TaskList {
+            tasks: vec![Task {
+                number: 7,
+                name: "Smoke test".to_string(),
+                closing_kind: Some("bogus".to_string()),
+            }],
+        };
+        let fragment = ClosingTaskFragment {
+            kinds: vec![ClosingTaskKind {
+                name: "smoke-test".to_string(),
+                checks: vec!["[execution] the flow runs".to_string()],
+            }],
+        };
+        assert_eq!(
+            validate_closing_kinds(&tasks, &fragment),
+            Err(RenderError::UnknownClosingKind("bogus".to_string()))
+        );
+    }
+
+    #[test]
+    fn parse_fragment_rejects_an_unknown_verification_method() {
+        let markdown = "\
+### smoke-test
+- [telepathy] verified by mind reading
+";
+        assert_eq!(
+            parse_fragment(markdown),
+            Err(RenderError::UnknownVerificationMethod(
+                "telepathy".to_string()
+            ))
+        );
+    }
+
+    #[test]
+    fn parse_tasks_handles_all_checkbox_prefixes_and_closing_kind() {
+        let markdown = "\
+- [x] Task 1: Done feature
+  Depends on: none
+
+- [~] Task 6: In-progress feature
+  Depends on: Task 1
+
+- [ ] Task 7: Smoke test
+  Depends on: Task 6
+  Closing: smoke-test
+
+  End-to-end smoke test of the primary flow.
+";
+        let tasks = parse_tasks(markdown).expect("valid tasks parse");
+        assert_eq!(tasks.tasks.len(), 3);
+
+        assert_eq!(tasks.tasks[0].number, 1);
+        assert_eq!(tasks.tasks[0].name, "Done feature");
+        assert_eq!(tasks.tasks[0].closing_kind, None);
+
+        assert_eq!(tasks.tasks[1].number, 6);
+        assert_eq!(tasks.tasks[1].name, "In-progress feature");
+        assert_eq!(tasks.tasks[1].closing_kind, None);
+
+        assert_eq!(tasks.tasks[2].number, 7);
+        assert_eq!(tasks.tasks[2].name, "Smoke test");
+        assert_eq!(
+            tasks.tasks[2].closing_kind,
+            Some("smoke-test".to_string()),
+            "the Closing: field attaches to its own task, not an earlier one"
+        );
+    }
 
     const ONE_ENTRY: &str = "\
 #### Scenario: Greets a caller
