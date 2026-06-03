@@ -241,6 +241,19 @@ human action, and it is gated on all of the following:
 The text diff `shadow` prints is diagnostic only; it is not itself the cutover
 criterion. Parity is judged on validator outcomes, not on a clean diff.
 
+**Closing-task parity is not established by Stage 1 — evaluate it before cutover.**
+The renderer sources every closing task's checks from the standing, generic
+fragment (`templates/closing-task-checks.md`), so a rendered contract's
+closing-task checks are mission-agnostic and differ from the mission-specific
+closing checks a human would hand-author. The Stage-1 equivalence proof
+therefore covers **feature-task** parity only; the closing tasks are compared
+structurally (present, fragment-sourced, no `<!-- Specs -->` comment), not by
+validator outcome. So the "validator-outcome parity" criterion above must be
+applied to closing tasks explicitly at cutover: either confirm the generic
+fragment checks give operational coverage equivalent to the hand-authored
+closing checks, or enrich the fragment first. Do not assume full parity from the
+feature-task proof alone.
+
 ## Rollback procedure
 
 The tool is additive and removable without affecting the v1 pipeline. If a
