@@ -298,19 +298,22 @@ fn parse_spec_ref_number(value: &str) -> Result<u32, RenderError> {
 /// `identifier` names the enclosing scenario (`capability/N` or its title) so a
 /// per-entry error can point the author at the offending scenario.
 ///
-/// Stops at the first blank line or next heading; non-entry lines inside the
-/// block are ignored so trailing prose does not break parsing.
+/// Stops at the next heading (or the end of the scenario block). Blank lines and
+/// non-entry prose between or after entries are skipped, so an acceptance block
+/// may separate its entries with blank lines without dropping any. A line that
+/// looks like an entry (`- ...`) but is malformed still fails loud via
+/// [`parse_acceptance_entry`].
 fn parse_acceptance(lines: &[&str], identifier: &str) -> Result<Vec<AcceptanceEntry>, RenderError> {
     let mut entries = Vec::new();
     for raw in lines {
         let line = raw.trim();
-        if line.is_empty() {
-            break;
-        }
         if line.starts_with("#### ") || line.starts_with("### ") {
             break;
         }
         if !line.starts_with("- ") {
+            // Blank lines and trailing prose between/after entries are skipped
+            // rather than terminating the block, so a blank line never silently
+            // drops the entries that follow it.
             continue;
         }
         entries.push(parse_acceptance_entry(line, identifier)?);
@@ -583,6 +586,72 @@ mod tests {
         assert_eq!(scenario.acceptance[1].method, VerificationMethod::Output);
         // Both entries inherit the scenario's Spec Reference.
         assert_eq!(scenario.spec_ref.number, 4);
+    }
+
+    #[test]
+    fn blank_line_after_the_marker_then_entries_are_parsed() {
+        // A blank line between **Acceptance:** and the first entry must NOT be
+        // read as an empty acceptance list.
+        let markdown = "\
+#### Scenario: Blank after the marker
+<!-- spec-ref: 1 -->
+- **WHEN** invoked
+- **THEN** it works
+
+**Acceptance:**
+
+- [task:1] [execution] the check runs
+";
+        let scenarios = parse_specs("widget", markdown).expect("blank after marker is valid");
+        assert_eq!(scenarios.len(), 1);
+        assert_eq!(scenarios[0].acceptance.len(), 1);
+        assert_eq!(scenarios[0].acceptance[0].task_link, 1);
+    }
+
+    #[test]
+    fn blank_lines_between_entries_do_not_drop_any() {
+        // The key fail-loud fix: a blank line between entries must not silently
+        // drop the entries that follow it.
+        let markdown = "\
+#### Scenario: Blank-separated entries
+<!-- spec-ref: 2 -->
+- **WHEN** invoked
+- **THEN** it works
+
+**Acceptance:**
+- [task:1] [execution] first check
+
+- [task:2] [output] second check
+";
+        let scenarios = parse_specs("widget", markdown).expect("blank-separated entries are valid");
+        assert_eq!(
+            scenarios[0].acceptance.len(),
+            2,
+            "no entry is dropped after a blank line"
+        );
+        assert_eq!(scenarios[0].acceptance[0].task_link, 1);
+        assert_eq!(scenarios[0].acceptance[1].task_link, 2);
+    }
+
+    #[test]
+    fn non_entry_prose_between_entries_is_skipped_not_terminating() {
+        // Trailing/interleaved non-bullet prose is skipped; entries before and
+        // after such prose are all kept.
+        let markdown = "\
+#### Scenario: Entries with interleaved prose
+<!-- spec-ref: 3 -->
+- **WHEN** invoked
+- **THEN** it works
+
+**Acceptance:**
+- [task:1] [execution] first check
+
+A clarifying note that is not a bullet.
+- [task:2] [output] second check
+";
+        let scenarios = parse_specs("widget", markdown).expect("prose between entries is skipped");
+        assert_eq!(scenarios[0].acceptance.len(), 2);
+        assert_eq!(scenarios[0].acceptance[1].task_link, 2);
     }
 
     #[test]
