@@ -159,10 +159,29 @@ pub struct TaskList {
 }
 
 /// The typed output contract document model produced by the render step.
+///
+/// `body` is the rendered `contract.md`; `warnings` carries non-fatal advisories
+/// (currently the inspection-cap breach) that the CLI emits to stderr without
+/// failing the render.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct RenderedContract {
     /// The fully rendered `contract.md` body.
     pub body: String,
+    /// Non-fatal advisories produced during render (e.g. the inspection-cap
+    /// breach). An empty list means a clean render.
+    pub warnings: Vec<String>,
+}
+
+impl RenderedContract {
+    /// The rendered `contract.md` body.
+    pub fn to_markdown(&self) -> String {
+        self.body.clone()
+    }
+
+    /// The non-fatal render advisories, in the order they were produced.
+    pub fn warnings(&self) -> &[String] {
+        &self.warnings
+    }
 }
 
 /// The fail-loud error surface for the whole crate.
