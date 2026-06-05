@@ -1,0 +1,23 @@
+engines:
+  worker: claude
+  scrutiny_validator: claude
+  usertest_validator: claude
+  adversarial_reviewer_a: claude
+  adversarial_reviewer_b: claude
+  demo_video: claude
+
+# No frontend tasks in this mission (Rust crate extension).
+browser_tools: false
+
+# Worker engine set to claude (not the codex default): Stage 1 (contract-renderer,
+# same environment) found codex workers cannot write under the harness background
+# sandbox and fell back to claude every task. Setting claude upfront avoids the
+# wasted codex dispatch + fallback on each of the 8 tasks. Claude workers run via
+# the Agent tool. Both adversarial reviewers are claude for the same reason.
+
+# Absolute path to the durable plan file (Phase 0).
+plan_file: /Users/home/.claude/plans/computed-coverage.md
+
+# The commit the build starts from (mission/computed-coverage branched off main
+# e93a768). Captured and written in Phase 7 before the first task commit.
+base_sha: e93a76898950346e816d0b1639d37b5c5bf3475c

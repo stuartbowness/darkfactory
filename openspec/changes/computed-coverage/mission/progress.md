@@ -1,0 +1,56 @@
+# Mission: computed-coverage
+
+Started: 2026-06-05T00:41:51Z
+
+## Log
+
+- 2026-06-05T00:41:51Z -- Mission directory created. Planning complete (proposal, spec, design, tasks, coverage-audit, contract all reviewed). Human pre-approved remaining gates + build start.
+- 2026-06-05T00:41:51Z -- Contract testability pre-flight: 17 execution, 11 output, 0 inspection (0% inspection).
+- 2026-06-05T00:42:00Z -- Build base pinned: base_sha=e93a76898950346e816d0b1639d37b5c5bf3475c (branch mission/computed-coverage).
+- 2026-06-05T00:42:00Z -- Plan approved (human pre-approval). 8 tasks, 28 checks in contract. Status -> BUILDING.
+- 2026-06-05T00:50:00Z -- Task 1: worker completed. Commit: cafa105. Staging guard PASS (code-only, no bookkeeping in commit). make check green (60 lib + integration + 10/10 smoke).
+- 2026-06-05T00:50:00Z -- Task 1: contract check refined for accuracy before validation -- the spec_ref->Option change forces mechanical accessor updates in parse/migration tests; the check now guards against WEAKENED render/shadow output assertions, not any test-file touch. Verified by diff: changes to migrated_contract.rs + openspec_validate.rs are mechanical Option-adaptations, no render assertion altered. Worker also replaced 2 pre-existing parse tests that asserted acceptance-less scenarios are DROPPED (the exact behavior Task 1 reverses) -- legitimate.
+- 2026-06-05T00:58:00Z -- Task 1: scrutiny validation PASSED. 15/15 gates PASS; cargo test 79 passed; contract checks 4/4 PASS; test-quality 1 P3 advisory (acceptance-less-with-spec-ref untested). (Validator subagent did not persist its file; orchestrator recovered verdicts from transcript and wrote task-1-scrutiny.md.)
+- 2026-06-05T01:03:00Z -- Task 1: user-test validation PASSED. 4/4 contract checks PASS (verified by running the crate tests; infrastructure-only, nothing SKIP). Report persisted to disk.
+- 2026-06-05T01:05:00Z -- Task 1 complete.
+  - Commit: cafa105
+  - Scrutiny: PASS
+  - User-test: PASS
+  - Demo: SKIPPED (Rust, no frontend)
+  - Fix attempts: 0
+- 2026-06-05T01:05:00Z -- Foundation audit PASSED. RequirementScenario now carries title/behavior and spec_ref: Option<SpecReference>, matching design Type Catalog; parse_specs retains all scenarios. No drift.
+- 2026-06-05T01:20:00Z -- Task 2: worker completed. Commit: e644153. Staging guard PASS (code-only). make check green (69 lib + 19 integration, 9 new coverage tests).
+- 2026-06-05T01:25:00Z -- Task 2: both validators returned PASS (scrutiny 15/15, user-test 7/7). ORCHESTRATOR OVERRIDE: caught a spec /11 gap the checks were too lenient on -- acceptance-less no-spec-ref scenarios report empty capability (capability only lived inside spec_ref). Root cause is a Task-1 model omission (no standalone capability field). Issue task-2-v1.md. Fix attempt 2 dispatched (add capability: String to RequirementScenario, set in parse_specs, use in coverage).
+- 2026-06-05T01:35:00Z -- Task 2: fix v2 complete. Commit: 45e0efd. make check green (89-90 tests). Staging guard PASS. Render byte-identical.
+- 2026-06-05T01:40:00Z -- Task 2: BOTH validators re-run after fix -> PASS. Scrutiny 15/15 (3 advisory nits); user-test 7/7 (check #2 capability now "widget", non-empty).
+- 2026-06-05T01:40:00Z -- Task 2 complete.
+  - Commit: 45e0efd (initial e644153 + fix 45e0efd)
+  - Scrutiny: PASS
+  - User-test: PASS
+  - Demo: SKIPPED (Rust, no frontend)
+  - Fix attempts: 1
+  - Carryover for Task 6/7: capability duplicated on RequirementScenario + SpecReference.
+- 2026-06-05T01:55:00Z -- Task 3: worker completed. Commit: 2a234e7. Staging guard PASS (coverage.rs only). make check green (93 tests incl. 4 render_report tests). Removed 5 stray *.log files the worker left.
+- 2026-06-05T02:00:00Z -- Task 3: both validators PASS (scrutiny 15/15 report persisted; user-test 3/3 byte-for-byte canonical layout). 
+- 2026-06-05T02:00:00Z -- Task 3 complete.
+  - Commit: 2a234e7
+  - Scrutiny: PASS
+  - User-test: PASS
+  - Demo: SKIPPED (Rust, no frontend)
+  - Fix attempts: 0
+  - Carryover for Task 6: add *.log to crate .gitignore.
+- 2026-06-05T02:25:00Z -- Task 4: worker completed. Commit: ab4cd66. Staging guard PASS (cli.rs + tests/coverage.rs + 8 fixtures). make check + make smoke (10/10) green. Manual run on migrated fixture: exit 3, 11 scenarios/8 covered/3 gaps.
+- 2026-06-05T02:30:00Z -- Task 4: both validators PASS (scrutiny 15/15; user-test 7/7, ran the binary - exit 0/2/3 confirmed). 107 tests.
+- 2026-06-05T02:30:00Z -- Task 4 complete.
+  - Commit: ab4cd66
+  - Scrutiny: PASS
+  - User-test: PASS
+  - Demo: SKIPPED (Rust, no frontend)
+  - Fix attempts: 0
+  - ALL 4 FEATURE TASKS DONE. Carryover for Task 6: *.log gitignore; malformed-task-link stderr message; capability duplication.
+- 2026-06-05T02:45:00Z -- Task 5 (smoke) complete. Commit: f778f97. Scrutiny PASS, user-test PASS. make smoke 16/16 (6 new coverage checks). Fix attempts: 0. smoketest.sh only; no demo (Rust).
+- 2026-06-05T03:00:00Z -- Task 6 (cleanup) complete. Commit: 13c6ec2. Scrutiny PASS (gate-1 exempt), user-test PASS. Added *.log gitignore + doc-note on SpecReference.capability; no debris to remove. make check + make smoke green. Fix attempts: 0. (Branch was briefly detached during the worker run; resolved -- HEAD on mission/computed-coverage at 13c6ec2.)
+- 2026-06-05T03:10:00Z -- Task 7 (module-shape re-check) complete. Orchestrator audit (no code commit, per Stage 1 precedent). All Type Catalog types + Module Inventory entries present with matching names. One deliberate drift reconciled: RequirementScenario.capability documented in design.md. Audit written to mission/validations/module-shape-audit.md. No validators (no code to validate).
+- 2026-06-05T03:25:00Z -- Task 8 (docs) complete. Commit: 9f0bf79. Scrutiny PASS, user-test PASS. tool README + repo README + ARCH.md document the coverage subcommand; both README examples reproduce byte-for-byte against the real binary. make check green. Fix attempts: 0.
+- 2026-06-05T03:25:00Z -- BUILD LOOP COMPLETE. All 8 tasks done (1 fix attempt total, on Task 2). Entering Phase 9.
+- 2026-06-05T03:30:00Z -- Phase 9 Final gates PASSED. darkfactory-render: make check exit 0, make smoke 16/16. darkfactory-dispatch (untouched): 79 tests pass. No deferrals. Dispatching spec-delta check.
