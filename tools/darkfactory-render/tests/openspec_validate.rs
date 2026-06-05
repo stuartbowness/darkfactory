@@ -80,7 +80,7 @@ fn fixture_spec_parses_through_parse_specs() {
     // The same validate-safe fixture must parse into typed scenarios.
     let scenarios = parse_specs("widget", ACCEPTANCE_SPEC).expect("fixture spec parses");
     assert_eq!(scenarios.len(), 1);
-    assert_eq!(scenarios[0].spec_ref.number, 1);
+    assert_eq!(scenarios[0].spec_ref.as_ref().map(|r| r.number), Some(1));
     assert_eq!(scenarios[0].acceptance.len(), 2);
     let links: Vec<u32> = scenarios[0]
         .acceptance

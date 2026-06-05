@@ -215,7 +215,8 @@ fn inserting_a_scenario_does_not_change_existing_spec_references() {
         .expect("migrated brief-domain-types parses");
     let refs_before: Vec<(String, u32)> = before
         .iter()
-        .map(|s| (s.spec_ref.capability.clone(), s.spec_ref.number))
+        .filter_map(|s| s.spec_ref.as_ref())
+        .map(|r| (r.capability.clone(), r.number))
         .collect();
     assert_eq!(
         refs_before,
@@ -258,7 +259,8 @@ fn inserting_a_scenario_does_not_change_existing_spec_references() {
     // and still resolve to their original scenarios despite the position shift.
     let mut refs_after: Vec<(String, u32)> = after
         .iter()
-        .map(|s| (s.spec_ref.capability.clone(), s.spec_ref.number))
+        .filter_map(|s| s.spec_ref.as_ref())
+        .map(|r| (r.capability.clone(), r.number))
         .collect();
     assert!(
         refs_after.contains(&("brief-domain-types".to_string(), 5)),
@@ -272,8 +274,10 @@ fn inserting_a_scenario_does_not_change_existing_spec_references() {
 
     // And ref 3 still resolves to the same scenario it did before the insert,
     // even though it now sits AFTER the inserted scenario in the file.
-    let three_before = before.iter().find(|s| s.spec_ref.number == 3).unwrap();
-    let three_after = after.iter().find(|s| s.spec_ref.number == 3).unwrap();
+    let has_ref_number =
+        |s: &&RequirementScenario, n: u32| s.spec_ref.as_ref().map(|r| r.number) == Some(n);
+    let three_before = before.iter().find(|s| has_ref_number(s, 3)).unwrap();
+    let three_after = after.iter().find(|s| has_ref_number(s, 3)).unwrap();
     assert_eq!(
         three_before, three_after,
         "ref 3 must resolve to the same scenario before and after the insert"
@@ -339,7 +343,11 @@ fn migrated_tokens_resolve_to_the_same_scenarios_as_positional_refs() {
         // The token resolves: a parsed scenario carries this capability/N.
         let resolved = scenarios
             .iter()
-            .find(|s| s.spec_ref.capability == *capability && s.spec_ref.number == *n)
+            .find(|s| {
+                s.spec_ref
+                    .as_ref()
+                    .is_some_and(|r| r.capability == *capability && r.number == *n)
+            })
             .unwrap_or_else(|| panic!("migrated token {capability}/{n} resolves to a scenario"));
 
         // The migrated capability has the spec-ref token directly under the

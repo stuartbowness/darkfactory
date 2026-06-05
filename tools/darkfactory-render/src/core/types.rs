@@ -108,11 +108,18 @@ pub struct AcceptanceEntry {
     pub task_link: u32,
 }
 
-/// A parsed spec scenario: its identifier, status, and acceptance entries.
+/// A parsed spec scenario: its title, behavior text, identifier, status, and
+/// acceptance entries.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RequirementScenario {
-    /// The `capability/N` identifier of this scenario.
-    pub spec_ref: SpecReference,
+    /// The scenario title (the text after `#### Scenario:`).
+    pub title: String,
+    /// The verbatim, ordered WHEN/THEN/AND behavior bullets that precede the
+    /// `**Acceptance:**` block, with HTML comments and blank lines excluded.
+    pub behavior: Vec<String>,
+    /// The `capability/N` identifier of this scenario. `None` only for an
+    /// acceptance-less scenario that carries no `<!-- spec-ref: N -->` comment.
+    pub spec_ref: Option<SpecReference>,
     /// The scenario status; `None` means omitted (non-deviated).
     pub status: Option<ScenarioStatus>,
     /// The acceptance entries declared under this scenario.

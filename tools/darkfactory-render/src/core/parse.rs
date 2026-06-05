@@ -54,17 +54,18 @@ pub fn parse_specs(
     let mut seen_refs: HashSet<u32> = HashSet::new();
 
     for block in scenario_blocks(spec_markdown) {
-        // Acceptance-less scenarios yield `None` and carry no Spec Reference,
-        // so duplicate detection only ever sees acceptance-carrying scenarios.
-        if let Some(scenario) = parse_scenario(capability, block)? {
-            let number = scenario.spec_ref.number;
+        // Every scenario is retained, including acceptance-less ones. Duplicate
+        // detection applies only to scenarios that carry a Spec Reference.
+        let scenario = parse_scenario(capability, block)?;
+        if let Some(spec_ref) = &scenario.spec_ref {
+            let number = spec_ref.number;
             if !seen_refs.insert(number) {
                 return Err(RenderError::DuplicateSpecReference(format!(
                     "{capability}/{number}"
                 )));
             }
-            scenarios.push(scenario);
         }
+        scenarios.push(scenario);
     }
 
     Ok(scenarios)
@@ -217,17 +218,17 @@ fn scenario_blocks(markdown: &str) -> Vec<Vec<&str>> {
 
 /// Parse one scenario block into a [`RequirementScenario`].
 ///
-/// Returns `Ok(None)` for an acceptance-less scenario (it contributes no
-/// entries and is not required to carry a Spec Reference).
-fn parse_scenario(
-    capability: &str,
-    lines: Vec<&str>,
-) -> Result<Option<RequirementScenario>, RenderError> {
+/// Every scenario is retained, including an acceptance-less one (it contributes
+/// no entries and carries `spec_ref == None` unless it declares a `spec-ref`
+/// comment). An acceptance-carrying scenario without a Spec Reference still
+/// fails loud with [`RenderError::MissingSpecRef`].
+fn parse_scenario(capability: &str, lines: Vec<&str>) -> Result<RequirementScenario, RenderError> {
     let title = scenario_title(lines[0]);
 
     let mut spec_ref_number: Option<u32> = None;
     let mut status_token: Option<&str> = None;
     let mut acceptance_start: Option<usize> = None;
+    let mut behavior: Vec<String> = Vec::new();
 
     for (index, raw) in lines.iter().enumerate().skip(1) {
         let line = raw.trim();
@@ -238,14 +239,26 @@ fn parse_scenario(
         } else if line == ACCEPTANCE_MARKER {
             acceptance_start = Some(index + 1);
             break;
+        } else if is_behavior_bullet(line) {
+            behavior.push(line.to_string());
         }
     }
 
     let status = ScenarioStatus::parse_optional(status_token)?;
 
     let Some(acceptance_start) = acceptance_start else {
-        // No acceptance block: a valid scenario that contributes no entries.
-        return Ok(None);
+        // No acceptance block: a retained scenario that contributes no entries.
+        // It is never required to carry a Spec Reference.
+        return Ok(RequirementScenario {
+            title: title.to_string(),
+            behavior,
+            spec_ref: spec_ref_number.map(|number| SpecReference {
+                capability: capability.to_string(),
+                number,
+            }),
+            status,
+            acceptance: Vec::new(),
+        });
     };
 
     let identifier = scenario_identifier(capability, spec_ref_number, title);
@@ -256,14 +269,24 @@ fn parse_scenario(
 
     let number = spec_ref_number.ok_or(RenderError::MissingSpecRef)?;
 
-    Ok(Some(RequirementScenario {
-        spec_ref: SpecReference {
+    Ok(RequirementScenario {
+        title: title.to_string(),
+        behavior,
+        spec_ref: Some(SpecReference {
             capability: capability.to_string(),
             number,
-        },
+        }),
         status,
         acceptance,
-    }))
+    })
+}
+
+/// Whether a trimmed line is a behavior bullet: `- **WHEN**`, `- **THEN**`, or
+/// `- **AND**`. Blank lines, HTML comments, and other prose are excluded.
+fn is_behavior_bullet(line: &str) -> bool {
+    line.starts_with("- **WHEN**")
+        || line.starts_with("- **THEN**")
+        || line.starts_with("- **AND**")
 }
 
 /// The scenario title after the `#### Scenario:` heading.
@@ -547,10 +570,10 @@ mod tests {
         let scenario = &scenarios[0];
         assert_eq!(
             scenario.spec_ref,
-            SpecReference {
+            Some(SpecReference {
                 capability: "widget".to_string(),
                 number: 1,
-            }
+            })
         );
         assert_eq!(scenario.status, None);
         assert_eq!(scenario.acceptance.len(), 1);
@@ -585,7 +608,7 @@ mod tests {
         assert_eq!(scenario.acceptance[1].task_link, 3);
         assert_eq!(scenario.acceptance[1].method, VerificationMethod::Output);
         // Both entries inherit the scenario's Spec Reference.
-        assert_eq!(scenario.spec_ref.number, 4);
+        assert_eq!(scenario.spec_ref.as_ref().map(|r| r.number), Some(4));
     }
 
     #[test]
@@ -655,29 +678,74 @@ A clarifying note that is not a bullet.
     }
 
     #[test]
-    fn acceptance_less_scenario_parses_and_contributes_no_entries() {
+    fn acceptance_less_scenario_is_retained_with_title_and_behavior() {
+        // Stage 2: a scenario with no **Acceptance:** block is no longer dropped.
+        // It is retained so coverage can see it, carrying its title, its verbatim
+        // WHEN/THEN behavior bullets, no Spec Reference, and no entries.
         let markdown = "\
 #### Scenario: Just a plain scenario
 - **WHEN** something happens
 - **THEN** it is observed
 ";
         let scenarios = parse_specs("widget", markdown).expect("acceptance-less scenario is valid");
+        assert_eq!(
+            scenarios.len(),
+            1,
+            "an acceptance-less scenario is retained"
+        );
+        let scenario = &scenarios[0];
+        assert_eq!(scenario.title, "Just a plain scenario");
+        assert_eq!(
+            scenario.behavior,
+            vec![
+                "- **WHEN** something happens".to_string(),
+                "- **THEN** it is observed".to_string(),
+            ],
+            "the verbatim WHEN/THEN bullets are captured in order"
+        );
+        assert_eq!(
+            scenario.spec_ref, None,
+            "an acceptance-less scenario without a spec-ref comment carries no Spec Reference"
+        );
         assert!(
-            scenarios.is_empty(),
-            "a scenario with no acceptance contributes no entries"
+            scenario.acceptance.is_empty(),
+            "an acceptance-less scenario contributes no entries"
         );
     }
 
     #[test]
-    fn acceptance_less_scenario_does_not_require_a_spec_ref() {
-        // No spec-ref comment and no acceptance: must NOT be MissingSpecRef.
+    fn behavior_text_includes_and_excludes_comments_and_stops_at_acceptance() {
+        // Behavior text is the verbatim WHEN/THEN/AND bullets before
+        // **Acceptance:**, with the spec-ref/status comments and blank lines
+        // excluded, and nothing captured from the acceptance block.
         let markdown = "\
-#### Scenario: No ref, no acceptance
-- **WHEN** something happens
-- **THEN** it is observed
+#### Scenario: A richer behavior
+<!-- spec-ref: 2 -->
+<!-- status: deviated -->
+- **WHEN** invoked
+- **AND** a flag is set
+- **THEN** it does the thing
+
+**Acceptance:**
+- [task:3] [execution] the check runs
 ";
-        let result = parse_specs("widget", markdown);
-        assert_eq!(result, Ok(Vec::new()));
+        let scenarios = parse_specs("widget", markdown).expect("valid spec parses");
+        let scenario = &scenarios[0];
+        assert_eq!(scenario.title, "A richer behavior");
+        assert_eq!(
+            scenario.behavior,
+            vec![
+                "- **WHEN** invoked".to_string(),
+                "- **AND** a flag is set".to_string(),
+                "- **THEN** it does the thing".to_string(),
+            ],
+            "AND is captured, comments and blanks excluded, acceptance bullets excluded"
+        );
+        assert_eq!(
+            scenario.spec_ref.as_ref().map(|r| r.number),
+            Some(2),
+            "an acceptance-carrying scenario carries Some(spec_ref)"
+        );
     }
 
     #[test]

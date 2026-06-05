@@ -165,13 +165,19 @@ struct PlacedEntry<'a> {
 fn placed_entries(scenarios: &[RequirementScenario]) -> Vec<PlacedEntry<'_>> {
     let mut placed = Vec::new();
     for (scenario_index, scenario) in scenarios.iter().enumerate() {
+        // Only acceptance-carrying scenarios place entries, and the parser
+        // guarantees those always carry `Some(spec_ref)`. An acceptance-less
+        // scenario (`spec_ref == None`) has no entries, so it places nothing.
+        let Some(spec_ref) = &scenario.spec_ref else {
+            continue;
+        };
         let deviated = scenario
             .status
             .map(|status| status.is_deviated())
             .unwrap_or(false);
         for (entry_index, entry) in scenario.acceptance.iter().enumerate() {
             placed.push(PlacedEntry {
-                spec_ref: &scenario.spec_ref,
+                spec_ref,
                 deviated,
                 statement: &entry.statement,
                 method: entry.method,
@@ -353,10 +359,12 @@ mod tests {
         acceptance: Vec<AcceptanceEntry>,
     ) -> RequirementScenario {
         RequirementScenario {
-            spec_ref: SpecReference {
+            title: String::new(),
+            behavior: Vec::new(),
+            spec_ref: Some(SpecReference {
                 capability: capability.to_string(),
                 number,
-            },
+            }),
             status,
             acceptance,
         }
