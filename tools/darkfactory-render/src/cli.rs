@@ -18,6 +18,7 @@ use std::fs;
 use std::io::Write;
 use std::path::Path;
 
+use crate::core::coverage::{analyze, check_duplicate_tasks, render_report};
 use crate::core::parse::{parse_fragment, parse_specs, parse_tasks};
 use crate::core::render::{build_model, render};
 use crate::core::shadow::{compare, Diff};
@@ -33,11 +34,19 @@ pub const EXIT_RENDER_ERROR: i32 = 2;
 /// Exit code for `shadow` when the rendered contract differs from the existing
 /// one. Distinct from `EXIT_RENDER_ERROR` so the cutover gate can script it.
 pub const EXIT_DIFFERENT: i32 = 1;
+/// Exit code for `coverage` when the report contains one or more gaps.
+///
+/// Distinct from [`EXIT_USAGE`]/[`EXIT_RENDER_ERROR`] (`2`) and `shadow`'s
+/// [`EXIT_DIFFERENT`] (`1`) so the orchestrator can mechanically tell a clean
+/// audit (`0`) from gaps found (`3`) from a tool error (`2`). A gaps-found run
+/// is a tolerant, non-failing outcome: the report still reaches stdout.
+pub const EXIT_GAPS: i32 = 3;
 
 const USAGE: &str = "\
 usage:
   darkfactory-render render --specs <dir> --tasks <md> --fragment <md>
-  darkfactory-render shadow --specs <dir> --tasks <md> --fragment <md> --existing <contract_md>";
+  darkfactory-render shadow --specs <dir> --tasks <md> --fragment <md> --existing <contract_md>
+  darkfactory-render coverage --specs <dir> --tasks <md>";
 
 /// Run the CLI against `args` (the process arguments WITHOUT the program name),
 /// writing to `out` (stdout) and `err` (stderr), and return the process exit
@@ -59,6 +68,7 @@ pub fn run<O: Write, E: Write>(args: &[String], out: &mut O, err: &mut E) -> i32
     match command.as_str() {
         "render" => run_render(rest, out, err),
         "shadow" => run_shadow(rest, out, err),
+        "coverage" => run_coverage(rest, out, err),
         other => {
             let _ = writeln!(err, "error: unknown subcommand `{other}`\n{USAGE}");
             EXIT_USAGE
@@ -129,6 +139,58 @@ fn run_shadow<O: Write, E: Write>(args: &[String], out: &mut O, err: &mut E) -> 
             EXIT_DIFFERENT
         }
     }
+}
+
+/// The `coverage` subcommand: run the tolerant coverage pipeline and print the
+/// Gap report to stdout.
+///
+/// Exit codes: `0` when the report has no gaps, [`EXIT_GAPS`] (`3`) when it has
+/// one or more, and [`EXIT_USAGE`]/[`EXIT_RENDER_ERROR`] (`2`) for a usage or
+/// parse/IO error. A dangling acceptance link is a gap (exit `3`), never a parse
+/// error: `analyze` is tolerant where `render` fails loud.
+fn run_coverage<O: Write, E: Write>(args: &[String], out: &mut O, err: &mut E) -> i32 {
+    let parsed = match CoverageArgs::parse(args) {
+        Ok(parsed) => parsed,
+        Err(message) => {
+            let _ = writeln!(err, "error: {message}\n{USAGE}");
+            return EXIT_USAGE;
+        }
+    };
+
+    let report = match coverage_pipeline(&parsed.specs, &parsed.tasks) {
+        Ok(report) => report,
+        Err(message) => {
+            let _ = writeln!(err, "error: {message}");
+            return EXIT_RENDER_ERROR;
+        }
+    };
+
+    let has_gaps = !report.gaps.is_empty();
+    let _ = write!(out, "{}", render_report(&report));
+    if has_gaps {
+        EXIT_GAPS
+    } else {
+        0
+    }
+}
+
+/// Read the specs directory and tasks file, then run the tolerant coverage
+/// pipeline: `parse_specs`/`parse_tasks` -> `check_duplicate_tasks` ->
+/// `analyze`.
+///
+/// All file IO lives here; the returned `String` on the error path is the
+/// actionable message the CLI prints. A duplicate task number is a fail-loud
+/// input error, mapped to the parse-error exit; a dangling acceptance link is
+/// not — `analyze` records it as a gap.
+fn coverage_pipeline(
+    specs_dir: &str,
+    tasks_path: &str,
+) -> Result<crate::core::types::CoverageReport, String> {
+    let scenarios = read_scenarios(specs_dir)?;
+    let tasks_md = read_to_string(tasks_path)?;
+    let tasks = parse_tasks(&tasks_md).map_err(render_error_message)?;
+    check_duplicate_tasks(&tasks).map_err(render_error_message)?;
+    Ok(analyze(&scenarios, &tasks))
 }
 
 /// Read every `<specs_dir>/<capability>/spec.md`, parse the tasks and fragment,
@@ -241,6 +303,25 @@ impl ShadowArgs {
             tasks: flags.take("--tasks")?,
             fragment: flags.take("--fragment")?,
             existing: flags.take("--existing")?,
+        };
+        flags.finish()?;
+        Ok(parsed)
+    }
+}
+
+/// The parsed flags for `coverage` (just `--specs` and `--tasks`; no fragment
+/// or existing contract, since coverage neither renders nor diffs).
+struct CoverageArgs {
+    specs: String,
+    tasks: String,
+}
+
+impl CoverageArgs {
+    fn parse(args: &[String]) -> Result<Self, String> {
+        let mut flags = Flags::parse(args)?;
+        let parsed = Self {
+            specs: flags.take("--specs")?,
+            tasks: flags.take("--tasks")?,
         };
         flags.finish()?;
         Ok(parsed)
