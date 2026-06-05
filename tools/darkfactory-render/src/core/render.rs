@@ -360,6 +360,7 @@ mod tests {
     ) -> RequirementScenario {
         RequirementScenario {
             title: String::new(),
+            capability: capability.to_string(),
             behavior: Vec::new(),
             spec_ref: Some(SpecReference {
                 capability: capability.to_string(),

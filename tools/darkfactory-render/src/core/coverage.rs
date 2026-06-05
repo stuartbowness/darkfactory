@@ -31,11 +31,10 @@ pub fn analyze(scenarios: &[RequirementScenario], tasks: &TaskList) -> CoverageR
 
     for (position, scenario) in scenarios.iter().enumerate() {
         if let Some(kinds) = classify(scenario, tasks) {
-            let capability = capability_of(scenario);
             gaps.push((
                 position,
                 CoverageGap {
-                    capability,
+                    capability: scenario.capability.clone(),
                     spec_ref: scenario.spec_ref.clone(),
                     title: scenario.title.clone(),
                     behavior: scenario.behavior.clone(),
@@ -94,15 +93,6 @@ fn classify(scenario: &RequirementScenario, tasks: &TaskList) -> Option<Vec<GapK
     Some(kinds)
 }
 
-/// The capability a scenario belongs to, taken from its spec-ref when present.
-fn capability_of(scenario: &RequirementScenario) -> String {
-    scenario
-        .spec_ref
-        .as_ref()
-        .map(|spec_ref| spec_ref.capability.clone())
-        .unwrap_or_default()
-}
-
 /// Report a duplicate task number as a fail-loud error.
 ///
 /// Used by the CLI path (Task 4) before [`analyze`]. Kept out of `parse_tasks`
@@ -129,6 +119,7 @@ pub fn check_duplicate_tasks(tasks: &TaskList) -> Result<(), RenderError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::core::parse::parse_specs;
     use crate::core::types::{AcceptanceEntry, SpecReference, Task, VerificationMethod};
 
     fn entry(task_link: u32) -> AcceptanceEntry {
@@ -146,6 +137,7 @@ mod tests {
     ) -> RequirementScenario {
         RequirementScenario {
             title: format!("{capability} scenario {number}"),
+            capability: capability.to_string(),
             behavior: vec![format!("WHEN {capability}")],
             spec_ref: Some(SpecReference {
                 capability: capability.to_string(),
@@ -279,6 +271,7 @@ mod tests {
         // a NoAcceptance gap identified by its Spec Reference, not just title.
         let scenarios = vec![RequirementScenario {
             title: "untitled".to_string(),
+            capability: "add-todo".to_string(),
             behavior: vec![],
             spec_ref: Some(SpecReference {
                 capability: "add-todo".to_string(),
@@ -294,6 +287,34 @@ mod tests {
         let spec = report.gaps[0].spec_ref.as_ref().expect("spec-ref retained");
         assert_eq!(spec.capability, "add-todo");
         assert_eq!(spec.number, 7);
+    }
+
+    #[test]
+    fn acceptance_less_scenario_without_spec_ref_gaps_by_its_capability() {
+        // The common gap case: a scenario with WHEN/THEN jotted but no
+        // acceptance and no `<!-- spec-ref: N -->`. It parses to
+        // `spec_ref: None`, yet its gap must still identify by its real
+        // capability (the spec directory name), not the empty string.
+        let markdown = "\
+#### Scenario: A plain jotted scenario
+- **WHEN** something happens
+- **THEN** it is observed
+";
+        let scenarios = parse_specs("widget", markdown).expect("acceptance-less scenario parses");
+        let report = analyze(&scenarios, &tasks(vec![feature(1)]));
+
+        assert_eq!(report.gaps.len(), 1);
+        let gap = &report.gaps[0];
+        assert_eq!(gap.kinds, vec![GapKind::NoAcceptance]);
+        assert_eq!(gap.title, "A plain jotted scenario");
+        assert_eq!(
+            gap.capability, "widget",
+            "a no-spec-ref gap must identify by its capability, not the empty string"
+        );
+        assert!(
+            gap.spec_ref.is_none(),
+            "the scenario carries no spec-ref, so the gap carries none either"
+        );
     }
 
     #[test]

@@ -251,6 +251,7 @@ fn parse_scenario(capability: &str, lines: Vec<&str>) -> Result<RequirementScena
         // It is never required to carry a Spec Reference.
         return Ok(RequirementScenario {
             title: title.to_string(),
+            capability: capability.to_string(),
             behavior,
             spec_ref: spec_ref_number.map(|number| SpecReference {
                 capability: capability.to_string(),
@@ -271,6 +272,7 @@ fn parse_scenario(capability: &str, lines: Vec<&str>) -> Result<RequirementScena
 
     Ok(RequirementScenario {
         title: title.to_string(),
+        capability: capability.to_string(),
         behavior,
         spec_ref: Some(SpecReference {
             capability: capability.to_string(),

@@ -114,6 +114,11 @@ pub struct AcceptanceEntry {
 pub struct RequirementScenario {
     /// The scenario title (the text after `#### Scenario:`).
     pub title: String,
+    /// The capability this scenario belongs to (the spec directory name).
+    /// Always present, even when [`spec_ref`](Self::spec_ref) is `None`, so an
+    /// acceptance-less scenario without a `<!-- spec-ref: N -->` comment can
+    /// still be reported under its real capability rather than an empty one.
+    pub capability: String,
     /// The verbatim, ordered WHEN/THEN/AND behavior bullets that precede the
     /// `**Acceptance:**` block, with HTML comments and blank lines excluded.
     pub behavior: Vec<String>,
