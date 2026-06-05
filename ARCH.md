@@ -85,13 +85,16 @@ A deterministic tool that *renders* `contract.md` from authored sources instead 
 - `core::parse` -- markdown parsing into a typed model (specs, tasks, fragment) plus fail-loud validation
 - `core::render` -- `build_model` (assemble + validate) then `render` (pure projection to the contract)
 - `core::shadow` -- line-based diff of rendered vs existing contract
-- `cli` (with a thin `main.rs`) -- `render` and `shadow` subcommands; file IO, exit codes, stderr warnings
+- `core::coverage` -- tolerant Stage-2 coverage analysis: `analyze` builds a `CoverageReport` (the infallible counterpart to `build_model`, recording dangling/closing-task links as gap kinds instead of erroring), `render_report` projects the Gap report markdown, and `check_duplicate_tasks` fails loud on a duplicate task number (kept out of `parse_tasks` so render/shadow stay permissive)
+- `cli` (with a thin `main.rs`) -- `render`, `shadow`, and `coverage` subcommands; file IO, exit codes, stderr warnings
 
 It composes the contract from two authored sources, carrying check statements verbatim and never inventing checks:
 - per-scenario `acceptance` entries in the specs, grouped by their `[task:N]` link
 - a standing closing-task fragment (`templates/closing-task-checks.md`) joined to each `Closing: <kind>` task
 
 Workers still never see the contract; the worker brief projects `behavior` only. The information walls are unchanged.
+
+**Computed coverage (Stage 2).** The `coverage` subcommand reads the same parsed specs and tasks and prints a Gap report (`# Coverage Gap Report`, a `## Summary` line, then a `## Gaps` section) listing every scenario whose acceptance entries resolve to no valid feature task. It is tolerant: gaps are an expected outcome, not a tool error, so it exits `3` when gaps are found, `0` when fully covered, and `2` only on a usage or parse error.
 
 **Shadow mode / cutover.** In this stage the renderer is READ-ONLY: `darkfactory-render shadow` renders the contract and diffs it against the existing hand-authored one without changing anything. The live mission skill's Phase 5 hand-authoring is NOT wired to the renderer. A later, gated change cuts Phase 5 over to `darkfactory-render render` once the cutover gate holds (validator-outcome parity across diverse missions, separate-session authoring, a seeded failure plus a real defect caught, a rollback path).
 

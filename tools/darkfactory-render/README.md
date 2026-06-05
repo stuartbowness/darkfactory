@@ -35,6 +35,7 @@ error: missing subcommand
 usage:
   darkfactory-render render --specs <dir> --tasks <md> --fragment <md>
   darkfactory-render shadow --specs <dir> --tasks <md> --fragment <md> --existing <contract_md>
+  darkfactory-render coverage --specs <dir> --tasks <md>
 ```
 
 ## `render`
@@ -154,6 +155,92 @@ $ ./target/debug/darkfactory-render shadow \
 
 Exit code 1. The `- ` line is what the hand-authored contract has; the `+ ` line
 is what the renderer produced.
+
+## `coverage`
+
+```
+darkfactory-render coverage --specs <specs_dir> --tasks <tasks.md>
+```
+
+`coverage` is Stage 2: computed coverage. It parses the same specs and tasks the
+`render`/`shadow` commands read, then prints a **coverage gap report** to
+**stdout** — every spec scenario whose `**Acceptance:**` entries don't link to a
+valid feature task. Unlike `render`, it is **tolerant**: a dangling or
+closing-task link is reported as a gap, never raised as a `RenderError`, so the
+command can run on incomplete planning input. It takes no `--fragment` or
+`--existing`, because it neither renders nor diffs the contract.
+
+The report is a `# Coverage Gap Report` title, a `## Summary` line
+(`<total> scenarios, <covered> covered, <gaps> gaps`), and a `## Gaps` section.
+With no gaps the section body is the single line `None.`; otherwise it lists one
+block per gap, each naming the scenario, its **gap kind** (`no acceptance`,
+`dangling task link`, or `closing-task link`), and the scenario's WHEN/THEN
+behavior.
+
+Exit codes:
+
+- **0** — no gaps; every scenario is covered.
+- **3** — one or more gaps found. This is a tolerant, non-failing result: the
+  report printed successfully and `3` is just the count-bearing signal, not a
+  tool error.
+- **2** — a usage or parse error (a bad path, a malformed document, or a
+  duplicate task number); prints `error: <message>` to stderr.
+
+### No gaps (exit 0)
+
+Run against the built binary; output pasted verbatim:
+
+```
+$ ./target/debug/darkfactory-render coverage \
+    --specs tests/fixtures/cli/covered_specs \
+    --tasks tests/fixtures/cli/covered_tasks.md
+# Coverage Gap Report
+
+## Summary
+1 scenarios, 1 covered, 0 gaps
+
+## Gaps
+
+None.
+```
+
+Exit code 0.
+
+### Gaps found (exit 3)
+
+Run against the committed `migrated` fixture; output pasted verbatim:
+
+```
+$ ./target/debug/darkfactory-render coverage \
+    --specs tests/fixtures/migrated/specs \
+    --tasks tests/fixtures/migrated/tasks.md
+# Coverage Gap Report
+
+## Summary
+11 scenarios, 8 covered, 3 gaps
+
+## Gaps
+
+### domain-type-boundary — Type Catalog definition includes glossary relationship
+- Gap kind: no acceptance
+- Behavior:
+  - **WHEN** a reader looks up "Type Catalog" in UBIQUITOUS_LANGUAGE.md
+  - **THEN** the definition states that type names are drawn from the glossary when a matching term exists, and that types not in the glossary are named by the worker
+
+### domain-type-boundary — Type naming chain in Relationships
+- Gap kind: no acceptance
+- Behavior:
+  - **WHEN** a reader looks at the Relationships section of UBIQUITOUS_LANGUAGE.md
+  - **THEN** there is an entry describing the chain: Type Catalog draws names from the glossary, worker briefs list Type Catalog entries, foundation audit checks task 1, module shape re-check verifies all names at the end
+
+### domain-type-boundary — Domain type term present
+- Gap kind: no acceptance
+- Behavior:
+  - **WHEN** a reader looks up "Domain type" in UBIQUITOUS_LANGUAGE.md
+  - **THEN** the definition distinguishes domain types from technical helper types
+```
+
+Exit code 3 (gaps found, not a tool error).
 
 ## Acceptance authoring syntax
 
