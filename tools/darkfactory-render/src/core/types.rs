@@ -88,6 +88,11 @@ impl ScenarioStatus {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SpecReference {
     /// The capability name (the part before `/`).
+    ///
+    /// Always equals the owning [`RequirementScenario::capability`]: `parse.rs`
+    /// sets both from the same source, so they cannot diverge. The field is kept
+    /// (not folded into the scenario) because `render` reads it directly for the
+    /// `<!-- Specs: capability/N -->` comments.
     pub capability: String,
     /// The scenario number N (the part after `/`).
     pub number: u32,
