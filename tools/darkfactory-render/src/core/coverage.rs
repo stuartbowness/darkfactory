@@ -93,6 +93,78 @@ fn classify(scenario: &RequirementScenario, tasks: &TaskList) -> Option<Vec<GapK
     Some(kinds)
 }
 
+/// Project a [`CoverageReport`] into the canonical Gap report markdown.
+///
+/// A pure formatter: `CoverageReport -> String`, no I/O and no errors, mirroring
+/// how [`render`](crate::core::render::render) projects a contract model to a
+/// string. The output is deterministic and byte-identical so fixtures and diffs
+/// stay reliable.
+///
+/// Layout: a `# Coverage Gap Report` title, a `## Summary` line
+/// `<total> scenarios, <covered> covered, <gaps> gaps`, then a `## Gaps`
+/// section. With no gaps the section body is the single line `None.`; otherwise
+/// one block per gap, separated by a blank line. Each block has an
+/// `### <identifier> — <title>` heading (the em dash is U+2014), a
+/// `- Gap kind: <kinds>` line, and a `- Behavior:` line followed by each stored
+/// behavior bullet indented two spaces.
+pub fn render_report(report: &CoverageReport) -> String {
+    let mut out = String::from("# Coverage Gap Report\n");
+    out.push('\n');
+    out.push_str("## Summary\n");
+    out.push_str(&format!(
+        "{} scenarios, {} covered, {} gaps\n",
+        report.total,
+        report.covered,
+        report.gaps.len()
+    ));
+    out.push('\n');
+    out.push_str("## Gaps\n");
+
+    if report.gaps.is_empty() {
+        out.push('\n');
+        out.push_str("None.\n");
+        return out;
+    }
+
+    for gap in &report.gaps {
+        out.push('\n');
+        out.push_str(&format!("### {} — {}\n", gap_identifier(gap), gap.title));
+        out.push_str(&format!("- Gap kind: {}\n", gap_kinds(&gap.kinds)));
+        out.push_str("- Behavior:\n");
+        for line in &gap.behavior {
+            out.push_str(&format!("  {line}\n"));
+        }
+    }
+
+    out
+}
+
+/// The `### ` heading identifier for a gap: `<capability>/<N>` when the gap
+/// carries a Spec Reference, otherwise the bare `<capability>`.
+fn gap_identifier(gap: &CoverageGap) -> String {
+    match &gap.spec_ref {
+        Some(spec_ref) => format!("{}/{}", gap.capability, spec_ref.number),
+        None => gap.capability.clone(),
+    }
+}
+
+/// Render the gap's distinct kinds as comma-separated labels, in stored order.
+///
+/// Labels map exactly: `NoAcceptance` -> `no acceptance`,
+/// `DanglingTaskLink` -> `dangling task link`,
+/// `ClosingTaskLink` -> `closing-task link`.
+fn gap_kinds(kinds: &[GapKind]) -> String {
+    kinds
+        .iter()
+        .map(|kind| match kind {
+            GapKind::NoAcceptance => "no acceptance",
+            GapKind::DanglingTaskLink => "dangling task link",
+            GapKind::ClosingTaskLink => "closing-task link",
+        })
+        .collect::<Vec<_>>()
+        .join(", ")
+}
+
 /// Report a duplicate task number as a fail-loud error.
 ///
 /// Used by the CLI path (Task 4) before [`analyze`]. Kept out of `parse_tasks`
@@ -314,6 +386,138 @@ mod tests {
         assert!(
             gap.spec_ref.is_none(),
             "the scenario carries no spec-ref, so the gap carries none either"
+        );
+    }
+
+    fn gap(
+        capability: &str,
+        number: Option<u32>,
+        title: &str,
+        behavior: Vec<&str>,
+        kinds: Vec<GapKind>,
+    ) -> CoverageGap {
+        CoverageGap {
+            capability: capability.to_string(),
+            spec_ref: number.map(|number| SpecReference {
+                capability: capability.to_string(),
+                number,
+            }),
+            title: title.to_string(),
+            behavior: behavior.into_iter().map(str::to_string).collect(),
+            kinds,
+        }
+    }
+
+    #[test]
+    fn render_report_emits_the_canonical_gaps_layout() {
+        let report = CoverageReport {
+            gaps: vec![
+                gap(
+                    "gadget",
+                    Some(1),
+                    "Sync gadget",
+                    vec!["- **WHEN** a gadget is edited", "- **THEN** it syncs"],
+                    vec![GapKind::DanglingTaskLink],
+                ),
+                gap(
+                    "widget",
+                    Some(2),
+                    "Delete widget",
+                    vec![
+                        "- **WHEN** the user deletes a widget",
+                        "- **THEN** it is removed",
+                    ],
+                    vec![GapKind::NoAcceptance],
+                ),
+            ],
+            total: 3,
+            covered: 1,
+        };
+
+        let expected = "\
+# Coverage Gap Report
+
+## Summary
+3 scenarios, 1 covered, 2 gaps
+
+## Gaps
+
+### gadget/1 — Sync gadget
+- Gap kind: dangling task link
+- Behavior:
+  - **WHEN** a gadget is edited
+  - **THEN** it syncs
+
+### widget/2 — Delete widget
+- Gap kind: no acceptance
+- Behavior:
+  - **WHEN** the user deletes a widget
+  - **THEN** it is removed
+";
+
+        assert_eq!(render_report(&report), expected);
+    }
+
+    #[test]
+    fn render_report_emits_the_canonical_no_gaps_layout() {
+        let report = CoverageReport {
+            gaps: vec![],
+            total: 3,
+            covered: 3,
+        };
+
+        let expected = "\
+# Coverage Gap Report
+
+## Summary
+3 scenarios, 3 covered, 0 gaps
+
+## Gaps
+
+None.
+";
+
+        assert_eq!(render_report(&report), expected);
+    }
+
+    #[test]
+    fn render_report_uses_bare_capability_when_a_gap_has_no_spec_ref() {
+        let report = CoverageReport {
+            gaps: vec![gap(
+                "widget",
+                None,
+                "A plain jotted scenario",
+                vec!["- **WHEN** something happens"],
+                vec![GapKind::NoAcceptance],
+            )],
+            total: 1,
+            covered: 0,
+        };
+
+        let rendered = render_report(&report);
+        assert!(
+            rendered.contains("### widget — A plain jotted scenario\n"),
+            "a no-spec-ref gap heading must be the bare capability, got:\n{rendered}"
+        );
+    }
+
+    #[test]
+    fn render_report_lists_multiple_kinds_comma_separated_in_stored_order() {
+        let report = CoverageReport {
+            gaps: vec![gap(
+                "gadget",
+                Some(1),
+                "Mixed gap",
+                vec!["- **WHEN** x"],
+                vec![GapKind::DanglingTaskLink, GapKind::ClosingTaskLink],
+            )],
+            total: 1,
+            covered: 0,
+        };
+
+        assert!(
+            render_report(&report).contains("- Gap kind: dangling task link, closing-task link\n"),
+            "distinct kinds render comma-separated in stored order with exact labels"
         );
     }
 
