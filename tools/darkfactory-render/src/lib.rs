@@ -11,6 +11,7 @@
 //! `crate::core::types`.
 pub mod cli;
 pub mod core {
+    pub mod coverage;
     pub mod parse;
     pub mod render;
     pub mod shadow;

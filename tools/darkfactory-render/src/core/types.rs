@@ -218,6 +218,52 @@ pub enum RenderError {
     FeatureTaskNoChecks(u32),
     #[error("unknown closing-task kind: {0}")]
     UnknownClosingKind(String),
+    #[error("duplicate task number {0}: {1}")]
+    DuplicateTaskNumber(u32, String),
+}
+
+/// Why a scenario is uncovered.
+///
+/// Each variant is one reason an acceptance entry (or the scenario as a whole)
+/// fails to link to a valid feature task. A scenario can exhibit more than one
+/// kind across its entries; coverage lists each distinct kind once.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum GapKind {
+    /// The scenario has zero acceptance entries.
+    NoAcceptance,
+    /// An acceptance entry links to a task number that matches no task.
+    DanglingTaskLink,
+    /// An acceptance entry links to a closing task (`closing_kind == Some`).
+    ClosingTaskLink,
+}
+
+/// One uncovered scenario: a scenario none of whose acceptance entries links to
+/// a valid feature task, plus the distinct reasons it is uncovered.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CoverageGap {
+    /// The capability this scenario belongs to.
+    pub capability: String,
+    /// The scenario's `capability/N` identifier, or `None` for an
+    /// acceptance-less scenario that carries no spec-ref.
+    pub spec_ref: Option<SpecReference>,
+    /// The scenario title (the text after `#### Scenario:`).
+    pub title: String,
+    /// The verbatim WHEN/THEN/AND behavior bullets of the scenario.
+    pub behavior: Vec<String>,
+    /// The distinct gap kinds that apply, in the fixed order
+    /// `NoAcceptance`, `DanglingTaskLink`, `ClosingTaskLink`.
+    pub kinds: Vec<GapKind>,
+}
+
+/// The computed coverage result: the ordered uncovered scenarios plus the totals.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct CoverageReport {
+    /// The uncovered scenarios, ordered by capability name then document position.
+    pub gaps: Vec<CoverageGap>,
+    /// The total number of scenarios considered.
+    pub total: usize,
+    /// The number of scenarios that are covered (not gaps).
+    pub covered: usize,
 }
 
 #[cfg(test)]

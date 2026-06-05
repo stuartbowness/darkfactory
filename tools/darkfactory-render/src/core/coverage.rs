@@ -1,0 +1,314 @@
+//! Tolerant coverage analysis for `darkfactory-render`.
+//!
+//! [`analyze`] is the tolerant counterpart to the strict
+//! [`build_model`](crate::core::render::build_model): where `build_model` fails
+//! loud on a dangling or closing-task link, `analyze` records it as a
+//! [`GapKind`]. It classifies which spec scenarios have no task covering them
+//! and is **infallible** — unresolved links become gap kinds, never errors, so
+//! it can run on incomplete planning input.
+//!
+//! Malformed *input* (a duplicate task number) is a separate concern handled by
+//! [`check_duplicate_tasks`], which the CLI calls before analyzing. It is kept
+//! out of `parse_tasks` so `render`/`shadow` stay permissive and unchanged.
+
+use crate::core::types::{
+    CoverageGap, CoverageReport, GapKind, RenderError, RequirementScenario, TaskList,
+};
+
+/// Classify which spec scenarios have no task covering them.
+///
+/// A scenario is a **gap** when NONE of its acceptance entries links to a valid
+/// feature task (a [`Task`](crate::core::types::Task) whose `closing_kind ==
+/// None`). A scenario with at
+/// least one entry resolving to a feature task is **covered**, even if a sibling
+/// entry has an unresolved link.
+///
+/// This is **infallible**: unresolved links are recorded as [`GapKind`]s, never
+/// returned as errors.
+pub fn analyze(scenarios: &[RequirementScenario], tasks: &TaskList) -> CoverageReport {
+    let total = scenarios.len();
+    let mut gaps: Vec<(usize, CoverageGap)> = Vec::new();
+
+    for (position, scenario) in scenarios.iter().enumerate() {
+        if let Some(kinds) = classify(scenario, tasks) {
+            let capability = capability_of(scenario);
+            gaps.push((
+                position,
+                CoverageGap {
+                    capability,
+                    spec_ref: scenario.spec_ref.clone(),
+                    title: scenario.title.clone(),
+                    behavior: scenario.behavior.clone(),
+                    kinds,
+                },
+            ));
+        }
+    }
+
+    // Order by capability name, then by document position within that capability
+    // (which is the source order from `parse_specs`). `position` is already the
+    // global source index, so a stable sort by capability preserves it.
+    gaps.sort_by(|a, b| a.1.capability.cmp(&b.1.capability).then(a.0.cmp(&b.0)));
+
+    let covered = total - gaps.len();
+    CoverageReport {
+        gaps: gaps.into_iter().map(|(_, gap)| gap).collect(),
+        total,
+        covered,
+    }
+}
+
+/// Classify a scenario, returning its distinct gap kinds when it is a gap, or
+/// `None` when it is covered.
+///
+/// A scenario is covered when at least one acceptance entry resolves to a
+/// feature task. Otherwise it is a gap, and the returned kinds are the distinct
+/// reasons present, in the fixed order `NoAcceptance`, `DanglingTaskLink`,
+/// `ClosingTaskLink`.
+fn classify(scenario: &RequirementScenario, tasks: &TaskList) -> Option<Vec<GapKind>> {
+    if scenario.acceptance.is_empty() {
+        return Some(vec![GapKind::NoAcceptance]);
+    }
+
+    let mut dangling = false;
+    let mut closing = false;
+    for entry in &scenario.acceptance {
+        match tasks
+            .tasks
+            .iter()
+            .find(|task| task.number == entry.task_link)
+        {
+            None => dangling = true,
+            Some(task) if task.closing_kind.is_some() => closing = true,
+            Some(_) => return None, // resolves to a feature task: covered.
+        }
+    }
+
+    let mut kinds = Vec::new();
+    if dangling {
+        kinds.push(GapKind::DanglingTaskLink);
+    }
+    if closing {
+        kinds.push(GapKind::ClosingTaskLink);
+    }
+    Some(kinds)
+}
+
+/// The capability a scenario belongs to, taken from its spec-ref when present.
+fn capability_of(scenario: &RequirementScenario) -> String {
+    scenario
+        .spec_ref
+        .as_ref()
+        .map(|spec_ref| spec_ref.capability.clone())
+        .unwrap_or_default()
+}
+
+/// Report a duplicate task number as a fail-loud error.
+///
+/// Used by the CLI path (Task 4) before [`analyze`]. Kept out of `parse_tasks`
+/// so render/shadow stay permissive.
+///
+/// # Errors
+///
+/// [`DuplicateTaskNumber`](RenderError::DuplicateTaskNumber) when two tasks
+/// share a number.
+pub fn check_duplicate_tasks(tasks: &TaskList) -> Result<(), RenderError> {
+    let mut seen: Vec<u32> = Vec::with_capacity(tasks.tasks.len());
+    for task in &tasks.tasks {
+        if seen.contains(&task.number) {
+            return Err(RenderError::DuplicateTaskNumber(
+                task.number,
+                task.name.clone(),
+            ));
+        }
+        seen.push(task.number);
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::core::types::{AcceptanceEntry, SpecReference, Task, VerificationMethod};
+
+    fn entry(task_link: u32) -> AcceptanceEntry {
+        AcceptanceEntry {
+            statement: "check".to_string(),
+            method: VerificationMethod::Execution,
+            task_link,
+        }
+    }
+
+    fn scenario(
+        capability: &str,
+        number: u32,
+        acceptance: Vec<AcceptanceEntry>,
+    ) -> RequirementScenario {
+        RequirementScenario {
+            title: format!("{capability} scenario {number}"),
+            behavior: vec![format!("WHEN {capability}")],
+            spec_ref: Some(SpecReference {
+                capability: capability.to_string(),
+                number,
+            }),
+            status: None,
+            acceptance,
+        }
+    }
+
+    fn feature(number: u32) -> Task {
+        Task {
+            number,
+            name: format!("feature {number}"),
+            closing_kind: None,
+        }
+    }
+
+    fn closing(number: u32, kind: &str) -> Task {
+        Task {
+            number,
+            name: format!("closing {number}"),
+            closing_kind: Some(kind.to_string()),
+        }
+    }
+
+    fn tasks(tasks: Vec<Task>) -> TaskList {
+        TaskList { tasks }
+    }
+
+    #[test]
+    fn scenario_with_no_acceptance_entries_is_a_no_acceptance_gap() {
+        let scenarios = vec![scenario("add-todo", 1, vec![])];
+        let report = analyze(&scenarios, &tasks(vec![feature(1)]));
+
+        assert_eq!(report.total, 1);
+        assert_eq!(report.covered, 0);
+        assert_eq!(report.gaps.len(), 1);
+        assert_eq!(report.gaps[0].kinds, vec![GapKind::NoAcceptance]);
+        assert_eq!(report.gaps[0].capability, "add-todo");
+        assert_eq!(report.gaps[0].title, "add-todo scenario 1");
+    }
+
+    #[test]
+    fn scenario_linking_only_to_a_missing_task_is_a_dangling_gap() {
+        let scenarios = vec![scenario("add-todo", 1, vec![entry(99)])];
+        let report = analyze(&scenarios, &tasks(vec![feature(1)]));
+
+        assert_eq!(report.gaps.len(), 1);
+        assert_eq!(report.gaps[0].kinds, vec![GapKind::DanglingTaskLink]);
+        assert_eq!(report.covered, 0);
+    }
+
+    #[test]
+    fn scenario_linking_only_to_a_closing_task_is_a_closing_gap() {
+        let scenarios = vec![scenario("add-todo", 1, vec![entry(2)])];
+        let report = analyze(
+            &scenarios,
+            &tasks(vec![feature(1), closing(2, "smoke-test")]),
+        );
+
+        assert_eq!(report.gaps.len(), 1);
+        assert_eq!(report.gaps[0].kinds, vec![GapKind::ClosingTaskLink]);
+        assert_eq!(report.covered, 0);
+    }
+
+    #[test]
+    fn one_valid_feature_link_covers_the_scenario_despite_an_unresolved_sibling() {
+        // First entry dangles (task 99 missing); second resolves to feature 1.
+        let scenarios = vec![scenario("add-todo", 1, vec![entry(99), entry(1)])];
+        let report = analyze(&scenarios, &tasks(vec![feature(1)]));
+
+        assert!(report.gaps.is_empty(), "a valid feature link covers it");
+        assert_eq!(report.total, 1);
+        assert_eq!(report.covered, 1);
+    }
+
+    #[test]
+    fn distinct_kinds_are_listed_once_each_in_fixed_order() {
+        // Two dangling entries and one closing entry: DanglingTaskLink and
+        // ClosingTaskLink each appear once, dangling before closing.
+        let scenarios = vec![scenario(
+            "add-todo",
+            1,
+            vec![entry(99), entry(98), entry(2)],
+        )];
+        let report = analyze(
+            &scenarios,
+            &tasks(vec![feature(1), closing(2, "smoke-test")]),
+        );
+
+        assert_eq!(report.gaps.len(), 1);
+        assert_eq!(
+            report.gaps[0].kinds,
+            vec![GapKind::DanglingTaskLink, GapKind::ClosingTaskLink]
+        );
+    }
+
+    #[test]
+    fn gaps_are_ordered_by_capability_then_document_position() {
+        // Document order: beta/1, alpha/2, alpha/1. Expected gap order:
+        // alpha/2, alpha/1 (document position within capability), then beta/1.
+        let scenarios = vec![
+            scenario("beta", 1, vec![]),
+            scenario("alpha", 2, vec![]),
+            scenario("alpha", 1, vec![]),
+        ];
+        let report = analyze(&scenarios, &tasks(vec![feature(1)]));
+
+        let order: Vec<_> = report
+            .gaps
+            .iter()
+            .map(|gap| {
+                let spec = gap.spec_ref.as_ref().expect("spec-ref present");
+                (gap.capability.clone(), spec.number)
+            })
+            .collect();
+        assert_eq!(
+            order,
+            vec![
+                ("alpha".to_string(), 2),
+                ("alpha".to_string(), 1),
+                ("beta".to_string(), 1),
+            ]
+        );
+    }
+
+    #[test]
+    fn acceptance_less_scenario_with_a_spec_ref_is_a_no_acceptance_gap_carrying_its_ref() {
+        // A scenario with a `<!-- spec-ref: N -->` but no acceptance entries:
+        // a NoAcceptance gap identified by its Spec Reference, not just title.
+        let scenarios = vec![RequirementScenario {
+            title: "untitled".to_string(),
+            behavior: vec![],
+            spec_ref: Some(SpecReference {
+                capability: "add-todo".to_string(),
+                number: 7,
+            }),
+            status: None,
+            acceptance: vec![],
+        }];
+        let report = analyze(&scenarios, &tasks(vec![feature(1)]));
+
+        assert_eq!(report.gaps.len(), 1);
+        assert_eq!(report.gaps[0].kinds, vec![GapKind::NoAcceptance]);
+        let spec = report.gaps[0].spec_ref.as_ref().expect("spec-ref retained");
+        assert_eq!(spec.capability, "add-todo");
+        assert_eq!(spec.number, 7);
+    }
+
+    #[test]
+    fn check_duplicate_tasks_accepts_distinct_numbers() {
+        let list = tasks(vec![feature(1), feature(2), closing(3, "smoke-test")]);
+        assert_eq!(check_duplicate_tasks(&list), Ok(()));
+    }
+
+    #[test]
+    fn check_duplicate_tasks_rejects_a_shared_number() {
+        let list = tasks(vec![feature(1), feature(1)]);
+        let err = check_duplicate_tasks(&list).expect_err("duplicate number is an error");
+        assert_eq!(
+            err,
+            RenderError::DuplicateTaskNumber(1, "feature 1".to_string())
+        );
+    }
+}
