@@ -7,6 +7,8 @@
 #      and the existing contract file is left BYTE-UNCHANGED (the read-only
 #      guarantee that underpins the shadow/cutover mechanism).
 #   3. `shadow` vs a deliberately different contract -> exit 1 + a non-empty diff.
+#   4. `coverage` over a fixture with gaps -> exit 3 + the Gap report summary.
+#   5. `coverage` over a fully-covered fixture -> exit 0 + "0 gaps" / "None.".
 #
 # Portable POSIX sh: runs on both Debian/Ubuntu (GNU) and macOS (BSD). No
 # GNU-only flags (no `sed -i`, `readlink -f`, `grep -P`, `stat -c`); `cksum` is
@@ -23,6 +25,10 @@ TASKS="tests/fixtures/cli/tasks.md"
 FRAGMENT="tests/fixtures/cli/fragment.md"
 EXISTING_IDENTICAL="tests/fixtures/cli/contract_identical.md"
 EXISTING_DIFFERENT="tests/fixtures/cli/contract_different.md"
+GAP_SPECS="tests/fixtures/migrated/specs"
+GAP_TASKS="tests/fixtures/migrated/tasks.md"
+COVERED_SPECS="tests/fixtures/cli/covered_specs"
+COVERED_TASKS="tests/fixtures/cli/covered_tasks.md"
 
 TMPDIR=$(mktemp -d /tmp/render-smoke.XXXXXX)
 PASS=0
@@ -118,6 +124,34 @@ DIFF_CODE=0
 
 check "shadow (different) exits 1" [ "$DIFF_CODE" -eq 1 ]
 check "shadow (different) emits a non-empty diff" [ -s "$DIFF_OUT" ]
+
+echo ""
+
+# --- Test 4: coverage over a fixture with gaps (gap path) ---
+echo "Test 4: coverage flags uncovered scenarios"
+GAP_OUT="$TMPDIR/coverage-gap.out"
+GAP_ERR="$TMPDIR/coverage-gap.err"
+GAP_CODE=0
+"$BIN" coverage --specs "$GAP_SPECS" --tasks "$GAP_TASKS" \
+    >"$GAP_OUT" 2>"$GAP_ERR" || GAP_CODE=$?
+
+check "coverage (gaps) exits 3" [ "$GAP_CODE" -eq 3 ]
+check "coverage stdout has '# Coverage Gap Report' title" contains "$GAP_OUT" "# Coverage Gap Report"
+check "coverage (gaps) reports the expected summary" contains "$GAP_OUT" "11 scenarios, 8 covered, 3 gaps"
+
+echo ""
+
+# --- Test 5: coverage over a fully-covered fixture (no-gap path) ---
+echo "Test 5: coverage passes when every scenario is covered"
+COVERED_OUT="$TMPDIR/coverage-covered.out"
+COVERED_ERR="$TMPDIR/coverage-covered.err"
+COVERED_CODE=0
+"$BIN" coverage --specs "$COVERED_SPECS" --tasks "$COVERED_TASKS" \
+    >"$COVERED_OUT" 2>"$COVERED_ERR" || COVERED_CODE=$?
+
+check "coverage (no gaps) exits 0" [ "$COVERED_CODE" -eq 0 ]
+check "coverage (no gaps) reports '0 gaps'" contains "$COVERED_OUT" "0 gaps"
+check "coverage (no gaps) reports 'None.'" contains "$COVERED_OUT" "None."
 
 echo ""
 
