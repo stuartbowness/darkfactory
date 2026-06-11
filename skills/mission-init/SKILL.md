@@ -10,10 +10,10 @@ Verify the current project is ready to run `/mission`. Check skill symlinks, ini
 
 ## Step 1: Check Skill Symlinks
 
-Check these 13 owned skills:
+Check these 12 owned skills:
 
 ```bash
-mission mission-resume mission-status mission-init grill prd language tdd test-quality security adversarial dispatch artifact-review
+mission mission-resume mission-status mission-init grill language tdd test-quality security adversarial dispatch artifact-review
 ```
 
 For each skill, verify:
@@ -29,7 +29,7 @@ Use this status format:
   [x] /mission - symlink OK
   [ ] /adversarial - missing (symlink does not exist)
   [!] /dispatch - broken (symlink exists but target missing)
-  [!] /prd - wrong target (no SKILL.md in target directory)
+  [!] /language - wrong target (no SKILL.md in target directory)
   [!] /tdd - wrong source (resolves to different repo root)
 ```
 
@@ -37,7 +37,7 @@ Use a Bash pattern that always exits 0:
 
 ```bash
 df_root=""
-for skill in mission mission-resume mission-status mission-init grill prd language tdd test-quality security adversarial dispatch artifact-review; do
+for skill in mission mission-resume mission-status mission-init grill language tdd test-quality security adversarial dispatch artifact-review; do
   link="$HOME/.claude/skills/$skill"
 
   if [ ! -L "$link" ]; then
@@ -62,10 +62,10 @@ done
 
 If any required skill is missing, broken, or has a wrong target, instruct the user to run `install.sh` from their Darkfactory clone directory. Then tell them to restart Claude Code and re-run `/mission-init`. Stop after reporting the missing skill fixes.
 
-If all 13 skills are present and resolve correctly, report:
+If all 12 skills are present and resolve correctly, report:
 
 ```text
-All 13 skills: OK
+All 12 skills: OK
 ```
 
 Then continue.
@@ -269,7 +269,6 @@ Skills (via ~/.claude/skills/ symlinks):
   [x] /mission-status
   [x] /mission-init
   [x] /grill
-  [x] /prd
   [x] /language
   [x] /tdd
   [x] /test-quality
@@ -279,6 +278,7 @@ Skills (via ~/.claude/skills/ symlinks):
   [x] /artifact-review
 
 Optional standalone skills:
+  [ ] /prd (optional - standalone)
   [ ] /arch-review (optional - standalone)
   [ ] /domain-model (optional - standalone)
   [ ] /module-design (optional - standalone)
@@ -319,6 +319,7 @@ Ready: run /mission to start.
 
 Also check optional standalone skills at these locations:
 
+- `$HOME/.claude/skills/prd`
 - `$HOME/.claude/skills/arch-review`
 - `$HOME/.claude/skills/domain-model`
 - `$HOME/.claude/skills/module-design`

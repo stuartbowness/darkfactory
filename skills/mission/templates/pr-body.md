@@ -1,5 +1,3 @@
-Closes #<PRD issue number from plan>
-
 ## Mission: <change-name>
 
 ### Tasks

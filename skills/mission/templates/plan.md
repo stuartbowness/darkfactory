@@ -26,8 +26,6 @@ Captured so this mission can be reproduced against the exact skill version that 
 - Contract: openspec/changes/<change-name>/contract.md
 
 ## Spec Coverage Audit
-- PRD issue: <GitHub issue URL from Phase 3>
-- PRD issue number: <N>
 - Coverage table: <pending | complete>
 - Gaps found: <count or "none">
 - Gaps resolved: <added N tasks | deferred N | skipped N>
@@ -36,10 +34,10 @@ Captured so this mission can be reproduced against the exact skill version that 
 Defaults defined in Phase 6 config.yaml. 
 
 ## Deterministic Anchors
-Filled during Phase 4.3 (5 anchors) and Phase 4.3a (task strategy anchor). The orchestrator references these when populating worker briefs and making phase decisions.
+Filled during Phase 4.2 (5 anchors) and Phase 4.2a (task strategy anchor). The orchestrator references these when populating worker briefs and making phase decisions.
 
 - Workspace layout: <e.g., "two-crate workspace: core lib + cli binary" (see design.md Architecture Decision)>
-- Task decomposition strategy: <e.g., "layered, 7 feature tasks + 5 closing" (see Phase 4.3a approval)>
+- Task decomposition strategy: <e.g., "layered, 7 feature tasks + 5 closing" (see Phase 4.2a approval)>
 - Primary domain types: <e.g., "Todo, TodoStatus, IronTodoError" (see design.md Type Catalog)>
 - Error handling strategy: <e.g., "thiserror in core, never anyhow" (see design.md Error Strategy)>
 - Test strategy: <e.g., "unit + integration, serial with DB" (see design.md)>
@@ -48,8 +46,7 @@ Filled during Phase 4.3 (5 anchors) and Phase 4.3a (task strategy anchor). The o
 ## Skills to Use
 - /grill -- alignment interview (planning)
 - /language -- shared language (planning)
-- /prd -- structured PRD from grill conversation (planning)
-- openspec CLI -- create artifacts sequentially: proposal, specs, design, tasks (planning)
+- openspec CLI -- drive artifact order for specs, design, tasks (planning; proposal.md is authored directly in Phase 3, never regenerated from the schema template)
 - /review -- code review (scrutiny validation)
 - /simplify -- simplify pass (scrutiny validation)
 - /security -- security check (scrutiny validation, sensitive tasks only)
@@ -92,7 +89,6 @@ After all tasks complete:
 ## Review Checkpoints
 
 - Phase 2 (UBIQUITOUS_LANGUAGE.md): <pending>
-- Phase 3 (PRD): <pending>
 
 ## Current Task: <N or "none">
 ## Current Step: <step name or "none">

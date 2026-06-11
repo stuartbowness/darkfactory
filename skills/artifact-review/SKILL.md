@@ -1,7 +1,7 @@
 ---
 name: artifact-review
 user-invokable: true
-description: Dispatch a Codex review of a planning artifact (language glossary, PRD, spec, design, tasks, contract, or any structured document). Use when user wants a second opinion on an artifact before approving it, or when the mission skill needs a review gate before human Q&A.
+description: Dispatch a Codex review of a planning artifact (language glossary, proposal, spec, design, tasks, contract, or any structured document). Use when user wants a second opinion on an artifact before approving it, or when the mission skill needs a review gate before human Q&A.
 ---
 
 # Artifact Review
@@ -34,7 +34,6 @@ Read the artifact the user wants reviewed. Then gather optional context:
 1. **UBIQUITOUS_LANGUAGE.md** — read from the repo root if it exists. If absent, use "Not established."
 2. **Prior artifacts** — if the user named specific prior artifacts, read those. If not, auto-discover from the current change directory. First, find the active change: look for a single directory under `openspec/changes/` (if multiple exist, ask the user which change to scope to). Then check the artifact chain in dependency order within that directory:
    - `UBIQUITOUS_LANGUAGE.md` (repo root)
-   - PRD (read from the GitHub issue URL in the mission plan if available, or ask)
    - `openspec/changes/<change-name>/proposal.md`
    - `openspec/changes/<change-name>/specs/`
    - `openspec/changes/<change-name>/design.md`
@@ -46,7 +45,6 @@ Read the artifact the user wants reviewed. Then gather optional context:
 
 3. **Artifact type** — infer from the file name or content:
    - `UBIQUITOUS_LANGUAGE.md` → "UBIQUITOUS_LANGUAGE.md"
-   - GitHub issue PRD → "PRD"
    - `proposal.md` → "proposal.md"
    - `specs/<capability>/spec.md` → "spec: <capability>"
    - `design.md` → "design.md"

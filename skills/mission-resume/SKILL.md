@@ -137,7 +137,7 @@ Enter Claude Code **plan mode**. The goal is an accurate operating manual that s
 
 ### If a plan file exists (restore + reconcile)
 
-Restore the plan from the existing file rather than re-deriving it. It already holds the orchestrator phase, current task/step, engine config, artifact paths, PRD issue number, and codebase deltas.
+Restore the plan from the existing file rather than re-deriving it. It already holds the orchestrator phase, current task/step, engine config, artifact paths, and codebase deltas.
 
 Before trusting it, reconcile its state against disk reality:
 
@@ -200,4 +200,5 @@ Two adjustments when running Phase 9 from here:
   PR_URL=$(gh pr list --head "$BRANCH" --state open --json url --jq '.[].url' | head -1)
   ```
   If `PR_URL` is non-empty, reuse it (do not try to demote a promoted PR back to draft); otherwise create the draft PR as Phase 9 describes. Matching only drafts would miss a PR a human already promoted, and `gh pr create` would then fail against the existing PR.
+- **Legacy PRD issues.** A mission planned before the proposal consolidation may reference a PRD GitHub issue in its plan or coverage-audit.md. Phase 9 no longer comments on, links, or closes any issue -- if the restored mission has one, surface it at Present-to-Human so the human can close the issue manually after merge.
 - **base_sha guard.** Phase 9's adversarial review reads the pinned `base_sha` from config.yaml. If `base_sha` is missing or not a valid commit (`git cat-file -e "${BASE_SHA}^{commit}" 2>/dev/null` fails), do **not** abort -- stop and ask the user which commit this mission branched from (as in step 3c), then write it to config.yaml before running the review. Also run the **stale `base_sha` check** from step 3c: if bookkeeping commits sit between `base_sha` and the first `[task-N]` commit, the review walks them as if they were mission work. Stop, confirm the corrected `base_sha` with the user, and write it to config.yaml before running the review.

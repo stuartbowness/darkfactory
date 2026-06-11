@@ -28,7 +28,7 @@ openspec/changes/<change-name>/
   specs/<cap>/spec.md      # WHEN/THEN requirements
   design.md                # Architecture decisions, module inventory, type catalog
   tasks.md                 # Ordered checklist with topology metadata
-  coverage-audit.md        # PRD-to-task traceability
+  coverage-audit.md        # Proposal-to-task traceability
   contract.md              # Observable behavior checks, traced to specs
   mission/
     config.yaml            # Engine per role (codex or claude)
@@ -113,4 +113,4 @@ One version for the whole repo: the GitHub release tag (v1.x). Internal tools (d
 - darkfactory-dispatch (Rust supervisor: process isolation, timeout, heartbeat, structured results) -- pinned at v1.0.0
 - darkfactory-render (Rust contract renderer: deterministic projection of contract.md, shadow-mode diff) -- pinned at v1.0.0
 - OpenSpec CLI (planning artifact generation)
-- GitHub CLI (PRD issues, draft PRs)
+- GitHub CLI (draft PRs)

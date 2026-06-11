@@ -23,19 +23,19 @@ Write your report to: <absolute path to mission/validations/spec-delta.md>
 ## Result: CLEAN | DISCREPANCIES FOUND
 
 ## Coverage Verification
-| # | PRD Requirement | Audit Status | Verified | Notes |
+| # | Proposal Requirement | Audit Status | Verified | Notes |
 |---|----------------|-------------|----------|-------|
 | 1 | <requirement> | COVERED | YES/NO | <evidence or discrepancy> |
 | 2 | <requirement> | APPROVED-DEVIATION (Substitution) | YES | <confirms deviated behavior present> |
 | 3 | <requirement> | GAP (deferred) | SKIPPED | intentionally excluded |
 
 ## Discrepancies (if any)
-| # | PRD Requirement | Expected | Found | Severity |
+| # | Proposal Requirement | Expected | Found | Severity |
 |---|----------------|----------|-------|----------|
 | N | <requirement> | <what audit promised> | <what's actually in code> | HIGH/MEDIUM/LOW |
 
 ## APPROVED-DEVIATION Summary
-| # | PRD Requirement | Classification | Deviated Behavior |
+| # | Proposal Requirement | Classification | Deviated Behavior |
 |---|----------------|---------------|-------------------|
 | 2 | <requirement> | Substitution | <what was implemented instead> |
 ```

@@ -19,7 +19,7 @@ Inspired by [Factory's Missions architecture](https://www.factory.ai/) and [Matt
 - [Claude Code](https://docs.anthropic.com/en/docs/claude-code) installed and authenticated
 - [OpenSpec CLI](https://github.com/Fission-AI/OpenSpec) installed (`npm install -g @fission-ai/openspec`)
 - [Codex CLI](https://github.com/openai/codex) installed (`npm install -g @openai/codex`) and authenticated (`codex login`)
-- [GitHub CLI](https://cli.github.com/) installed and authenticated (`gh auth login`) -- used for filing the PRD as a GitHub issue and creating draft PRs
+- [GitHub CLI](https://cli.github.com/) installed and authenticated (`gh auth login`) -- used for creating draft PRs
 - [jq](https://jqlang.github.io/jq/) installed (`brew install jq`) -- used for parsing dispatch results
 - [Rust toolchain](https://rustup.rs/) installed (`curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`) -- needed to build darkfactory-dispatch (and the optional darkfactory-render tool)
 - A git repository to work in
@@ -70,18 +70,17 @@ A mission is the core unit of work. It takes you from a goal ("build user authen
 
 The orchestrator is the main Claude Code session that runs your mission. It starts by interviewing you about what you want to build, asking pointed questions until it understands your goals, constraints, and edge cases. It then creates a shared glossary of terms so that you, the orchestrator, and all workers use the same vocabulary.
 
-From that conversation, it writes a PRD (Product Requirements Document) -- a structured description of the problem, the solution, user stories, and testing approach. The PRD is filed as a GitHub issue and becomes the source of truth for everything that follows. At the end of the mission, the draft PR links back to this issue.
+From that conversation, it writes the **proposal** -- the mission's single intent document and the source of truth for everything that follows. It has four sections, each reviewed with a distinct lens: the problem (is this real?), the approach (is this right?), the rejected alternatives (so solution bias stays visible), and the capability index the specs are built from. There is no separate PRD issue -- the proposal is the one place intent lives.
 
-Next, it creates a series of planning documents using [OpenSpec](https://github.com/Fission-AI/OpenSpec) (an open-source tool for structured change proposals). These documents are created one at a time, and you review each before the orchestrator moves on:
+Next, it creates the remaining planning documents using [OpenSpec](https://github.com/Fission-AI/OpenSpec) (an open-source tool for structured change proposals). These documents are created one at a time, and you review each before the orchestrator moves on:
 
-- **Proposal** -- what you're building and why
 - **Specs** -- detailed requirements written as WHEN/THEN rules (e.g. "WHEN a user submits the login form with wrong credentials, THEN show an error message")
 - **Design** -- architecture decisions and technical approach. The design evaluates 2-3 architecture candidates against a four-dimension rubric (separation of concerns, testability, task independence, module depth) and picks the highest-scoring option. A mandatory gate verifies the design includes an architecture decision, module inventory, type catalog, error strategy, integration points, and test strategy; the Type Catalog names problem-space domain types and excludes technical helpers like CLI parsers, test fixtures, and generic containers.
 - **Tasks** -- an ordered checklist of implementation work. Before generating tasks, the orchestrator presents a decomposition strategy (layered, vertical, or hybrid) with a target task count for your approval. Each task includes topology metadata -- which prior tasks it depends on, what it consumes, and what it produces.
 
 Every tasks.md ends with a set of **mandatory closing tasks** that run after the feature work: a smoke test (one end-to-end test through the primary user flow against real dependencies), a cleanup task (remove dead code, unused deps, and leftover scaffolding), a module shape re-check (catch drift between design.md and what the code actually exposes, including Type Catalog domain type names -- required once a mission has 5+ feature tasks), a documentation task, and a CLAUDE.md + ARCH.md generation task (creates project convention files if they don't already exist). A CI configuration task is optional and added when relevant.
 
-After the tasks are defined, the orchestrator runs a **coverage audit**. This maps every requirement from the PRD to one or more tasks. If anything is missing, it flags it. If a requirement was intentionally changed or dropped, you approve that decision explicitly. For substitutions, the orchestrator also checks that the replacement approach is fully covered by existing tasks -- if the substitution drops something important, it's flagged as a gap. Nothing falls through the cracks by accident.
+After the tasks are defined, the orchestrator runs a **coverage audit**. This maps every requirement from the proposal to one or more tasks. If anything is missing, it flags it. If a requirement was intentionally changed or dropped, you approve that decision explicitly. For substitutions, the orchestrator also checks that the replacement approach is fully covered by existing tasks -- if the substitution drops something important, it's flagged as a gap. Nothing falls through the cracks by accident.
 
 Contract checks trace back to specific spec capability and scenario identifiers for end-to-end traceability.
 
@@ -164,8 +163,8 @@ openspec/changes/<change-name>/
   specs/<capability>/spec.md  # Formal WHEN/THEN requirements (one per capability)
   design.md                # How (architecture decisions)
   tasks.md                 # Task checklist (includes mandatory closing tasks)
-  coverage-audit.md        # PRD requirement-to-task mapping
-  contract.md              # What the code should do (traced to PRD, tagged by verification method)
+  coverage-audit.md        # Proposal requirement-to-task mapping
+  contract.md              # What the code should do (traced to spec scenarios, tagged by verification method)
   reviews/                 # Artifact review checkpoints from planning phases (one file per reviewed artifact)
   mission/
     config.yaml            # Engine settings per role
@@ -188,7 +187,7 @@ Darkfactory is controlled through skills -- reusable prompt templates you invoke
 | `/mission-status` | Read-only progress check. Open a second terminal while a mission runs to see which tasks are done, in progress, or queued. |
 | `/mission-init` | Check your project setup. Verifies required skill symlinks, reports on optional bundled skills, checks CLI tools and coverage tools, checks chrome-devtools-mcp when `browser_tools: true`, and runs `openspec init` if needed. |
 | `/grill` | Alignment interview: asks pointed questions until the goals, constraints, and edge cases are clear. Used in the mission planning phase. |
-| `/prd` | Turns an interview into a structured PRD filed as a GitHub issue. Used in the mission planning phase. |
+| `/prd` | Turns an interview into a structured PRD filed as a GitHub issue. Standalone -- no longer part of the mission flow (the proposal is the mission's single intent document). |
 | `/language` | Creates a shared glossary (ubiquitous language) so you, the orchestrator, and all workers use the same terms. Used in the mission planning phase. |
 | `/tdd` | Test-driven development guidance. Workers invoke this during the build phase for backend, hooks, and utility tasks. Companion files cover deep modules, interfaces, mocking, refactoring, and test patterns. |
 | `/frontend` | Prescriptive builder guide for React/TypeScript component development. Workers invoke this during the build phase for frontend component, page, and layout tasks. Defines the design-implement-test workflow with visual verification via chrome-devtools-mcp. Companion files: DEEP-COMPONENTS.md (four rules), STACK.md (tech stack), PATTERNS.md (code examples), TESTING.md (behavioral testing). |
@@ -197,7 +196,7 @@ Darkfactory is controlled through skills -- reusable prompt templates you invoke
 | `/test-quality` | LLM-based semantic review of test effectiveness. The scrutiny validator runs this as a subagent after every worker commit. |
 | `/security` | Security review. The scrutiny validator runs this when the diff touches auth, secrets, user input, or network/filesystem boundaries. |
 | `/adversarial` | Dual-agent code review: dispatches a Codex reviewer and a Claude reviewer with identical input, then surfaces disagreements. |
-| `/artifact-review` | Review a planning artifact (language glossary, PRD, spec, design, tasks, contract) via Codex. Checks for ambiguity, terminology drift, contradictions, missing edge cases, coverage gaps, and feasibility. Used standalone or as a review gate in `/mission`. |
+| `/artifact-review` | Review a planning artifact (language glossary, proposal, spec, design, tasks, contract) via Codex. Checks for ambiguity, terminology drift, contradictions, missing edge cases, coverage gaps, and feasibility. Used standalone or as a review gate in `/mission`. |
 | `/lint-audit` | Audit a TypeScript project's oxlint config and tsconfig strictness against an agent-friendly ruleset. Reports gaps and offers to apply fixes per-item or all-at-once. Oxlint only -- skips ESLint projects. Standalone. |
 | `/dispatch` | Run a coding task via `darkfactory-dispatch`. Accepts a task description inline or prompts for one. Presents structured outcome. |
 | `/arch-review` | Architecture review with guides for deepening modules, interface design, and language precision. Standalone -- not yet wired into missions. |

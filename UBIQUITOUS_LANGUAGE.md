@@ -54,7 +54,7 @@
 ## OpenSpec integration
 
 - **Change** -- An OpenSpec unit of work with its own proposal, design, tasks, and now contract and mission directory. *Avoid:* feature, epic, project
-- **Proposal** -- The OpenSpec artifact describing what is being built and why. *Avoid:* PRD, requirements doc
+- **Proposal** -- The mission's single intent document and first OpenSpec artifact, authored in Phase 3 from the grill: Problem, Approach, Rejected alternatives, and the Capabilities index the specs are built from. Replaces the earlier separate PRD GitHub issue. *Avoid:* PRD, intent doc, requirements doc
 - **Design** -- The OpenSpec artifact describing how it will be built (architecture decisions). *Avoid:* architecture doc, technical spec
 - **Tasks** -- The OpenSpec artifact listing tasks as checkboxes, each representing one worker's worth of work (should follow the approved task quality standard). *Avoid:* checklist, todo list, backlog
 - **Feature task** -- A task in **Tasks** that implements required behavior; the only kind an **Acceptance** `task` link may target. *Avoid:* implementation task, work task
@@ -128,7 +128,6 @@
 - **Validator-outcome parity** -- The cutover test that a rendered contract makes validators pass or fail the same tasks as the hand-authored contract, rather than matching its text. *Avoid:* text parity, diff match
 - **Duplicated-artifact drift** -- Divergence between documents that re-author the same fact (e.g. specs vs contract); the specific failure the requirement record removes, distinct from behavior-vs-acceptance and acceptance-vs-code drift, which remain. *Avoid:* drift, document drift
 - **Deviated status** -- A terminal requirement `status` recording an approved divergence, keeping the original acceptance immutable and adding a deviation sub-field (actual behavior, reason, classification, approver, date, temporary/permanent). *Avoid:* APPROVED-DEVIATION, waiver
-- **Intent doc** -- A later-stage single artifact (Stage 4) replacing the PRD and proposal, holding problem, solution, and the capability index. *Avoid:* PRD, proposal
 - **Computed coverage** -- The Stage 2 projection (EPIC #199; see docs/darkfactory-2.md) that renders a **Gap report** from the **Requirement records**: a tolerant, scenario-level pass listing every **Coverage gap** plus a total/covered/gaps summary, computed instead of authored as a table. Reports gaps; never errors on them. The v2 replacement for the hand-authored **Coverage audit** -- during shadow mode both exist. *Avoid:* coverage table, gap audit
 - **Coverage gap** -- A spec scenario none of whose acceptance entries link to a valid feature task; the unit **Computed coverage** reports. *Avoid:* missing requirement, uncovered item, hole
 - **Gap kind** -- The reason a scenario is a **Coverage gap**: no acceptance authored, a dangling task link, or a link to a closing task. *Avoid:* gap type, gap reason
@@ -152,11 +151,11 @@
 - **Diff coverage** measures added lines only -- a worker is responsible for covering the code they wrote, not backfilling pre-existing debt
 - The **Test quality review** (`/test-quality`) is an owned skill invoked by the **Scrutiny validator** as a subagent, following the same pattern as `/review` and `/simplify`
 - A **Tautological assertion** is worse than no test because it gives false confidence -- the **Scrutiny validator** treats it as a hard FAIL
-- **Deterministic Anchors** are populated from design.md during Phase 4.3 and stored in the **Plan** -- they reference the **Type Catalog**, **Module Inventory**, and **Architecture Candidate Scoring** results
+- **Deterministic Anchors** are populated from design.md during Phase 4.2 and stored in the **Plan** -- they reference the **Type Catalog**, **Module Inventory**, and **Architecture Candidate Scoring** results
 - The **Type Catalog** draws **Domain type** names from this glossary. **Worker briefs** list relevant **Type Catalog** entries as exact names to use in code. The **Foundation Audit** checks task 1 names against the **Type Catalog**. The **Module shape re-check** verifies all **Type Catalog** names at the end.
 - The **Foundation Audit** runs once after task 1, comparing committed code against the **Module Inventory** and **Type Catalog** from design.md
 - **Spec References** in the **Contract** trace **Checks** back to specific **Spec** capability/scenario pairs (e.g., add-todo/1), replacing arbitrary row numbers
-- **Task Topology** metadata is written per task in tasks.md and reviewed during Phase 4.4 -- tasks touching more than 2 architectural layers are flagged for human review
+- **Task Topology** metadata is written per task in tasks.md and reviewed during Phase 4.3 -- tasks touching more than 2 architectural layers are flagged for human review
 - The **Design Template** is a reference document in `templates/` -- the actual design.md generation is driven by openspec config rules that require the same sections
 - A **Task** has exactly one **Methodology** (`/tdd` or `/frontend`) and zero or more **Constraints** (`/ui-system`, `/react-perf`)
 - The **Task layer** determines the **Methodology**: `frontend/component`, `frontend/page`, `frontend/layout` map to `/frontend`; all other layers map to `/tdd`
@@ -194,7 +193,7 @@
 
 ## Example dialogue (planning determinism)
 
-> **Dev:** "Two missions against the same PRD produced completely different architectures. How do we prevent that?"
+> **Dev:** "Two missions against the same proposal produced completely different architectures. How do we prevent that?"
 >
 > **Orchestrator:** "The **Design Template** now requires **Architecture Candidate Scoring**. I evaluate 2-3 options on four dimensions -- separation of concerns, testability, **Task Independence**, and module depth -- each scored 0-3. No candidate can score 0 on any dimension. If two tie, you pick."
 >
@@ -277,7 +276,7 @@
 - **"task"** was used early in the conversation to mean both a micro-step within a feature and a bounded unit of worker work. **Resolved:** keep "task" as the standard term. The guidance is that each task should follow the approved task quality standard, but the term "task" is unchanged from OpenSpec. "Slice" is not a standalone noun -- it's a quality standard for tasks.
 - **"spec"** was used to mean both SDD spec files and the planning phase of the mission flow. **Resolved:** SDD specs are not part of Darkfactory's vocabulary. In Darkfactory, **Spec** refers exclusively to the planning phase (`align -> spec -> contract -> build -> validate -> ship`) where the orchestrator creates OpenSpec artifacts and the contract. SDD is a separate workflow for documenting existing code after the fact.
 - **"validation"** was used for both the contract checks and the act of running validators. **Resolved:** the **Contract** contains **Checks**. **Validation** is the act of a **Validator** verifying those checks against the code. Be consistent: don't use "validation" to refer to the contract itself.
-- **"coverage"** could mean line coverage (percentage of lines executed during tests) or spec coverage (percentage of PRD requirements mapped to tasks). **Resolved:** **Diff coverage** means line coverage on added lines in a git diff. **Coverage audit** means the spec-to-task mapping in Phase 4a. Don't use "coverage" without the qualifier.
+- **"coverage"** could mean line coverage (percentage of lines executed during tests) or spec coverage (percentage of proposal requirements mapped to tasks). **Resolved:** **Diff coverage** means line coverage on added lines in a git diff. **Coverage audit** means the spec-to-task mapping in Phase 4a. Don't use "coverage" without the qualifier.
 - **"check" / "assertion" / "gate"** had overlapping usage across contract items, validator steps, and code test assertions. **Resolved** with a three-way split: a **Gate** is a numbered step in the scrutiny validator's sequence (e.g., gate 3: tests, gate 11: contract checks). A **Check** is a single verifiable statement in a contract. An **Assertion** is reserved for code test assertions only (e.g., **Tautological assertion**, `assert_eq!`, `expect().toBe()`). Don't use "assertion" for contract items or "check" for validator steps.
 - **"skill"** could mean both a methodology (implementation workflow) and a constraint (design guidance). **Resolved** with a two-axis model: a **Methodology** is the implementation workflow (`/tdd` or `/frontend`, mutually exclusive per task). A **Constraint** is additive design guidance (`/ui-system`, `/react-perf`, zero or more per task). Both are skills, but the axes are orthogonal. Don't say "skill" when you mean methodology or constraint specifically.
 - **"frontend"** as a task layer could mean component work (visual, needs `/frontend`) or hook work (logic, needs `/tdd`). **Resolved** with specific layer vocabulary: `frontend/component`, `frontend/page`, `frontend/layout` map to `/frontend`; `frontend/hooks` maps to `/tdd`. Don't use bare "frontend" as a task layer.

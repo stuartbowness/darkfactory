@@ -30,7 +30,7 @@ If `--basic` is not present, continue with full mission mode below.
 8. **Plan is the operating manual.** Keep the plan updated after every phase and step. It must be accurate if context compacts. On entering any major phase (0-9, 4a) and at every phase gate, set the plan's `## Orchestrator Phase` field to the current phase name, step, and an ISO 8601 `Last checkpoint` timestamp. `mission-resume` cross-checks this field against disk state when choosing a re-entry point.
 9. **Skipped tasks use `- [~]`.** The build loop treats `- [~]` as neither unchecked nor complete. Skipped tasks are not re-attempted.
 10. **Mark tasks done in tasks.md immediately.** After a task passes validation, change `- [ ]` to `- [x]` in tasks.md before moving to the next task. This is required for resume to work correctly.
-11. **Artifact review before human Q&A.** Every planning artifact (Phases 2-5 and 4a) is dispatched to Codex for review via `/artifact-review` before presenting to the human. Findings are shown alongside the artifact and the AI recommendation. If `/artifact-review` fails, note the failure and continue — review is non-blocking. The review result (or failure notice) must be persisted as a checkpoint before presenting the artifact to the human. For Phases 2-3, record checkpoints in the plan's Review Checkpoints section. For Phases 4+, write checkpoint files to `reviews/` in the change directory.
+11. **Artifact review before human Q&A.** Every planning artifact (Phases 2-5 and 4a) is dispatched to Codex for review via `/artifact-review` before presenting to the human. Findings are shown alongside the artifact and the AI recommendation. If `/artifact-review` fails, note the failure and continue — review is non-blocking. The review result (or failure notice) must be persisted as a checkpoint before presenting the artifact to the human. For Phase 2, record the checkpoint in the plan's Review Checkpoints section (the change directory does not exist yet). From Phase 3 onward, write checkpoint files to `reviews/` in the change directory.
 
 ---
 
@@ -39,15 +39,17 @@ If `--basic` is not present, continue with full mission mode below.
 0. **Enter Plan Mode** -- write the durable operating plan
 1. **Grill for Alignment** -- align on what is being built and why
 2. **Establish Shared Language** -- create/update UBIQUITOUS_LANGUAGE.md
-3. **Write a PRD** -- file requirements as a GitHub issue
-4. **Create and Review OpenSpec Artifacts** -- proposal, specs, design, tasks (human-approved)
-4.3a. **Task Strategy Approval** -- approve decomposition approach before generating tasks
-4a. **Spec Coverage Audit** -- verify every PRD requirement maps to a task
+3. **Write the Proposal** -- author proposal.md, the single intent document
+4. **Create and Review OpenSpec Artifacts** -- specs, design, tasks (human-approved)
+4.2a. **Task Strategy Approval** -- approve decomposition approach before generating tasks
+4a. **Spec Coverage Audit** -- verify every proposal requirement maps to a task
 5. **Write Contract** -- validation checks workers never see
 6. **Create Mission Directory** -- set up mission/ state directory
 7. **Launch Confirmation** -- human confirms, build starts
 8. **Build Loop** -- dispatch workers, validate per task, fix loop with circuit breaker
 9. **Mission Completion** -- final gates, spec delta check, draft PR, dual adversarial review
+
+The shared **Review Pattern** (artifact review -> checkpoint -> present -> recommend -> decide) is defined between Phases 2 and 3 and used at every planning review point.
 
 ---
 
@@ -66,7 +68,7 @@ Enter plan mode immediately. Write a durable operating manual as the plan. This 
 
 Write this plan, filling in values as they become known. Read the plan structure from [templates/plan.md](templates/plan.md).
 
-The plan must include a `## Review Checkpoints` section for recording Phase 2-3 review results before the change directory exists.
+The plan must include a `## Review Checkpoints` section for recording the Phase 2 review result before the change directory exists.
 
 To fill in the **Darkfactory SHA** field, resolve the Darkfactory repo root from the skill symlink: `DARKFACTORY_ROOT="$(cd "$(readlink "$HOME/.claude/skills/mission")/../.." 2>/dev/null && pwd -P)"`. Then run `git -C "$DARKFACTORY_ROOT" rev-parse HEAD`; if `git -C "$DARKFACTORY_ROOT" status --porcelain` returns anything, append `-dirty` to the SHA. Paste the result into the plan.
 
@@ -126,61 +128,13 @@ Run `/artifact-review` on the generated UBIQUITOUS_LANGUAGE.md before presenting
 
 ---
 
-## Phase 3: Write a PRD
-
-> **Rules:** 5
-> **Goal:** Capture requirements as a structured PRD filed as a GitHub issue.
-> **Inputs:** Grill conversation (from Phase 1, in context), UBIQUITOUS_LANGUAGE.md
-> **Outputs:** GitHub issue (PRD), issue URL + number recorded in plan
-
-Run `/prd` to turn the grill conversation into a structured product requirements document. Use terms from `UBIQUITOUS_LANGUAGE.md` consistently throughout the PRD. The PRD captures: problem statement, solution, user stories, implementation decisions, testing decisions, and out-of-scope items.
-
-After the issue is created, run `/artifact-review` on the PRD content. If the review finds CRITICAL/HIGH issues, edit the GitHub issue to address them before proceeding.
-
-Record both the issue URL and the issue number in the plan (under Spec Coverage Audit). The issue number is needed in Phase 9 to link the draft PR back to the issue.
-
-**Gate -- proceed when:**
-- [ ] Plan's `## Orchestrator Phase` field updated to this phase, step, and timestamp
-- [ ] PRD filed as GitHub issue
-- [ ] Issue URL and issue number recorded in plan
-- [ ] Review checkpoint recorded in plan (REVIEWED or FAILED)
-
----
-
-## Phase 4: Create and Review OpenSpec Artifacts
-
-> **Rules:** 5
-> **Goal:** Generate and get human approval on all four OpenSpec artifacts.
-> **Inputs:** PRD (read from GitHub issue URL in plan), UBIQUITOUS_LANGUAGE.md
-> **Outputs:** proposal.md, specs/, design.md, tasks.md -- all human-approved
-
-Read the PRD from the GitHub issue URL recorded in the plan. This is the source of truth for all artifact generation. Use terms from `UBIQUITOUS_LANGUAGE.md` consistently in all artifacts.
-
-The `spec-driven` schema generates four artifacts in dependency order: `proposal -> specs -> design -> tasks`. Generate each artifact one at a time, present it to the human for review, and get approval before generating the next.
-
-**Do NOT run `/opsx:propose` as a single pass.** Instead, orchestrate artifact creation using the openspec CLI commands directly:
-
-1. `openspec new change "<name>"` -- create the change directory
-   After the change directory is created, create the reviews directory and retroactively write Phase 2-3 checkpoints:
-   ```bash
-   mkdir -p openspec/changes/<change-name>/reviews
-   ```
-   Read the plan's Review Checkpoints section. For each Phase 2-3 entry, write a corresponding checkpoint file to `reviews/` using the template format:
-   - `reviews/phase2-ubiquitous-language.md`
-   - `reviews/phase3-prd.md`
-2. `openspec status --change "<name>" --json` -- get artifact order and dependencies
-3. For each artifact in order:
-   a. `openspec instructions <artifact-id> --change "<name>" --json` -- get instructions for this artifact
-   b. Create the artifact file following the instructions and template
-   c. `openspec status --change "<name>" --json` -- re-run status to refresh the artifact list (newly unblocked artifacts and per-capability spec IDs appear only after their dependencies are written)
-
-### Review Pattern (used at every review point in planning)
+## Review Pattern (used at every review point in planning)
 
 Every artifact review follows this pattern:
 1. **Run `/artifact-review`** -- dispatch the artifact to Codex for review (per Rule 11)
 2. **Write checkpoint** -- persist the review result before continuing:
-   - **Phases 2-3** (before change directory exists): add a structured entry to the plan's Review Checkpoints section: `- Phase N (<artifact>): REVIEWED | FAILED — <timestamp> — <finding count or failure reason>`
-   - **Phases 4+** (change directory exists): write the review output (or failure notice) to `reviews/<phase>-<artifact>.md` in the change directory, using the format in [templates/review-checkpoint.md](templates/review-checkpoint.md). If the `/artifact-review` dispatch fails, write a FAILED checkpoint with the dispatch error.
+   - **Phase 2** (before the change directory exists): add a structured entry to the plan's Review Checkpoints section: `- Phase 2 (<artifact>): REVIEWED | FAILED — <timestamp> — <finding count or failure reason>`
+   - **Phase 3 onward** (change directory exists): write the review output (or failure notice) to `reviews/<phase>-<artifact>.md` in the change directory, using the format in [templates/review-checkpoint.md](templates/review-checkpoint.md). If the `/artifact-review` dispatch fails, write a FAILED checkpoint with the dispatch error.
    The checkpoint must exist before proceeding to step 3.
 3. **AI presents** -- show the artifact content and the review findings (if any) to the human
 4. **AI recommends** -- state whether it looks good, incorporating review findings. Address CRITICAL/HIGH findings specifically — agree and suggest a fix, or explain why it's a false positive
@@ -188,21 +142,73 @@ Every artifact review follows this pattern:
 
 The human can always say "looks good" or "go with your recommendation" to keep momentum. If changes are requested, revise and re-present.
 
-### Phase 4.1: Generate and Review Proposal
+---
 
-Generate `proposal.md` (what and why). This establishes the capabilities that will become spec files.
+## Phase 3: Write the Proposal
 
-Run `/artifact-review` on the generated `proposal.md`. Present it to the human following the review pattern. If approved, proceed to Phase 4.2.
+> **Rules:** 5
+> **Goal:** Author proposal.md -- the single intent document -- in the change directory.
+> **Inputs:** Grill conversation (from Phase 1, in context), UBIQUITOUS_LANGUAGE.md, plan's Review Checkpoints section (for the retroactive Phase 2 checkpoint)
+> **Outputs:** Change directory created, reviews/ set up, proposal.md human-approved
 
-### Phase 4.2: Generate and Review Specs
+The proposal is the mission's only intent artifact -- there is no separate PRD. Author it once, directly from the grill conversation. Use terms from `UBIQUITOUS_LANGUAGE.md` consistently.
+
+1. **Create the change directory:** `openspec new change "<name>"`. If the change directory already exists (a previous session was interrupted between creating it and Phase 6), do not re-run `openspec new change` -- continue with the existing directory and pick up at the first incomplete step below.
+
+2. **Set up the reviews directory and write the Phase 2 checkpoint retroactively:**
+   ```bash
+   mkdir -p openspec/changes/<change-name>/reviews
+   ```
+   Read the plan's Review Checkpoints section and write its Phase 2 entry to `reviews/phase2-ubiquitous-language.md` using the format in [templates/review-checkpoint.md](templates/review-checkpoint.md). The retroactive checkpoint carries the plan entry's summary (status, timestamp, finding count); the full Phase 2 review output is not preserved across sessions, so leave the body as the summary line. Write only the Phase 2 checkpoint here -- Phase 3's own checkpoint is written fresh in step 4, never retroactively.
+
+3. **Author `proposal.md`** in the change directory with exactly these four sections, each read with a distinct review lens:
+   - **Problem** -- what is broken or missing, why now, and what success looks like. (Lens: is this a real problem?)
+   - **Approach** -- the high-level solution, written as a bullet list of discrete commitments (each bullet one verifiable promise about what will exist or change). The coverage audit (Phase 4a) enumerates these bullets, so prose paragraphs that bury commitments are not acceptable here. (Lens: is this the right approach?)
+   - **Rejected alternatives** -- what was considered and dropped, and why. This keeps solution bias visible. (Lens: were alternatives genuinely weighed?)
+   - **Capabilities** -- the kebab-case capability index (e.g., `user-auth`, `data-export`). Each entry becomes a `specs/<name>/spec.md` file in Phase 4, so this section is load-bearing: it is the contract between the proposal and the specs phase. Check `openspec/specs/` for existing capability names before naming new ones, and list a modified capability only when its spec-level behavior changes.
+
+   OpenSpec does not validate proposal.md section names (its config rules cover only design.md and tasks.md), so this four-section format replaces the schema template's default sections.
+
+4. **Review and gate:** run `/artifact-review` on `proposal.md`, write the checkpoint to `reviews/phase3-proposal.md`, and present to the human following the Review Pattern above.
+
+**Gate -- proceed when:**
+- [ ] Plan's `## Orchestrator Phase` field updated to this phase, step, and timestamp
+- [ ] Change directory created (`openspec new change`)
+- [ ] reviews/ created and reviews/phase2-ubiquitous-language.md written
+- [ ] proposal.md authored with all four sections (Problem, Approach, Rejected alternatives, Capabilities)
+- [ ] proposal.md human-approved
+- [ ] Review checkpoint exists: reviews/phase3-proposal.md
+
+---
+
+## Phase 4: Create and Review OpenSpec Artifacts
+
+> **Rules:** 5
+> **Goal:** Generate and get human approval on the remaining OpenSpec artifacts: specs, design, tasks.
+> **Inputs:** proposal.md (authored in Phase 3), UBIQUITOUS_LANGUAGE.md
+> **Outputs:** specs/, design.md, tasks.md -- all human-approved
+
+Read `proposal.md` from the change directory (authored and approved in Phase 3). It is the source of truth for all artifact generation. Use terms from `UBIQUITOUS_LANGUAGE.md` consistently in all artifacts.
+
+The `spec-driven` schema orders its artifacts `proposal -> specs -> design -> tasks`; proposal.md is already written, so this phase generates the remaining three. Generate each artifact one at a time, present it to the human for review, and get approval before generating the next.
+
+**Do NOT run `/opsx:propose` as a single pass.** Instead, orchestrate artifact creation using the openspec CLI commands directly. The change directory already exists (created in Phase 3) -- do not re-run `openspec new change`.
+
+1. `openspec status --change "<name>" --json` -- get artifact order and dependencies
+2. For each remaining artifact in order:
+   a. `openspec instructions <artifact-id> --change "<name>" --json` -- get instructions for this artifact
+   b. Create the artifact file following the instructions and template
+   c. `openspec status --change "<name>" --json` -- re-run status to refresh the artifact list (newly unblocked artifacts and per-capability spec IDs appear only after their dependencies are written)
+
+### Phase 4.1: Generate and Review Specs
 
 Generate `specs/<capability>/spec.md` files (one per capability listed in the proposal). Each spec contains formal WHEN/THEN requirements using SHALL/MUST language.
 
 Run `/artifact-review` on each generated spec file. Present all spec files to the human following the review pattern. Specs are the formal requirements that flow into tasks and the contract. Missing or vague specs are the primary cause of missed requirements in the final build.
 
-If approved, proceed to Phase 4.3.
+If approved, proceed to Phase 4.2.
 
-### Phase 4.3: Generate and Review Design
+### Phase 4.2: Generate and Review Design
 
 Generate `design.md` (how -- architecture decisions, alternatives considered, risks). Reference the proposal for motivation and specs for requirements.
 
@@ -223,9 +229,9 @@ If a module has a large interface relative to its implementation, ask whether it
 
 #### Existing Codebases
 
-When the mission modifies an existing codebase (not greenfield), the design must evaluate the current code structure against the planned architecture. For each module the design touches, read the existing code and assess whether it aligns with the target design. If existing modules are shallow, tightly coupled, or conflict with the planned architecture, the design should call this out explicitly and recommend refactoring as part of the implementation. These refactoring decisions flow naturally into task ordering in Phase 4.4 -- refactoring tasks go before the feature tasks that depend on them.
+When the mission modifies an existing codebase (not greenfield), the design must evaluate the current code structure against the planned architecture. For each module the design touches, read the existing code and assess whether it aligns with the target design. If existing modules are shallow, tightly coupled, or conflict with the planned architecture, the design should call this out explicitly and recommend refactoring as part of the implementation. These refactoring decisions flow naturally into task ordering in Phase 4.3 -- refactoring tasks go before the feature tasks that depend on them.
 
-Before presenting to the human, run the Phase 4.3 design gate:
+Before presenting to the human, run the Phase 4.2 design gate:
 - Verify `design.md` contains all six required section headings from `templates/design-template.md`: Architecture Decision, Module Inventory, Type Catalog, Error Strategy, Integration Points, and Test Strategy. If any are missing, regenerate `design.md` before human review.
 - For greenfield missions or missions with explicit architecture changes, verify the Architecture Decision section contains 2-3 scored architecture candidates using the template rubric.
 - For existing codebase missions without architecture changes, scoring is not required. Verify the Architecture Decision section documents the current architecture and explains how the planned changes fit.
@@ -234,11 +240,11 @@ Before presenting to the human, run the Phase 4.3 design gate:
 
 After the design gate passes, run `/artifact-review` on the generated `design.md`. Present it to the human following the review pattern.
 
-After the human approves design.md, populate 5 of the 6 Deterministic Anchors in the plan: workspace layout, primary domain types, error handling strategy, test strategy, and chosen architecture. Source values from design.md's Architecture Decision, Type Catalog, Error Strategy, and Test Strategy sections. Each anchor is a one-liner pointer with a source reference. The sixth anchor (task decomposition strategy) is populated in Phase 4.3a after the human approves the task strategy.
+After the human approves design.md, populate 5 of the 6 Deterministic Anchors in the plan: workspace layout, primary domain types, error handling strategy, test strategy, and chosen architecture. Source values from design.md's Architecture Decision, Type Catalog, Error Strategy, and Test Strategy sections. Each anchor is a one-liner pointer with a source reference. The sixth anchor (task decomposition strategy) is populated in Phase 4.2a after the human approves the task strategy.
 
-If approved, proceed to Phase 4.3a.
+If approved, proceed to Phase 4.2a.
 
-### Phase 4.3a: Task Strategy Approval
+### Phase 4.2a: Task Strategy Approval
 
 Before generating tasks.md, present a task decomposition strategy for human approval:
 
@@ -271,15 +277,15 @@ The human approves this strategy before tasks.md is generated. If rejected, revi
 
 After approval, populate the task decomposition strategy anchor in the plan's Deterministic Anchors section.
 
-If approved, proceed to Phase 4.4.
+If approved, proceed to Phase 4.3.
 
-### Phase 4.4: Generate and Review Tasks
+### Phase 4.3: Generate and Review Tasks
 
 Generate `tasks.md` (ordered checklist of implementation tasks).
 
 #### Task Quality Standard
 
-Each task must produce a concrete, testable output. When the approved strategy (Phase 4.3a) is vertical, tasks cross all layers. When the strategy is layered or hybrid, tasks may be scoped to a single layer, provided each task still has a clear done state and a test surface.
+Each task must produce a concrete, testable output. When the approved strategy (Phase 4.2a) is vertical, tasks cross all layers. When the strategy is layered or hybrid, tasks may be scoped to a single layer, provided each task still has a clear done state and a test surface.
 
 **One task = one worker = one commit = one validation cycle.**
 
@@ -310,11 +316,11 @@ Validation rules:
 - Exactly one `Skill:` value per task -- either `/tdd` or `/frontend`
 - Zero or more `Constraints:` values
 - `/ui-system` and `/react-perf` are only valid as mission constraints with `Skill: /frontend`. (Both skills are also independently invokable by humans via `/ui-system` or `/react-perf` outside of missions — the constraint restriction applies only to mission task topology.)
-- Flag invalid combinations during Phase 4.4 human review
+- Flag invalid combinations during Phase 4.3 human review
 
 Layers are logical groupings of modules (domain, transport, storage, configuration, etc.) defined in the design narrative, not columns from the Module Inventory table.
 
-When the approved strategy (Phase 4.3a) is layered or hybrid and a task's Layers field lists more than 2 architectural layers, flag the task for human review with a recommendation to split or approve as-is. When the approved strategy is vertical, the layer count flag does not apply since vertical tasks are expected to cross all layers.
+When the approved strategy (Phase 4.2a) is layered or hybrid and a task's Layers field lists more than 2 architectural layers, flag the task for human review with a recommendation to split or approve as-is. When the approved strategy is vertical, the layer count flag does not apply since vertical tasks are expected to cross all layers.
 
 When a task adds public surface area to a module (new exports, API endpoints, CLI flags), include the implementation behind that surface in the same task. Do not split a module's interface from its implementation across tasks -- the per-task validator judges depth from a single diff and will flag an interface without the work behind it.
 
@@ -336,7 +342,7 @@ Every mission's tasks.md MUST include these closing tasks after all feature task
 
 6. **CI configuration task (optional).** Add or update CI/CD pipeline configuration. The orchestrator recommends whether to include this based on the change scope. The human decides during this review.
 
-If the design (Phase 4.3) identified refactoring needed for existing code, those tasks go before the feature tasks in tasks.md.
+If the design (Phase 4.2) identified refactoring needed for existing code, those tasks go before the feature tasks in tasks.md.
 
 Run `/artifact-review` on the generated `tasks.md`. Present the full task list (including closing tasks) to the human following the review pattern. If approved, proceed to Phase 4a.
 
@@ -344,15 +350,13 @@ After all artifacts are reviewed and approved, update the plan with the actual a
 
 **Gate -- proceed when:**
 - [ ] Plan's `## Orchestrator Phase` field updated to this phase, step, and timestamp
-- [ ] proposal.md human-approved
-- [ ] Review checkpoint exists: reviews/phase4.1-proposal.md
 - [ ] All specs/<capability>/spec.md files human-approved
-- [ ] Review checkpoint exists for every spec: reviews/phase4.2-spec-<capability>.md matches specs/ one-to-one
+- [ ] Review checkpoint exists for every spec: reviews/phase4.1-spec-<capability>.md matches specs/ one-to-one
 - [ ] design.md human-approved
-- [ ] Review checkpoint exists: reviews/phase4.3-design.md
-- [ ] Task strategy approved by human (Phase 4.3a)
+- [ ] Review checkpoint exists: reviews/phase4.2-design.md
+- [ ] Task strategy approved by human (Phase 4.2a)
 - [ ] tasks.md (with closing tasks) human-approved
-- [ ] Review checkpoint exists: reviews/phase4.4-tasks.md
+- [ ] Review checkpoint exists: reviews/phase4.3-tasks.md
 - [ ] Plan updated with actual artifact paths
 
 ---
@@ -360,17 +364,19 @@ After all artifacts are reviewed and approved, update the plan with the actual a
 ## Phase 4a: Spec Coverage Audit
 
 > **Rules:** 5
-> **Goal:** Verify every PRD requirement maps to at least one task before writing the contract.
-> **Inputs:** PRD (read from GitHub issue URL in plan), specs/, tasks.md
+> **Goal:** Verify every proposal requirement maps to at least one task before writing the contract.
+> **Inputs:** proposal.md (from the change directory), specs/, tasks.md
 > **Outputs:** coverage-audit.md, updated specs/tasks if gaps found
 
-Before writing the contract, verify that every PRD requirement is covered by at least one task.
+Before writing the contract, verify that every proposal requirement is covered by at least one task.
+
+A **proposal requirement** is each bullet in the proposal's Approach section (one discrete commitment per bullet) plus each entry in its Capabilities index. Enumerate them in document order -- this fixed extraction rule means two sessions auditing the same proposal build the same coverage table.
 
 ### Steps
 
-1. **Read the PRD** from the GitHub issue created in Phase 3.
+1. **Read proposal.md** from the change directory (authored in Phase 3). Extract the proposal requirements per the rule above.
 2. **Read tasks.md** and all spec files from `specs/`.
-3. **Build a coverage table** mapping every PRD requirement to the task(s) that implement it:
+3. **Build a coverage table** mapping every proposal requirement to the task(s) that implement it:
 
 Use the format in [templates/coverage-audit.md](templates/coverage-audit.md).
 
@@ -402,13 +408,13 @@ The "Prerequisites met?" column applies to Substitutions only. For Interpretatio
 
 8. **If tasks change** (new tasks added to cover gaps), re-present the updated tasks.md for review. The human must approve the final task list before proceeding.
 
-9. **If specs or tasks changed in steps 7-8,** re-persist the updated `coverage-audit.md` to disk and re-run `/artifact-review` on it. Overwrite the existing checkpoint file (`reviews/phase4a-coverage-audit.md`) with the new review result. Phase 5 reads this file to write the contract — it must reflect the final approved state.
+9. **If specs or tasks changed in steps 7-8,** re-persist the updated `coverage-audit.md` to disk and re-run `/artifact-review` on it. Overwrite the existing checkpoint file (`reviews/phase4a-coverage-audit.md`) with the new review result. Phase 5 cross-references `coverage-audit.md` when writing the contract -- the persisted audit must reflect the final approved state.
 
-10. **Record the coverage audit** in the plan. Update the Spec Coverage Audit section with the PRD issue URL, gap count, and resolutions.
+10. **Record the coverage audit** in the plan. Update the Spec Coverage Audit section with the gap count and resolutions.
 
 **Gate -- proceed when:**
 - [ ] Plan's `## Orchestrator Phase` field updated to this phase, step, and timestamp
-- [ ] Coverage audit complete -- every PRD requirement mapped
+- [ ] Coverage audit complete -- every proposal requirement mapped
 - [ ] All gaps resolved (added, deferred, or skipped)
 - [ ] All deviations classified and approved by human
 - [ ] Changed specs/tasks re-approved by human (if any changed)
@@ -422,7 +428,7 @@ The "Prerequisites met?" column applies to Substitutions only. For Interpretatio
 
 > **Rules:** 2, 5
 > **Goal:** Write the validation contract that workers never see.
-> **Inputs:** coverage-audit.md, specs/, tasks.md, PRD (read from GitHub issue URL in plan)
+> **Inputs:** coverage-audit.md, specs/, tasks.md, proposal.md
 > **Outputs:** contract.md (human-approved, testability pre-flight passed)
 
 Create `contract.md` in the change directory (`openspec/changes/<change-name>/contract.md`).
@@ -434,7 +440,7 @@ Create `contract.md` in the change directory (`openspec/changes/<change-name>/co
 3. Do NOT reference implementation details (function names, variable names, internal data structures).
 4. Be specific and unambiguous. A validator reading only the contract and the diff should be able to verify every check without guessing.
 5. Workers never see this file.
-6. **Write the minimum set of checks needed to verify the task is complete and correct.** Each check should trace to a specific spec scenario (e.g., `add-todo/1`), including error behaviors specified in the specs. Do not add checks for edge cases, nice-to-haves, or defensive behaviors unless the PRD explicitly requires them. If a check would not cause you to reject the task when it fails, do not include it. Place checks on the earliest task where they become verifiable -- if a behavior spans multiple tasks, put the check on the task where it can first be checked, not where the work begins.
+6. **Write the minimum set of checks needed to verify the task is complete and correct.** Each check should trace to a specific spec scenario (e.g., `add-todo/1`), including error behaviors specified in the specs. Do not add checks for edge cases, nice-to-haves, or defensive behaviors unless the proposal or specs explicitly require them. If a check would not cause you to reject the task when it fails, do not include it. Place checks on the earliest task where they become verifiable -- if a behavior spans multiple tasks, put the check on the task where it can first be checked, not where the work begins.
 
 ### Cross-Referencing Specs
 
@@ -531,7 +537,7 @@ engines:
   adversarial_reviewer_b: claude
   demo_video: claude
 
-# Auto-set to true during Phase 4.3a when any task has Skill: /frontend.
+# Auto-set to true during Phase 4.2a when any task has Skill: /frontend.
 browser_tools: false
 
 # Absolute path to the durable plan file (the one written in Phase 0, normally
@@ -589,12 +595,12 @@ Regardless of whether a checkout happened, capture the build base: run `git rev-
 
 Show the user a summary dashboard:
 1. **Mission overview** -- change name, total tasks (feature + closing), total contract checks
-2. **Coverage audit result** -- number of PRD requirements covered, any deferred/skipped items
+2. **Coverage audit result** -- number of proposal requirements covered, any deferred/skipped items
 3. **Engine config** -- which engine runs each role (from config.yaml)
 
 Ask: "Everything has been reviewed. Ready to start the build?"
 
-- If yes: append `<timestamp> -- Plan approved. <N> tasks, <M> checks in contract.` to progress.md. Update plan status to BUILDING. Post a comment on the PRD issue: `gh issue comment <number> --body "Mission dispatched. <N> tasks, <M> checks. Draft PR will link back on completion."` Proceed to Phase 8.
+- If yes: append `<timestamp> -- Plan approved. <N> tasks, <M> checks in contract.` to progress.md. Update plan status to BUILDING. Proceed to Phase 8.
 - If the human wants to revisit something: loop back to the specific phase they name. Do not re-review everything.
 
 **Gate -- proceed when:**
@@ -768,7 +774,7 @@ Track the attempt number (starts at 1 for the initial worker, increments on each
 
    - **Retry:** Increment the attempt counter by 1 (e.g., attempt 3 becomes attempt 4). Allow one more fix attempt. If it fails again, the circuit breaker triggers again at the new count. Retry does NOT reset the counter.
    - **Skip:** Mark the task as `- [~]` in tasks.md. Log to progress.md: `<timestamp> -- Task N: SKIPPED by human after <attempt> failed attempts.` Continue to the next unchecked task. The build loop ignores `- [~]` tasks (they are neither unchecked nor complete).
-   - **Abort:** Update plan status to PAUSED. Stop the build loop. Close the PRD issue with a reason: `gh issue close <PRD issue number> --reason "not planned" --comment "Mission aborted at task N after <attempt> failed validation attempts."` Report to the human.
+   - **Abort:** Update plan status to PAUSED. Stop the build loop. Report to the human.
 
 3. **Diagnostic triage.** Spawn a lightweight Claude subagent to diagnose the failure. The subagent receives:
    - The validator report (from `mission/validations/task-N-scrutiny.md` or `task-N-usertest.md` -- whichever triggered this fix loop entry)
@@ -877,7 +883,7 @@ Spawn a Claude subagent to run `/demo-video`. The subagent should save the recor
 
 > **Rules:** 1, 2, 5, 7
 > **Goal:** Final gates, draft PR, and dual adversarial review.
-> **Inputs:** All committed code (from Phase 8), contract.md, coverage-audit.md, PRD issue number (from plan, for PR linking)
+> **Inputs:** All committed code (from Phase 8), contract.md, coverage-audit.md
 > **Outputs:** Draft PR, adversarial review reports, plan status = COMPLETE
 
 ### Final Gates
@@ -919,13 +925,11 @@ Log the human's decision for each discrepancy to progress.md.
 
 ### Create Draft PR
 
-Create a **draft** pull request using `gh pr create --draft`. Never create a ready-for-review PR. Use the PR body template below. The `Closes #<N>` directive in the PR body will auto-close the PRD issue when the PR merges.
+Create a **draft** pull request using `gh pr create --draft`. Never create a ready-for-review PR. Use the PR body template below.
 
 #### PR Body Template
 
 Read [templates/pr-body.md](templates/pr-body.md) and fill in the values.
-
-Since the PR is created as a draft, the issue stays open until the developer promotes and merges the PR.
 
 ### Dual Adversarial Review
 
@@ -1027,7 +1031,7 @@ Full reports at:
 - mission/validations/adversarial-b.md
 
 Review the PR and the adversarial findings. You decide what to address.
-If you decide not to ship this mission (reviewers found blockers, priorities changed), close the draft PR and the PRD issue yourself: `gh pr close <PR number> --delete-branch` and `gh issue close <PRD issue number> --reason "not planned"`. Stop here -- do not proceed to the After merge steps below. The orchestrator only handles the happy path and circuit-breaker abort.
+If you decide not to ship this mission (reviewers found blockers, priorities changed), close the draft PR yourself: `gh pr close <PR number> --delete-branch`. Stop here -- do not proceed to the After merge steps below. The orchestrator only handles the happy path and circuit-breaker abort.
 After merge:
 1. Run /opsx:archive to move the change files to the archive directory
 2. Commit and push the archive move:
