@@ -1,6 +1,6 @@
 ---
 name: mission-resume
-description: Resume an interrupted Darkfactory mission from file state. Finds active missions, restores the orchestrator plan, detects the orchestrator phase from progress.md markers, cross-checks the plan file, detects branch-scoped orphaned commits, and continues from the correct resume target. Stops and defers to /mission when the interruption happened during a planning phase.
+description: Resume an interrupted Darkfactory mission from file state. Finds active missions -- including planning-phase changes that have no mission directory yet -- restores the orchestrator plan, detects the orchestrator phase from progress.md markers, cross-checks the plan file, detects branch-scoped orphaned commits, and continues from the correct resume target. Stops and defers to /mission when the interruption happened during a planning phase.
 ---
 
 # Mission Resume
@@ -18,12 +18,14 @@ Search for OpenSpec changes that have a resumable mission (unchecked tasks remai
    - If no plan is found or it has no `## Status:` line (a true legacy mission), fall back to `mission/progress.md`: the mission is finished only if progress.md contains the completion log line, which `/mission` writes verbatim as `Draft PR created: <URL>. Adversarial reviews complete.` (match it case-sensitively, capital A). Do **not** consult this fallback when a plan status exists -- a `Draft PR created` line with a non-`COMPLETE` status means the mission crashed during completion, not that it finished.
 4. A mission is **active** (resumable) if `tasks.md` contains at least one unchecked item (`- [ ]`; `- [~]` skipped tasks do not count), OR the mission has not finished per step 3.
 5. Collect the list of active missions with their change name and progress count (checked vs total tasks), plus `completion pending` when all tasks are resolved but the mission has not finished.
+6. **Find planning-phase candidates.** A mission interrupted during planning (Phases 3-5) is invisible to step 1: `/mission` Phase 3 creates the change directory, but `mission/config.yaml` only appears in Phase 6. Glob `openspec/changes/*/` and keep every directory that is not `archive/` and has no `mission/config.yaml` -- each is a **planning-phase candidate**. For each candidate, note which planning artifacts exist (`proposal.md`, `specs/`, `design.md`, `tasks.md`, `contract.md`, `reviews/`) so the user can see where planning stopped, and locate its plan file with the same content search as step 3 (`find "$HOME/.claude/plans" -type f -name '*.md' -exec grep -l "Mission: <change-name>" {} + 2>/dev/null | head -1`).
 
 ### Handle results
 
-- **No active missions found:** Report "No active missions found." and stop.
-- **Exactly one active mission:** Use it. Report "Resuming mission: <change-name>".
-- **Multiple active missions:** List each one with its progress or `completion pending` status. Ask the user to pick one.
+- **No active missions and no planning-phase candidates:** Report "No active missions found." and stop.
+- **Only planning-phase candidates:** Report each one -- change name, which planning artifacts exist, and its plan file path (or "plan not found"). Then defer: "This mission stopped during planning, before the mission directory existed. Resuming planning needs `/mission`, which holds the planning-phase logic and re-enters Phase 3 idempotently against the existing change directory. Run `/mission` to continue." Stop -- mission-resume does not contain planning-phase logic.
+- **Exactly one active mission and no planning-phase candidates:** Use it. Report "Resuming mission: <change-name>".
+- **Multiple active missions, or any mix of active missions and planning-phase candidates:** List each with its progress, `completion pending` status, or `planning (no mission directory)` label. Ask the user to pick one. If they pick a planning-phase candidate, give the defer message above and stop.
 
 ## Phase 2: Read Mission State
 
