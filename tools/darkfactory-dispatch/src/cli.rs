@@ -119,9 +119,20 @@ impl Cli {
         }
 
         let prompt = match (self.prompt, self.prompt_file) {
-            (Some(prompt), None) => prompt,
-            (None, Some(path)) => fs::read_to_string(&path)
-                .map_err(|error| format!("read prompt file {}: {error}", path.display()))?,
+            (Some(prompt), None) => {
+                if prompt.trim().is_empty() {
+                    return Err("prompt is empty: provide a non-empty --prompt".to_string());
+                }
+                prompt
+            }
+            (None, Some(path)) => {
+                let prompt = fs::read_to_string(&path)
+                    .map_err(|error| format!("read prompt file {}: {error}", path.display()))?;
+                if prompt.trim().is_empty() {
+                    return Err(format!("prompt file {} is empty", path.display()));
+                }
+                prompt
+            }
             (None, None) => {
                 return Err("missing prompt: provide --prompt or --prompt-file".to_string());
             }

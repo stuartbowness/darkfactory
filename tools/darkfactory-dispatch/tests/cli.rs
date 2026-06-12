@@ -56,6 +56,33 @@ fn missing_prompt_exits_with_cli_error() {
 }
 
 #[test]
+fn whitespace_only_prompt_exits_with_cli_error() {
+    let mut cmd = Command::cargo_bin("darkfactory-dispatch").expect("binary exists");
+
+    cmd.args(["--prompt", "   "])
+        .assert()
+        .code(2)
+        .stderr(predicate::str::contains("prompt is empty"));
+}
+
+#[test]
+fn empty_prompt_file_exits_with_cli_error() {
+    let path = std::env::temp_dir().join(format!(
+        "darkfactory-dispatch-empty-prompt-{}.md",
+        Ulid::new()
+    ));
+    std::fs::write(&path, "  \n\t\n").expect("write prompt file");
+
+    let mut cmd = Command::cargo_bin("darkfactory-dispatch").expect("binary exists");
+    cmd.args(["--prompt-file", path.to_str().expect("utf8 path")])
+        .assert()
+        .code(2)
+        .stderr(predicate::str::contains("is empty"));
+
+    std::fs::remove_file(&path).ok();
+}
+
+#[test]
 fn prompt_and_prompt_file_are_mutually_exclusive() {
     let mut cmd = Command::cargo_bin("darkfactory-dispatch").expect("binary exists");
 

@@ -170,8 +170,8 @@ tail -f dispatch.log
 | `--grace` | half of timeout, min 1s | Seconds between soft timeout and hard timeout (SIGKILL) |
 | `--sandbox` | `workspace-write` | Codex sandbox mode |
 | `--config` | (none) | Repeatable. Key=value passed to Codex `-c` flag |
-| `--prompt` | (none) | Task prompt (mutually exclusive with `--prompt-file`) |
-| `--prompt-file` | (none) | Read prompt from file (for large briefs) |
+| `--prompt` | (none) | Task prompt (mutually exclusive with `--prompt-file`; must be non-empty) |
+| `--prompt-file` | (none) | Read prompt from file (for large briefs; an empty or whitespace-only file is a CLI error) |
 | `--output` | (none) | Path for Codex to write results (passed to `-o`) |
 | `--cwd` | current dir | Working directory for the Codex process |
 | `--log` | (none) | File to capture Codex stdout and stderr |
@@ -208,7 +208,7 @@ In async mode, parent-death detection is disabled so the dispatcher survives the
 |------|---------|
 | 0 | Dispatch completed successfully |
 | 1 | Dispatch failed or timed out |
-| 2 | CLI error (bad arguments, missing prompt, file read error) |
+| 2 | CLI error (bad arguments, missing or empty prompt, file read error) |
 
 ## Dispatch result status
 
