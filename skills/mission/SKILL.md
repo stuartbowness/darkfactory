@@ -135,12 +135,25 @@ Every artifact review follows this pattern:
 2. **Write checkpoint** -- persist the review result before continuing:
    - **Phase 2** (before the change directory exists): add a structured entry to the plan's Review Checkpoints section: `- Phase 2 (<artifact>): REVIEWED | FAILED — <timestamp> — <finding count or failure reason>`
    - **Phase 3 onward** (change directory exists): write the review output (or failure notice) to `reviews/<phase>-<artifact>.md` in the change directory, using the format in [templates/review-checkpoint.md](templates/review-checkpoint.md). If the `/artifact-review` dispatch fails, write a FAILED checkpoint with the dispatch error.
-   The checkpoint must exist before proceeding to step 3.
-3. **AI presents** -- show the artifact content and the review findings (if any) to the human
-4. **AI recommends** -- state whether it looks good, incorporating review findings. Address CRITICAL/HIGH findings specifically — agree and suggest a fix, or explain why it's a false positive
-5. **Human decides** -- approve, request changes, or defer to the AI recommendation
+   The checkpoint must exist before presenting the digest.
+3. **Present the gate digest** -- do NOT paste the artifact content or the raw review findings into chat. Both are already on disk and are reachable as clickable file links. Present this block:
 
-The human can always say "looks good" or "go with your recommendation" to keep momentum. If changes are requested, revise and re-present.
+   ```
+   Created:     <one line: what this artifact is>
+   Review:      <checkpoint path>  — <"no CRITICAL/HIGH" | one line per material finding>
+   For review:  <artifact path(s)>
+
+   Approve and continue? Reply `yes`, or `no` with what you'd change.
+   ```
+
+   - `Created` -- a single line naming what was produced.
+   - `Review` -- link the checkpoint file (`reviews/<phase>-<artifact>.md`; for Phase 2, the plan's Review Checkpoints section instead). Append a **material finding** line for each material finding (see below); if none, write `no CRITICAL/HIGH`.
+   - `For review` -- the artifact file path(s) the human opens. For multi-file gates (Phase 4.1 specs), list each path.
+
+   **Material finding** -- a finding is material, and only then gets a one-line synopsis in the digest, if it is (a) **CRITICAL** or **HIGH** severity (the artifact-review severity labels), or (b) a finding you are dismissing as a false positive (surface it so a real gotcha can never hide under "reviewed clean"). MEDIUM and LOW findings stay in the linked checkpoint, unsurfaced. Each material line carries your take inline -- e.g. `HIGH billing/2: "appropriate error" is too vague, I'll pin it to the 402 message` or `CRITICAL auth/3: false positive, the scenario already covers it`. You must still address every CRITICAL/HIGH (agree and fix, or explain the false positive) -- the digest only shortens how it is shown, not the judgment behind it.
+4. **Human decides** -- approve (`yes`), or request changes (`no` with what to change).
+
+The human can always reply `yes` to keep momentum. If changes are requested, revise and re-present the digest.
 
 ---
 
@@ -469,14 +482,9 @@ When a spec scenario traces to an APPROVED-DEVIATION item in the coverage audit,
 
 ### Contract Review
 
-After writing the contract, run `/artifact-review` on the generated `contract.md`. Present it to the human following the review pattern.
+After writing the contract, run `/artifact-review` on the generated `contract.md`. Present it to the human following the review pattern. In the contract gate's `Created` line, give the task count and total check count (a count that feels too high suggests over-specification; too low suggests gaps). If any spec scenario was hard to express as an observable check, add a material-finding line for it -- a weak or vague check is a real quality risk worth the human's eye. Scenario-to-check traceability already lives in the `<!-- Specs: capability/N -->` comments in the contract file the human opens.
 
-For each task section, highlight:
-- Which spec scenarios (e.g., `add-todo/1`, `search/3`) the checks trace to
-- Whether the check count feels right (too many suggests over-specification; too few suggests gaps)
-- Any spec scenarios that were hard to express as observable checks
-
-If the human requests changes, revise and re-present.
+If the human requests changes, revise and re-present the digest.
 
 ### Contract Testability Pre-flight
 
