@@ -30,7 +30,7 @@ If `--basic` is not present, continue with full mission mode below.
 8. **Plan is the operating manual.** Keep the plan updated after every phase and step. It must be accurate if context compacts. On entering any major phase (0-9, 4a) and at every phase gate, set the plan's `## Orchestrator Phase` field to the current phase name, step, and an ISO 8601 `Last checkpoint` timestamp. `mission-resume` cross-checks this field against disk state when choosing a re-entry point.
 9. **Skipped tasks use `- [~]`.** The build loop treats `- [~]` as neither unchecked nor complete. Skipped tasks are not re-attempted.
 10. **Mark tasks done in tasks.md immediately.** After a task passes validation, change `- [ ]` to `- [x]` in tasks.md before moving to the next task. This is required for resume to work correctly.
-11. **Artifact review before human Q&A.** Every planning artifact (Phases 2-5 and 4a) is dispatched to Codex for review via `/artifact-review` before presenting to the human. Findings are shown alongside the artifact and the AI recommendation. If `/artifact-review` fails, note the failure and continue — review is non-blocking. The review result (or failure notice) must be persisted as a checkpoint before presenting the artifact to the human. For Phase 2, record the checkpoint in the plan's Review Checkpoints section (the change directory does not exist yet). From Phase 3 onward, write checkpoint files to `reviews/` in the change directory.
+11. **Artifact review before human Q&A.** Every planning artifact (Phases 2-5 and 4a) is dispatched to Codex for review via `/artifact-review` before presenting to the human. Material findings surface in the gate digest; the full review stays in the linked checkpoint, never pasted into chat (see the Review Pattern). If `/artifact-review` fails, note the failure and continue — review is non-blocking. The review result (or failure notice) must be persisted as a checkpoint before presenting the artifact to the human. For Phase 2, record the checkpoint in the plan's Review Checkpoints section (the change directory does not exist yet). From Phase 3 onward, write checkpoint files to `reviews/` in the change directory.
 
 ---
 
@@ -49,7 +49,7 @@ If `--basic` is not present, continue with full mission mode below.
 8. **Build Loop** -- dispatch workers, validate per task, fix loop with circuit breaker
 9. **Mission Completion** -- final gates, spec delta check, draft PR, dual adversarial review
 
-The shared **Review Pattern** (artifact review -> checkpoint -> present -> recommend -> decide) is defined between Phases 2 and 3 and used at every planning review point.
+The shared **Review Pattern** (artifact review -> checkpoint -> present digest -> decide) is defined between Phases 2 and 3 and used at every planning review point.
 
 ---
 
@@ -217,7 +217,7 @@ The `spec-driven` schema orders its artifacts `proposal -> specs -> design -> ta
 
 Generate `specs/<capability>/spec.md` files (one per capability listed in the proposal). Each spec contains formal WHEN/THEN requirements using SHALL/MUST language.
 
-Run `/artifact-review` on each generated spec file. Present all spec files to the human following the review pattern. Specs are the formal requirements that flow into tasks and the contract. Missing or vague specs are the primary cause of missed requirements in the final build.
+Run `/artifact-review` on each generated spec file. Present the whole spec set in one digest following the review pattern: one `Review` line per `reviews/phase4.1-spec-<capability>.md` checkpoint (with its material findings, if any), and every spec path listed under `For review`. Specs are the formal requirements that flow into tasks and the contract. Missing or vague specs are the primary cause of missed requirements in the final build.
 
 If approved, proceed to Phase 4.2.
 
