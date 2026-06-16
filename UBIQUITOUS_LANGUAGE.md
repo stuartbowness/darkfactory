@@ -57,8 +57,8 @@
 - **Proposal** -- The mission's single intent document and first OpenSpec artifact, authored in Phase 3 from the grill: Problem, Approach, Rejected alternatives, and the Capabilities index the specs are built from. Replaces the earlier separate PRD GitHub issue. *Avoid:* PRD, intent doc, requirements doc
 - **Design** -- The OpenSpec artifact describing how it will be built (architecture decisions). *Avoid:* architecture doc, technical spec
 - **Tasks** -- The OpenSpec artifact listing tasks as checkboxes, each representing one worker's worth of work (should follow the approved task quality standard). *Avoid:* checklist, todo list, backlog
-- **Feature task** -- A task in **Tasks** that implements required behavior; the only kind an **Acceptance** `task` link may target. *Avoid:* implementation task, work task
-- **Closing task** -- A mandatory end-of-mission task (smoke test, cleanup, module shape re-check, CLAUDE.md/ARCH.md, documentation, optional CI) that implements no requirement and carries a `closing_kind`; an **Acceptance** link never points at one. *Avoid:* wrap-up task, final task
+- **Feature task** -- A task in **Tasks** that implements required behavior. *Avoid:* implementation task, work task
+- **Closing task** -- A mandatory end-of-mission task (smoke test, cleanup, module shape re-check, CLAUDE.md/ARCH.md, documentation, optional CI) that implements no requirement. *Avoid:* wrap-up task, final task
 
 ## Dispatch
 
@@ -82,7 +82,7 @@
 - **Module Inventory** -- A design.md section listing modules with interface width, what they hide, and why the boundary exists. *Avoid:* module table, module list
 - **Design Template** -- A reference document defining mandatory design.md sections and scoring rubrics, used by the orchestrator alongside openspec config rules. *Avoid:* design spec, design schema
 - **Spec Reference** -- A capability/scenario identifier (e.g., add-todo/1) used to trace contract checks back to formal spec requirements. *Avoid:* REQ-ID, requirement ID, spec ID
-- **Scenario** -- One WHEN/THEN behavior inside a capability's spec.md, numbered within the file to form its **Spec Reference** (capability/N); the unit **Computed coverage** counts and reports gaps against. *Avoid:* case, example
+- **Scenario** -- One WHEN/THEN behavior inside a capability's spec.md, numbered within the file to form its **Spec Reference** (capability/N). *Avoid:* case, example
 
 ## Frontend architecture
 
@@ -112,26 +112,6 @@
 - **ts-quality hook** -- A Claude Code PostToolUse hook (`ts-quality.sh`) that rejects Edit/Write of `.ts`/`.tsx` files containing banned patterns via `fileRejection`. Complementary to the lint audit -- hook catches patterns at edit time, linter catches them at build time. *Avoid:* TypeScript hook, quality hook
 - **Strictness settings** -- tsconfig.json compiler options that strengthen the type system: `strict`, `noUncheckedIndexedAccess`, `erasableSyntaxOnly`. Without these, the compiler accepts code that the linter and hook assume is rejected. *Avoid:* strict mode, compiler flags
 - **Migration scope** -- The number of compiler errors surfaced by enabling a strictness setting in an existing project, measured by `tsc --strict --noEmit 2>&1 | wc -l`. Used to estimate effort before committing to a strictness migration. *Avoid:* error count, migration cost
-
-## Requirement-as-atom planning (Darkfactory 2)
-
-- **Requirement record** -- The single source-of-truth unit for one required behavior, holding `id`, `behavior`, one or more `acceptance` entries, and `status`; each acceptance entry owns its own `task` link (any record-level task association is their computed union). All planning views render from it. *Avoid:* atom, requirement atom, spec item
-- **Behavior (field)** -- The requirement field that tells the builder the observable user outcome to produce, carrying no validator internals. *Avoid:* description, spec text, requirement text
-- **Acceptance (field)** -- The requirement field holding the falsifiable check that proves the behavior, carrying its **Verification method** tag, `task` link, and **Spec Reference**; rendered into the contract and never shown to the worker. *Avoid:* criteria, acceptance criteria, test, check, contract check
-- **Verification method** -- The tag on an acceptance entry declaring how a validator checks it: `[execution]` (run a command), `[output]` (inspect output, file, or response), or `[inspection]` (read code); `[inspection]` is capped at 20% of a task's checks. *Avoid:* check type, verification tag
-- **Projection** -- A read-only view rendered from the requirement record rather than authored: the contract, the worker brief's behavior slice, and the **Gap report**. *Avoid:* view, generated artifact, derived doc
-- **Render** -- To mechanically produce a projection from the requirement record, as opposed to authoring it with an LLM. *Avoid:* generate, project (verb)
-- **Renderer** -- The deterministic tool that renders the contract from acceptance fields grouped by task, carrying check text verbatim and never inventing checks. *Avoid:* generator, contract generator, projector
-- **Shadow mode** -- Running a renderer alongside the existing authoring step and recording text diffs against the hand-authored artifact for inspection, without replacing anything; cutover parity is judged by **Validator-outcome parity**, not by text match. *Avoid:* dry run, preview mode
-- **Cutover** -- Switching a projection from hand-authored to rendered once the cutover gate is met, deleting the authoring step. *Avoid:* switchover, migration
-- **Cutover gate** -- The criteria required before a cutover: validator-outcome parity across diverse mission shapes (small CLI, large multi-task, frontend, deviation-heavy), acceptance and control contract authored in separate sessions, a seeded failure plus at least one real missed or weak requirement caught, and a rollback path. *Avoid:* go/no-go, migration gate
-- **Validator-outcome parity** -- The cutover test that a rendered contract makes validators pass or fail the same tasks as the hand-authored contract, rather than matching its text. *Avoid:* text parity, diff match
-- **Duplicated-artifact drift** -- Divergence between documents that re-author the same fact (e.g. specs vs contract); the specific failure the requirement record removes, distinct from behavior-vs-acceptance and acceptance-vs-code drift, which remain. *Avoid:* drift, document drift
-- **Deviated status** -- A terminal requirement `status` recording an approved divergence, keeping the original acceptance immutable and adding a deviation sub-field (actual behavior, reason, classification, approver, date, temporary/permanent). *Avoid:* APPROVED-DEVIATION, waiver
-- **Computed coverage** -- The Stage 2 projection (EPIC #199; see docs/darkfactory-2.md) that renders a **Gap report** from the **Requirement records**: a tolerant, scenario-level pass listing every **Coverage gap** plus a total/covered/gaps summary, computed instead of authored as a table. Reports gaps; never errors on them. The v2 replacement for the hand-authored **Coverage audit** -- during shadow mode both exist. *Avoid:* coverage table, gap audit
-- **Coverage gap** -- A spec scenario none of whose acceptance entries link to a valid feature task; the unit **Computed coverage** reports. *Avoid:* missing requirement, uncovered item, hole
-- **Gap kind** -- The reason a scenario is a **Coverage gap**: no acceptance authored, a dangling task link, or a link to a closing task. *Avoid:* gap type, gap reason
-- **Gap report** -- The **Projection** rendered by **Computed coverage** -- the list of **Coverage gaps** plus one total/covered/gaps summary line -- emitted as markdown with a three-way exit code distinguishing no gaps (success), gaps found (a tolerant, non-failing result), and a usage error; the exact codes are fixed in the spec. *Avoid:* coverage report, gap list
 
 ## Relationships
 
@@ -165,13 +145,6 @@
 - A **Deep component** satisfies all four rules: **Small semantic interface**, **Derive don't sync**, **Composition over configuration**, **Collapse coordination**
 - An **Allowed-shallow exception** is exempt from depth rules but must be classified: design system leaf, route/layout glue, adapter, or headless behavior primitive
 - The **Component contract** is written per component during the `/frontend` workflow's Contract phase, before the Build phase begins
-- A **Requirement record** has one **Behavior** and one or more **Acceptance** entries, and is the source the **Contract** is rendered from
-- The **Renderer** projects the **Contract** from **Acceptance** fields grouped by **Task** -- a rendered **Check** corresponds one-to-one to an **Acceptance** entry
-- **Workers** never see **Acceptance** or the rendered **Contract**; their **Brief** projects **Behavior** only
-- **Shadow mode** precedes **Cutover**, and **Cutover** is allowed only when the **Cutover gate** holds (chiefly **Validator-outcome parity**)
-- The **Requirement record** removes **Duplicated-artifact drift** but not behavior-vs-acceptance or acceptance-vs-code drift, which independent review checks must police
-- A **Deviated status** keeps the original **Acceptance** immutable so the divergence is recorded, not laundered
-- **Computed coverage** renders a **Gap report** from the same **Acceptance** task links the **Renderer** consumes, but tolerates missing links and reports each as a **Coverage gap** instead of failing -- it finds *missing* links (the mechanical join), not *wrong* ones, which stay a Codex judgment
 
 ## Example dialogue
 
@@ -237,39 +210,9 @@
 >
 > **Orchestrator:** "Correct. Every task gets `/tdd`, no **Constraints**, no **Browser tools**. The **Frontend depth gate** self-skips because there are no `.tsx` files in the diff."
 
-## Example dialogue (requirement-as-atom planning)
-
-> **Dev:** "In Darkfactory 2, who writes the **Contract**?"
->
-> **Orchestrator:** "Nobody writes it directly anymore. Each scenario carries an **Acceptance (field)** -- a falsifiable check with its method tag and task link. The **Renderer** reads those and projects the **Contract**, grouped by task. It renders authored acceptance; it never invents a check."
->
-> **Dev:** "Then what does the **Worker** see?"
->
-> **Orchestrator:** "Only the **Behavior (field)**, projected into the **Brief**. The **Acceptance** and the rendered **Contract** stay hidden -- the same separation as v1."
->
-> **Dev:** "If the renderer is deterministic, how do we trust it before we rely on it?"
->
-> **Orchestrator:** "**Shadow mode**. It runs beside the hand-authored contract and we check **Validator-outcome parity** -- do validators pass and fail the same tasks. Only when the **Cutover gate** holds do we **Cutover** and delete the authoring step."
->
-> **Dev:** "And this kills drift?"
->
-> **Orchestrator:** "It kills **Duplicated-artifact drift** -- specs and contract can no longer disagree. It does not touch behavior-vs-acceptance or acceptance-vs-code drift; independent checks handle those."
->
-> **Dev:** "And the coverage audit -- who writes that now?"
->
-> **Orchestrator:** "Nobody. **Computed coverage** renders a **Gap report** from the records. It reads the same **Acceptance** task links the **Renderer** uses, but where the renderer fails loud on a bad link, coverage tolerates it and reports a **Coverage gap** -- one per scenario that no acceptance line points to a real feature task."
->
-> **Dev:** "So it catches everything the hand-authored table did?"
->
-> **Orchestrator:** "It catches the *missing* links -- the mechanical join. It does not catch a *wrong* link, a requirement piled on a task that can't satisfy it. The **Gap kind** tells you why each scenario is uncovered -- no acceptance, a dangling link, or a link to a closing task -- but judging whether a present link is the *right* one stays a Codex review."
-
 ## Flagged ambiguities
 
 - **"template"** is used for two different things in the mission skill: the **Design Template** (a reference document defining mandatory design.md sections and scoring rubrics) and the **CLAUDE.md template** (a fill-in-the-blanks document for the closing task). Both live in `templates/` but serve different purposes. **Resolved:** use the full name ("design template" or "CLAUDE.md template") when context is ambiguous. The file names distinguish them: `design-template.md` vs `claude-md.md`.
-- **"contract"** now spans two production methods: the v1 hand-authored `contract.md` and the v2 **Projection** rendered from **Acceptance** fields. **Resolved:** the **Contract** is the same artifact with the same definition; only its production changes. Say "rendered contract" when contrasting with the v1 authored one.
-- **"check" vs "acceptance"** overlap across the record and the contract. **Resolved:** **Acceptance** is the source field on a **Requirement record**; a **Check** is what it becomes once rendered into the **Contract**. They correspond one-to-one; do not use "check" for the source field.
-- **"generate" vs "render"** -- v1 uses "generate" for the orchestrator's LLM authoring of artifacts; v2 **Render** is deterministic. **Resolved:** reserve "render" for the deterministic projection and avoid "generate" for it, so the mechanical step is never confused with LLM authoring.
-- **"atom" vs "record"** -- the model is named "requirement-as-atom," but the object has internal fields and is not indivisible. **Resolved:** use **Requirement record** in operational text; reserve "atom" for naming the model.
 
 ## Resolved ambiguities
 
