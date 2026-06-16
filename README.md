@@ -21,7 +21,7 @@ Inspired by [Factory's Missions architecture](https://www.factory.ai/) and [Matt
 - [Codex CLI](https://github.com/openai/codex) installed (`npm install -g @openai/codex`) and authenticated (`codex login`)
 - [GitHub CLI](https://cli.github.com/) installed and authenticated (`gh auth login`) -- used for creating draft PRs
 - [jq](https://jqlang.github.io/jq/) installed (`brew install jq`) -- used for parsing dispatch results
-- [Rust toolchain](https://rustup.rs/) installed (`curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`) -- needed to build darkfactory-dispatch (and the optional darkfactory-render tool)
+- [Rust toolchain](https://rustup.rs/) installed (`curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`) -- needed to build darkfactory-dispatch
 - A git repository to work in
 
 ### First-time install
@@ -134,10 +134,6 @@ The system has three roles, each handled by a separate AI agent:
 **Workers** -- each worker builds a single task. By default, workers are powered by Codex (OpenAI's coding agent), but you can use Claude instead. Codex workers are dispatched through `darkfactory-dispatch`, a Rust process supervisor that provides process group isolation, two-phase timeout (SIGTERM then SIGKILL), heartbeat events every 15 seconds, and structured JSON results. Claude workers use Claude Code's built-in Agent tool. A worker gets a brief with everything it needs: what to build, how the project is structured, coding rules to follow, which exact Type Catalog domain type names to use, which files to look at, and a summary of what previous tasks already built (file paths, function names, and types -- facts only, never reasoning from other workers). It makes its changes in a single commit and writes a report describing what it did. Workers never see the contract -- they only know what the brief tells them.
 
 **Validators** -- after each worker finishes, validators check the work against the contract. Two validators run back-to-back for every task: the scrutiny validator (a thorough quality check) and the user-test validator (which tests the feature the way a real user would). Validators never see the proposal or design documents -- they only see the code and the contract.
-
-### darkfactory-render
-
-`darkfactory-render` is a deterministic tool that renders a mission's `contract.md` from authored sources (the per-scenario acceptance blocks plus a standing closing-task fragment) instead of having a human hand-write it, removing duplicated-artifact drift. Stage 1 runs only in read-only shadow mode, diffing a rendered contract against the existing hand-authored one for inspection; it is not yet wired into the live pipeline and never replaces the contract -- cutover to rendered contracts is a separate, gated human action. Stage 2 adds a `coverage` subcommand (`darkfactory-render coverage --specs <dir> --tasks <md>`) that runs a tolerant computed coverage check over the same parsed specs and tasks, printing every spec scenario whose acceptance entries don't link to a valid feature task (exit `3` on gaps found, `0` when fully covered). See [`tools/darkfactory-render/README.md`](tools/darkfactory-render/README.md) for usage, the acceptance authoring syntax, and the cutover gate and rollback procedure.
 
 ### Information walls
 
