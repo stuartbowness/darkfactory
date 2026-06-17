@@ -51,7 +51,7 @@ First detect the whole-mission resume target. Then, only for build-phase resumes
 
 ### 3a: Detect the orchestrator phase
 
-Run this **once for the whole mission**, not per task (unlike 3b and 3c). Phases 3b and 3c only cover missions where a worker has run. A mission interrupted during planning (Phase 7 or earlier) has no handoffs and no task commits, so without this step Phase 4 would wrongly assume the build loop is ready to start. Determine which orchestrator phase (0-9, 4a) was active when the session ended, and the **resume target** (the phase to re-enter from).
+Run this **once for the whole mission**, not per task (unlike 3b and 3c). Phases 3b and 3c only cover missions where a worker has run. A mission interrupted during planning (Phase 7 or earlier) has no handoffs and no task commits, so without this step Phase 4 would wrongly assume the build loop is ready to start. Determine which orchestrator phase (0-9, 4.5) was active when the session ended, and the **resume target** (the phase to re-enter from).
 
 **Disk truth -- progress.md markers.** Always derive the phase from progress.md and tasks.md:
 

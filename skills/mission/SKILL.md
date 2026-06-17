@@ -27,10 +27,10 @@ If `--basic` is not present, continue with full mission mode below.
 5. **File-backed state.** All decisions and status go to disk. The mission must be resumable from files alone.
 6. **Single commit per task.** One task, one worker, one commit, one validation cycle.
 7. **Draft PRs only.** Never create a ready-for-review PR. The human promotes it.
-8. **Plan is the operating manual.** Keep the plan updated after every phase and step. It must be accurate if context compacts. On entering any major phase (0-9, 4a) and at every phase gate, set the plan's `## Orchestrator Phase` field to the current phase name, step, and an ISO 8601 `Last checkpoint` timestamp. `mission-resume` cross-checks this field against disk state when choosing a re-entry point.
+8. **Plan is the operating manual.** Keep the plan updated after every phase and step. It must be accurate if context compacts. On entering any major phase (0-9, 4.5) and at every phase gate, set the plan's `## Orchestrator Phase` field to the current phase name, step, and an ISO 8601 `Last checkpoint` timestamp. `mission-resume` cross-checks this field against disk state when choosing a re-entry point.
 9. **Skipped tasks use `- [~]`.** The build loop treats `- [~]` as neither unchecked nor complete. Skipped tasks are not re-attempted.
 10. **Mark tasks done in tasks.md immediately.** After a task passes validation, change `- [ ]` to `- [x]` in tasks.md before moving to the next task. This is required for resume to work correctly.
-11. **Artifact review before human Q&A.** Every planning artifact (Phases 2-5 and 4a) is dispatched to Codex for review via `/artifact-review` before presenting to the human. Material findings surface in the gate digest; the full review stays in the linked checkpoint, never pasted into chat (see the Review Pattern). If `/artifact-review` fails, note the failure and continue — review is non-blocking. The review result (or failure notice) must be persisted as a checkpoint before presenting the artifact to the human. For Phase 2, record the checkpoint in the plan's Review Checkpoints section (the change directory does not exist yet). From Phase 3 onward, write checkpoint files to `reviews/` in the change directory.
+11. **Artifact review before human Q&A.** Every planning artifact (Phases 2-5) is dispatched to Codex for review via `/artifact-review` before presenting to the human. Material findings surface in the gate digest; the full review stays in the linked checkpoint, never pasted into chat (see the Review Pattern). If `/artifact-review` fails, note the failure and continue — review is non-blocking. The review result (or failure notice) must be persisted as a checkpoint before presenting the artifact to the human. For Phase 2, record the checkpoint in the plan's Review Checkpoints section (the change directory does not exist yet). From Phase 3 onward, write checkpoint files to `reviews/` in the change directory.
 
 ---
 
@@ -41,8 +41,11 @@ If `--basic` is not present, continue with full mission mode below.
 2. **Establish Shared Language** -- create/update UBIQUITOUS_LANGUAGE.md
 3. **Write the Proposal** -- author proposal.md, the single intent document
 4. **Create and Review OpenSpec Artifacts** -- specs, design, tasks (human-approved)
-4.2a. **Task Strategy Approval** -- approve decomposition approach before generating tasks
-4a. **Spec Coverage Audit** -- verify every proposal requirement maps to a task
+4.1. **Generate and Review Specs** -- formal WHEN/THEN requirements, one per capability
+4.2. **Generate and Review Design** -- architecture, module inventory, type catalog
+4.3. **Task Strategy Approval** -- approve decomposition approach before generating tasks
+4.4. **Generate and Review Tasks** -- ordered checklist with topology metadata
+4.5. **Spec Coverage Audit** -- verify every proposal requirement maps to a task
 5. **Write Contract** -- validation checks workers never see
 6. **Create Mission Directory** -- set up mission/ state directory
 7. **Launch Confirmation** -- human confirms, build starts
@@ -176,7 +179,7 @@ The proposal is the mission's only intent artifact -- there is no separate PRD. 
 
 3. **Author `proposal.md`** in the change directory with exactly these four sections, each read with a distinct review lens:
    - **Problem** -- what is broken or missing, why now, and what success looks like. (Lens: is this a real problem?)
-   - **Approach** -- the high-level solution, written as a bullet list of discrete commitments (each bullet one verifiable promise about what will exist or change). The coverage audit (Phase 4a) enumerates these bullets, so prose paragraphs that bury commitments are not acceptable here. (Lens: is this the right approach?)
+   - **Approach** -- the high-level solution, written as a bullet list of discrete commitments (each bullet one verifiable promise about what will exist or change). The coverage audit (Phase 4.5) enumerates these bullets, so prose paragraphs that bury commitments are not acceptable here. (Lens: is this the right approach?)
    - **Rejected alternatives** -- what was considered and dropped, and why. This keeps solution bias visible. (Lens: were alternatives genuinely weighed?)
    - **Capabilities** -- the kebab-case capability index (e.g., `user-auth`, `data-export`). Each entry becomes a `specs/<name>/spec.md` file in Phase 4, so this section is load-bearing: it is the contract between the proposal and the specs phase. Check `openspec/specs/` for existing capability names before naming new ones, and list a modified capability only when its spec-level behavior changes.
 
@@ -242,7 +245,7 @@ If a module has a large interface relative to its implementation, ask whether it
 
 #### Existing Codebases
 
-When the mission modifies an existing codebase (not greenfield), the design must evaluate the current code structure against the planned architecture. For each module the design touches, read the existing code and assess whether it aligns with the target design. If existing modules are shallow, tightly coupled, or conflict with the planned architecture, the design should call this out explicitly and recommend refactoring as part of the implementation. These refactoring decisions flow naturally into task ordering in Phase 4.3 -- refactoring tasks go before the feature tasks that depend on them.
+When the mission modifies an existing codebase (not greenfield), the design must evaluate the current code structure against the planned architecture. For each module the design touches, read the existing code and assess whether it aligns with the target design. If existing modules are shallow, tightly coupled, or conflict with the planned architecture, the design should call this out explicitly and recommend refactoring as part of the implementation. These refactoring decisions flow naturally into task ordering in Phase 4.4 -- refactoring tasks go before the feature tasks that depend on them.
 
 Before presenting to the human, run the Phase 4.2 design gate:
 - Verify `design.md` contains all six required section headings from `templates/design-template.md`: Architecture Decision, Module Inventory, Type Catalog, Error Strategy, Integration Points, and Test Strategy. If any are missing, regenerate `design.md` before human review.
@@ -253,11 +256,11 @@ Before presenting to the human, run the Phase 4.2 design gate:
 
 After the design gate passes, run `/artifact-review` on the generated `design.md`. Present it to the human following the review pattern.
 
-After the human approves design.md, populate 5 of the 6 Deterministic Anchors in the plan: workspace layout, primary domain types, error handling strategy, test strategy, and chosen architecture. Source values from design.md's Architecture Decision, Type Catalog, Error Strategy, and Test Strategy sections. Each anchor is a one-liner pointer with a source reference. The sixth anchor (task decomposition strategy) is populated in Phase 4.2a after the human approves the task strategy.
+After the human approves design.md, populate 5 of the 6 Deterministic Anchors in the plan: workspace layout, primary domain types, error handling strategy, test strategy, and chosen architecture. Source values from design.md's Architecture Decision, Type Catalog, Error Strategy, and Test Strategy sections. Each anchor is a one-liner pointer with a source reference. The sixth anchor (task decomposition strategy) is populated in Phase 4.3 after the human approves the task strategy.
 
-If approved, proceed to Phase 4.2a.
+If approved, proceed to Phase 4.3.
 
-### Phase 4.2a: Task Strategy Approval
+### Phase 4.3: Task Strategy Approval
 
 Before generating tasks.md, present a task decomposition strategy for human approval:
 
@@ -290,15 +293,15 @@ The human approves this strategy before tasks.md is generated. If rejected, revi
 
 After approval, populate the task decomposition strategy anchor in the plan's Deterministic Anchors section.
 
-If approved, proceed to Phase 4.3.
+If approved, proceed to Phase 4.4.
 
-### Phase 4.3: Generate and Review Tasks
+### Phase 4.4: Generate and Review Tasks
 
 Generate `tasks.md` (ordered checklist of implementation tasks).
 
 #### Task Quality Standard
 
-Each task must produce a concrete, testable output. When the approved strategy (Phase 4.2a) is vertical, tasks cross all layers. When the strategy is layered or hybrid, tasks may be scoped to a single layer, provided each task still has a clear done state and a test surface.
+Each task must produce a concrete, testable output. When the approved strategy (Phase 4.3) is vertical, tasks cross all layers. When the strategy is layered or hybrid, tasks may be scoped to a single layer, provided each task still has a clear done state and a test surface.
 
 **One task = one worker = one commit = one validation cycle.**
 
@@ -329,11 +332,11 @@ Validation rules:
 - Exactly one `Skill:` value per task -- either `/tdd` or `/frontend`
 - Zero or more `Constraints:` values
 - `/ui-system` and `/react-perf` are only valid as mission constraints with `Skill: /frontend`. (Both skills are also independently invokable by humans via `/ui-system` or `/react-perf` outside of missions — the constraint restriction applies only to mission task topology.)
-- Flag invalid combinations during Phase 4.3 human review
+- Flag invalid combinations during Phase 4.4 human review
 
 Layers are logical groupings of modules (domain, transport, storage, configuration, etc.) defined in the design narrative, not columns from the Module Inventory table.
 
-When the approved strategy (Phase 4.2a) is layered or hybrid and a task's Layers field lists more than 2 architectural layers, flag the task for human review with a recommendation to split or approve as-is. When the approved strategy is vertical, the layer count flag does not apply since vertical tasks are expected to cross all layers.
+When the approved strategy (Phase 4.3) is layered or hybrid and a task's Layers field lists more than 2 architectural layers, flag the task for human review with a recommendation to split or approve as-is. When the approved strategy is vertical, the layer count flag does not apply since vertical tasks are expected to cross all layers.
 
 When a task adds public surface area to a module (new exports, API endpoints, CLI flags), include the implementation behind that surface in the same task. Do not split a module's interface from its implementation across tasks -- the per-task validator judges depth from a single diff and will flag an interface without the work behind it.
 
@@ -357,7 +360,7 @@ Every mission's tasks.md MUST include these closing tasks after all feature task
 
 If the design (Phase 4.2) identified refactoring needed for existing code, those tasks go before the feature tasks in tasks.md.
 
-Run `/artifact-review` on the generated `tasks.md`. Present it following the review pattern (the digest links `tasks.md`; do not paste the task list). If approved, proceed to Phase 4a.
+Run `/artifact-review` on the generated `tasks.md`. Present it following the review pattern (the digest links `tasks.md`; do not paste the task list). If approved, proceed to Phase 4.5.
 
 After all artifacts are reviewed and approved, update the plan with the actual artifact paths.
 
@@ -367,14 +370,14 @@ After all artifacts are reviewed and approved, update the plan with the actual a
 - [ ] Review checkpoint exists for every spec: reviews/phase4.1-spec-<capability>.md matches specs/ one-to-one
 - [ ] design.md human-approved
 - [ ] Review checkpoint exists: reviews/phase4.2-design.md
-- [ ] Task strategy approved by human (Phase 4.2a)
+- [ ] Task strategy approved by human (Phase 4.3)
 - [ ] tasks.md (with closing tasks) human-approved
-- [ ] Review checkpoint exists: reviews/phase4.3-tasks.md
+- [ ] Review checkpoint exists: reviews/phase4.4-tasks.md
 - [ ] Plan updated with actual artifact paths
 
 ---
 
-## Phase 4a: Spec Coverage Audit
+## Phase 4.5: Spec Coverage Audit
 
 > **Rules:** 5
 > **Goal:** Verify every proposal requirement maps to at least one task before writing the contract.
@@ -421,7 +424,7 @@ The "Prerequisites met?" column applies to Substitutions only. For Interpretatio
 
 8. **If tasks change** (new tasks added to cover gaps), re-present the updated tasks.md for review. The human must approve the final task list before proceeding.
 
-9. **If specs or tasks changed in steps 7-8,** re-persist the updated `coverage-audit.md` to disk and re-run `/artifact-review` on it. Overwrite the existing checkpoint file (`reviews/phase4a-coverage-audit.md`) with the new review result. Phase 5 cross-references `coverage-audit.md` when writing the contract -- the persisted audit must reflect the final approved state.
+9. **If specs or tasks changed in steps 7-8,** re-persist the updated `coverage-audit.md` to disk and re-run `/artifact-review` on it. Overwrite the existing checkpoint file (`reviews/phase4.5-coverage-audit.md`) with the new review result. Phase 5 cross-references `coverage-audit.md` when writing the contract -- the persisted audit must reflect the final approved state.
 
 10. **Record the coverage audit** in the plan. Update the Spec Coverage Audit section with the gap count and resolutions.
 
@@ -432,7 +435,7 @@ The "Prerequisites met?" column applies to Substitutions only. For Interpretatio
 - [ ] All deviations classified and approved by human
 - [ ] Changed specs/tasks re-approved by human (if any changed)
 - [ ] coverage-audit.md persisted to disk
-- [ ] Review checkpoint exists: reviews/phase4a-coverage-audit.md
+- [ ] Review checkpoint exists: reviews/phase4.5-coverage-audit.md
 - [ ] Plan updated with audit results
 
 ---
@@ -457,7 +460,7 @@ Create `contract.md` in the change directory (`openspec/changes/<change-name>/co
 
 ### Cross-Referencing Specs
 
-For each task, use the coverage audit from Phase 4a to find which spec capabilities map to it. Then read the actual spec files to identify specific scenarios. Write checks that capture the specific details from those scenarios -- not generic behavioral checks, but checks that would fail if the specific scenario were not implemented. Each check must trace back to a specific spec capability and scenario number (e.g., `add-todo/1`).
+For each task, use the coverage audit from Phase 4.5 to find which spec capabilities map to it. Then read the actual spec files to identify specific scenarios. Write checks that capture the specific details from those scenarios -- not generic behavioral checks, but checks that would fail if the specific scenario were not implemented. Each check must trace back to a specific spec capability and scenario number (e.g., `add-todo/1`).
 
 **Process for each task:**
 1. Look up the spec capabilities mapped to this task in the coverage table (e.g., `add-todo`, `search`).
@@ -545,7 +548,7 @@ engines:
   adversarial_reviewer_b: claude
   demo_video: claude
 
-# Auto-set to true during Phase 4.2a when any task has Skill: /frontend.
+# Auto-set to true during Phase 4.3 when any task has Skill: /frontend.
 browser_tools: false
 
 # Absolute path to the durable plan file (the one written in Phase 0, normally
