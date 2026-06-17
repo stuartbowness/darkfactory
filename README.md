@@ -192,7 +192,7 @@ Darkfactory is controlled through skills -- reusable prompt templates you invoke
 | `/test-quality` | LLM-based semantic review of test effectiveness. The scrutiny validator runs this as a subagent after every worker commit. |
 | `/security` | Security review. The scrutiny validator runs this when the diff touches auth, secrets, user input, or network/filesystem boundaries. |
 | `/adversarial` | Dual-agent code review: dispatches a Codex reviewer and a Claude reviewer with identical input, then surfaces disagreements. |
-| `/artifact-review` | Review a planning artifact (language glossary, proposal, spec, design, tasks, contract) via Codex. Checks for ambiguity, terminology drift, contradictions, missing edge cases, coverage gaps, and feasibility. Used standalone or as a review gate in `/mission`. |
+| `/artifact-review` | Review a planning artifact (language glossary, proposal, spec, design, tasks, coverage audit, contract) via Codex. Checks for ambiguity, terminology drift, contradictions, missing edge cases, coverage gaps, and feasibility. Used standalone or as a review gate in `/mission`. |
 | `/lint-audit` | Audit a TypeScript project's oxlint config and tsconfig strictness against an agent-friendly ruleset. Reports gaps and offers to apply fixes per-item or all-at-once. Oxlint only -- skips ESLint projects. Standalone. |
 | `/dispatch` | Run a coding task via `darkfactory-dispatch`. Accepts a task description inline or prompts for one. Presents structured outcome. |
 | `/arch-review` | Architecture review with guides for deepening modules, interface design, and language precision. Standalone -- not yet wired into missions. |
@@ -207,7 +207,7 @@ Darkfactory is controlled through skills -- reusable prompt templates you invoke
 `/mission` is split across files so only the control flow is always in context:
 
 - `SKILL.md` -- control flow, rules, phase gates (auto-loaded)
-- `templates/` -- artifacts the orchestrator fills in: `plan.md`, `coverage-audit.md`, `contract.md`, `worker-brief.md`, `worker-fix-brief.md`, `pr-body.md`, `design-template.md`, `claude-md.md`
+- `templates/` -- artifacts the orchestrator fills in: `plan.md`, `coverage-audit.md`, `contract.md`, `worker-brief.md`, `worker-fix-brief.md`, `pr-body.md`, `design-template.md`, `review-checkpoint.md`, `claude-md.md`
 - `prompts/` -- prompts handed to subagents: `scrutiny-validator.md`, `usertest-validator.md`, `spec-delta-checker.md`, `adversarial-reviewer.md`
 
 Companion files are read on demand when the skill reaches the step that needs them.
@@ -269,7 +269,7 @@ When you run this, it goes through 5 phases automatically:
 
 1. **Orient** -- reads your codebase, figures out how to build and test your project, and writes a short checklist (the "mini-contract") of 3-8 things the finished code should do, derived from your task description.
 2. **Build** -- writes the code using test-driven development by default: write a failing test, write the code to make it pass, repeat.
-3. **Validate** -- runs 5 checks in order: does the project build? do the tests pass? does the linter pass? is the code formatted? does the code satisfy the mini-contract?
+3. **Validate** -- runs 5 checks in order: does the project build? do the tests pass? does the linter pass? does the code satisfy the mini-contract? and does a behavioral spot-check of the contract's executable checks pass?
 4. **Fix** -- if any check fails, it diagnoses the problem and applies a fix, then re-runs all checks from scratch. If it fails 3 times in a row, it stops and tells you what went wrong.
 5. **Commit** -- creates a single commit after all checks pass.
 
