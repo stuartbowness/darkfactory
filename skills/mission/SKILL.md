@@ -30,7 +30,7 @@ If `--basic` is not present, continue with full mission mode below.
 8. **Plan is the operating manual.** Keep the plan updated after every phase and step. It must be accurate if context compacts. On entering any major phase (0-9, 4a) and at every phase gate, set the plan's `## Orchestrator Phase` field to the current phase name, step, and an ISO 8601 `Last checkpoint` timestamp. `mission-resume` cross-checks this field against disk state when choosing a re-entry point.
 9. **Skipped tasks use `- [~]`.** The build loop treats `- [~]` as neither unchecked nor complete. Skipped tasks are not re-attempted.
 10. **Mark tasks done in tasks.md immediately.** After a task passes validation, change `- [ ]` to `- [x]` in tasks.md before moving to the next task. This is required for resume to work correctly.
-11. **Artifact review before human Q&A.** Every planning artifact (Phases 2-5 and 4a) is dispatched to Codex for review via `/artifact-review` before presenting to the human. Findings are shown alongside the artifact and the AI recommendation. If `/artifact-review` fails, note the failure and continue — review is non-blocking. The review result (or failure notice) must be persisted as a checkpoint before presenting the artifact to the human. For Phase 2, record the checkpoint in the plan's Review Checkpoints section (the change directory does not exist yet). From Phase 3 onward, write checkpoint files to `reviews/` in the change directory.
+11. **Artifact review before human Q&A.** Every planning artifact (Phases 2-5 and 4a) is dispatched to Codex for review via `/artifact-review` before presenting to the human. Material findings surface in the gate digest; the full review stays in the linked checkpoint, never pasted into chat (see the Review Pattern). If `/artifact-review` fails, note the failure and continue — review is non-blocking. The review result (or failure notice) must be persisted as a checkpoint before presenting the artifact to the human. For Phase 2, record the checkpoint in the plan's Review Checkpoints section (the change directory does not exist yet). From Phase 3 onward, write checkpoint files to `reviews/` in the change directory.
 
 ---
 
@@ -49,7 +49,7 @@ If `--basic` is not present, continue with full mission mode below.
 8. **Build Loop** -- dispatch workers, validate per task, fix loop with circuit breaker
 9. **Mission Completion** -- final gates, spec delta check, draft PR, dual adversarial review
 
-The shared **Review Pattern** (artifact review -> checkpoint -> present -> recommend -> decide) is defined between Phases 2 and 3 and used at every planning review point.
+The shared **Review Pattern** (artifact review -> checkpoint -> present digest -> decide) is defined between Phases 2 and 3 and used at every planning review point.
 
 ---
 
@@ -135,12 +135,25 @@ Every artifact review follows this pattern:
 2. **Write checkpoint** -- persist the review result before continuing:
    - **Phase 2** (before the change directory exists): add a structured entry to the plan's Review Checkpoints section: `- Phase 2 (<artifact>): REVIEWED | FAILED — <timestamp> — <finding count or failure reason>`
    - **Phase 3 onward** (change directory exists): write the review output (or failure notice) to `reviews/<phase>-<artifact>.md` in the change directory, using the format in [templates/review-checkpoint.md](templates/review-checkpoint.md). If the `/artifact-review` dispatch fails, write a FAILED checkpoint with the dispatch error.
-   The checkpoint must exist before proceeding to step 3.
-3. **AI presents** -- show the artifact content and the review findings (if any) to the human
-4. **AI recommends** -- state whether it looks good, incorporating review findings. Address CRITICAL/HIGH findings specifically — agree and suggest a fix, or explain why it's a false positive
-5. **Human decides** -- approve, request changes, or defer to the AI recommendation
+   The checkpoint must exist before presenting the digest.
+3. **Present the gate digest** -- do NOT paste the artifact content or the raw review findings into chat. Both are already on disk and are reachable as clickable file links. Present this block:
 
-The human can always say "looks good" or "go with your recommendation" to keep momentum. If changes are requested, revise and re-present.
+   ```
+   Created:     <one line: what this artifact is>
+   Review:      <checkpoint path>  — <"no material findings" | "FAILED: <reason>" | one line per material finding>
+   For review:  <artifact path(s)>
+
+   Approve and continue? Reply `yes`, or `no` with what you'd change.
+   ```
+
+   - `Created` -- a single line naming what was produced.
+   - `Review` -- link the checkpoint file (`reviews/<phase>-<artifact>.md`) and append a **material finding** line for each material finding (see below). If none, write `no material findings`. If `/artifact-review` itself failed, write `FAILED: <reason>` -- never render a failed review as clean. **Phase 2 exception:** the change directory does not exist yet, so there is no durable checkpoint file and nothing else persists the review. Point `Review` at the plan's Review Checkpoints section and surface *every* finding in the digest, not just material ones.
+   - `For review` -- the artifact file path(s) the human opens. For multi-file gates (Phase 4.1 specs), give one `Review` line per spec checkpoint and list every spec path -- e.g. `Review: reviews/phase4.1-spec-auth.md — HIGH auth/2: ... (fixed)` and `reviews/phase4.1-spec-billing.md — no material findings`, then `For review: specs/auth/spec.md, specs/billing/spec.md`.
+
+   **Material finding** -- a finding is material, and only then gets a one-line synopsis in the digest, if it is (a) **CRITICAL** or **HIGH** severity (the artifact-review severity labels), (b) a finding you are dismissing as a false positive (surface it so a real gotcha can never hide under "reviewed clean"), or (c) a finding of any severity that you cannot confidently resolve or wave off yourself. Severity is assigned by the reviewer, not by what the human needs to see -- (c) is the safety valve for a MEDIUM or LOW that you suspect actually matters. MEDIUM and LOW findings you can confidently resolve stay in the linked checkpoint, unsurfaced. **Fix before you present:** resolve every CRITICAL/HIGH at the source and re-run `/artifact-review` before showing the digest -- the approve prompt must never sit above an open, unfixed CRITICAL/HIGH. So a material line reports a settled state, not a promise: `HIGH billing/2: "appropriate error" was too vague — fixed, pinned to the 402 message`, or `CRITICAL auth/3: false positive, the scenario already covers it`, or for a (c) item `MEDIUM export/1: unsure if the 10MB cap is intended — flagging for your call`.
+4. **Human decides** -- approve (`yes`), or request changes (`no` with what to change).
+
+The human can always reply `yes` to keep momentum. If changes are requested, revise and re-present the digest.
 
 ---
 
@@ -204,7 +217,7 @@ The `spec-driven` schema orders its artifacts `proposal -> specs -> design -> ta
 
 Generate `specs/<capability>/spec.md` files (one per capability listed in the proposal). Each spec contains formal WHEN/THEN requirements using SHALL/MUST language.
 
-Run `/artifact-review` on each generated spec file. Present all spec files to the human following the review pattern. Specs are the formal requirements that flow into tasks and the contract. Missing or vague specs are the primary cause of missed requirements in the final build.
+Run `/artifact-review` on each generated spec file. Present the whole spec set in one digest following the review pattern: one `Review` line per `reviews/phase4.1-spec-<capability>.md` checkpoint (with its material findings, if any), and every spec path listed under `For review`. Specs are the formal requirements that flow into tasks and the contract. Missing or vague specs are the primary cause of missed requirements in the final build.
 
 If approved, proceed to Phase 4.2.
 
@@ -344,7 +357,7 @@ Every mission's tasks.md MUST include these closing tasks after all feature task
 
 If the design (Phase 4.2) identified refactoring needed for existing code, those tasks go before the feature tasks in tasks.md.
 
-Run `/artifact-review` on the generated `tasks.md`. Present the full task list (including closing tasks) to the human following the review pattern. If approved, proceed to Phase 4a.
+Run `/artifact-review` on the generated `tasks.md`. Present it following the review pattern (the digest links `tasks.md`; do not paste the task list). If approved, proceed to Phase 4a.
 
 After all artifacts are reviewed and approved, update the plan with the actual artifact paths.
 
@@ -402,7 +415,7 @@ The "Prerequisites met?" column applies to Substitutions only. For Interpretatio
 
 5. **Persist the coverage audit to disk.** Write the coverage table to `openspec/changes/<change-name>/coverage-audit.md`. This file is needed for mission resume (so a resumed session can see what was already mapped without re-running the audit) and for contract writing (Phase 5 cross-references it). For each Substitution deviation, include the prerequisite analysis (which prerequisites were checked, which were covered, which were gaps, and how they were resolved). This ensures a resumed session knows why a substitution was approved safe.
 
-6. Run `/artifact-review` on the persisted `coverage-audit.md`. **Present the coverage table and gap recommendations** to the human following the review pattern.
+6. Run `/artifact-review` on the persisted `coverage-audit.md` and present it following the review pattern (the digest links `coverage-audit.md`; do not paste the table). The per-item substitution and removal approvals stay in their dedicated step above -- the digest covers the audit artifact, not those decisions.
 
 7. **If specs change** (new spec requirements added to cover gaps), re-present the affected spec files for human review before proceeding. The human must approve any new or modified specs.
 
@@ -469,14 +482,9 @@ When a spec scenario traces to an APPROVED-DEVIATION item in the coverage audit,
 
 ### Contract Review
 
-After writing the contract, run `/artifact-review` on the generated `contract.md`. Present it to the human following the review pattern.
+After writing the contract, run `/artifact-review` on the generated `contract.md`. Present it to the human following the review pattern. In the contract gate's `Created` line, give the task count and total check count (a count that feels too high suggests over-specification; too low suggests gaps). If any spec scenario was hard to express as an observable check, add a material-finding line for it -- a weak or vague check is a real quality risk worth the human's eye. Scenario-to-check traceability already lives in the `<!-- Specs: capability/N -->` comments in the contract file the human opens.
 
-For each task section, highlight:
-- Which spec scenarios (e.g., `add-todo/1`, `search/3`) the checks trace to
-- Whether the check count feels right (too many suggests over-specification; too few suggests gaps)
-- Any spec scenarios that were hard to express as observable checks
-
-If the human requests changes, revise and re-present.
+If the human requests changes, revise and re-present the digest.
 
 ### Contract Testability Pre-flight
 
