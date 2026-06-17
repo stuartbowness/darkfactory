@@ -26,7 +26,7 @@ Load-bearing in a mission (keep, untouched):
 - `lint-audit` — mission-init setup check
 
 Accessory / standalone (not invoked by the mission loop):
-- `prd` — **dead** after proposal.md consolidation (commit 88dda38). Mission never calls it.
+- `prd` — standalone by design: the `/grill` -> `/prd` à-la-carte path for planning a feature outside a mission, emitting a portable PRD GitHub issue. Not called by the mission loop (the mission uses proposal.md instead), and that's intentional, not dead.
 - `skill-review`, `write-a-skill` — maintainer meta-tools, not user-facing
 - `domain-model`, `module-design`, `arch-review` — richer standalone alternatives, "not yet wired into missions"
 - `qa` — standalone post-mission bug filing
@@ -39,7 +39,7 @@ Accessory / standalone (not invoked by the mission loop):
 
 ### A. Skills — removal
 
-- **Remove `prd`** (75 lines, 1 skill). Dead since proposal consolidation; duplicates grill+language interview and module-design's module sketch; its GitHub-issue output is orphaned. Risk: very low. Update README + mission-init checklist.
+- **Keep `prd`** — standalone by design, not dead. It's the lightweight `/grill` -> `/prd` path for planning a small feature outside a full mission, emitting a portable PRD GitHub issue. The mission deliberately uses proposal.md instead; `/prd` serves the à-la-carte context, where a mission-internal proposal.md would be the wrong artifact. Not a removal candidate.
 - **Remove `skill-review` + `write-a-skill`** (~335 lines, 2 skills); move their content to `docs/`. These are Darkfactory-development tooling, not mission tooling. They inflate the skill list new users see. Risk: low.
 - **Merge `mission-status` into `mission-resume`** (~110 net lines, 1 skill). Resume already parses every file status reads. Add a `--status` read-only early-exit. Risk: low; preserve the read-only guarantee.
 
@@ -92,13 +92,13 @@ Target: ~1,800-2,000 LOC, a third gone, all incidental. Keep it Rust; a shell re
 ## The steering tension
 
 Two different goals point at different cuts:
-- **Cut maintenance surface, behavior unchanged**: remove prd / skill-review / write-a-skill, merge mission-status, dead-code the Rust tool, archive openspec, prune docs. Pure win, low risk.
+- **Cut maintenance surface, behavior unchanged**: remove skill-review / write-a-skill (maintainer meta-tools), merge mission-status, dead-code the Rust tool, archive openspec, prune docs. Pure win, low risk.
 - **Cut planning ceremony for speed** (accept more human judgment, less rigor): fewer artifact-review gates, collapse coverage-audit, trim design sections, fewer scrutiny gates. Real tradeoff — faster missions, less automated safety.
 
 The first set is mechanical cleanup. The second is a product decision about how much ceremony the mission should impose.
 
 ## Conservative achievable total (low risk, behavior preserved)
-Remove 4 skills (prd, skill-review, write-a-skill, mission-status->resume), ~1,000 LOC from the Rust tool, ~50K of redundant docs, 4 stale/dead openspec+infra files. No loss to the build/validate/fix loop.
+Remove 3 skills (skill-review, write-a-skill, mission-status->resume), ~1,000 LOC from the Rust tool, ~50K of redundant docs, 4 stale/dead openspec+infra files. No loss to the build/validate/fix loop. (`/prd` is kept — standalone by design.)
 
 ---
 
@@ -113,7 +113,7 @@ Risk = chance of breaking something / losing safety. Value = how much gets remov
 - Split README (setup vs tutorial vs architecture) — Risk: Low, Value: M, DX: high
 - Remove `skill-review` + `write-a-skill` (move to docs/) — Risk: Low, Value: M (~335 lines, 2 skills), DX: high
 - Delete dead test-only Rust APIs — Risk: None, Value: M (~120 LOC), DX: medium
-- Remove `prd` skill (dead since proposal consolidation) — Risk: Very low, Value: S (75 lines, 1 skill), DX: medium
+- Keep `prd` — standalone by design (the `/grill` -> `/prd` à-la-carte path); not a removal candidate. DONE: reclassified.
 - Archive 2 completed openspec changes (frontend-architecture-skill, lint-audit-skill) + delete abandoned resume-phase-recovery — Risk: Low, Value: L (~150K out of active), DX: medium
 - Delete `migrate.sh` (dead since April) — Risk: None, Value: S, DX: neutral
 

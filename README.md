@@ -174,7 +174,7 @@ openspec/changes/<change-name>/
 
 ## Skills
 
-Darkfactory is controlled through skills -- reusable prompt templates you invoke with a slash command in Claude Code.
+Darkfactory is controlled through skills -- reusable prompt templates you invoke with a slash command in Claude Code. Some are orchestrated automatically by `/mission`; others are standalone tools you invoke directly, à la carte, when a full mission is more than you need.
 
 | Skill | Purpose |
 |-------|---------|
@@ -183,7 +183,7 @@ Darkfactory is controlled through skills -- reusable prompt templates you invoke
 | `/mission-status` | Read-only progress check. Open a second terminal while a mission runs to see which tasks are done, in progress, or queued. |
 | `/mission-init` | Check your project setup. Verifies required skill symlinks, reports on optional bundled skills, checks CLI tools and coverage tools, checks chrome-devtools-mcp when `browser_tools: true`, and runs `openspec init` if needed. |
 | `/grill` | Alignment interview: asks pointed questions until the goals, constraints, and edge cases are clear. Used in the mission planning phase. |
-| `/prd` | Turns an interview into a structured PRD filed as a GitHub issue. Standalone -- no longer part of the mission flow (the proposal is the mission's single intent document). |
+| `/prd` | Turns an interview into a structured PRD filed as a GitHub issue. Standalone by design -- the lightweight `/grill` -> `/prd` path for planning a feature without running a full mission. (Inside a mission, intent lives in proposal.md instead.) |
 | `/language` | Creates a shared glossary (ubiquitous language) so you, the orchestrator, and all workers use the same terms. Used in the mission planning phase. |
 | `/tdd` | Test-driven development guidance. Workers invoke this during the build phase for backend, hooks, and utility tasks. Companion files cover deep modules, interfaces, mocking, refactoring, and test patterns. |
 | `/frontend` | Prescriptive builder guide for React/TypeScript component development. Workers invoke this during the build phase for frontend component, page, and layout tasks. Defines the design-implement-test workflow with visual verification via chrome-devtools-mcp. Companion files: DEEP-COMPONENTS.md (four rules), STACK.md (tech stack), PATTERNS.md (code examples), TESTING.md (behavioral testing). |
@@ -195,12 +195,12 @@ Darkfactory is controlled through skills -- reusable prompt templates you invoke
 | `/artifact-review` | Review a planning artifact (language glossary, proposal, spec, design, tasks, coverage audit, contract) via Codex. Checks for ambiguity, terminology drift, contradictions, missing edge cases, coverage gaps, and feasibility. Used standalone or as a review gate in `/mission`. |
 | `/lint-audit` | Audit a TypeScript project's oxlint config and tsconfig strictness against an agent-friendly ruleset. Reports gaps and offers to apply fixes per-item or all-at-once. Oxlint only -- skips ESLint projects. Standalone. |
 | `/dispatch` | Run a coding task via `darkfactory-dispatch`. Accepts a task description inline or prompts for one. Presents structured outcome. |
-| `/arch-review` | Architecture review with guides for deepening modules, interface design, and language precision. Standalone -- not yet wired into missions. |
-| `/domain-model` | Domain modeling with ADR and bounded context formats. Standalone -- not yet wired into missions. |
-| `/module-design` | Module design and boundary analysis. Standalone -- not yet wired into missions. |
-| `/qa` | QA review skill. Standalone -- not yet wired into missions. |
+| `/arch-review` | Architecture review with guides for deepening modules, interface design, and language precision. Standalone -- invoke directly, outside a mission. |
+| `/domain-model` | Domain modeling with ADR and bounded context formats. Standalone -- invoke directly, outside a mission. |
+| `/module-design` | Module design and boundary analysis. Standalone -- invoke directly, outside a mission. |
+| `/qa` | QA review skill. Standalone -- invoke directly, outside a mission. |
 | `/skill-review` | Audit a skill directory against Anthropic best practices. Checks naming, description, structure, content patterns, and anti-patterns. Runs inline (no Codex dispatch). Standalone -- also invoked automatically by `/write-a-skill` after drafting. |
-| `/write-a-skill` | Meta-skill for writing new Darkfactory skills. Runs `/skill-review` as a final step after drafting. Standalone -- not yet wired into missions. |
+| `/write-a-skill` | Meta-skill for writing new Darkfactory skills. Runs `/skill-review` as a final step after drafting. Standalone -- invoke directly, outside a mission. |
 
 ### Skill structure
 
