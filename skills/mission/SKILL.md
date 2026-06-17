@@ -140,17 +140,17 @@ Every artifact review follows this pattern:
 
    ```
    Created:     <one line: what this artifact is>
-   Review:      <checkpoint path>  — <"no CRITICAL/HIGH" | one line per material finding>
+   Review:      <checkpoint path>  — <"no material findings" | "FAILED: <reason>" | one line per material finding>
    For review:  <artifact path(s)>
 
    Approve and continue? Reply `yes`, or `no` with what you'd change.
    ```
 
    - `Created` -- a single line naming what was produced.
-   - `Review` -- link the checkpoint file (`reviews/<phase>-<artifact>.md`; for Phase 2, the plan's Review Checkpoints section instead). Append a **material finding** line for each material finding (see below); if none, write `no CRITICAL/HIGH`.
-   - `For review` -- the artifact file path(s) the human opens. For multi-file gates (Phase 4.1 specs), list each path.
+   - `Review` -- link the checkpoint file (`reviews/<phase>-<artifact>.md`) and append a **material finding** line for each material finding (see below). If none, write `no material findings`. If `/artifact-review` itself failed, write `FAILED: <reason>` -- never render a failed review as clean. **Phase 2 exception:** the change directory does not exist yet, so there is no durable checkpoint file and nothing else persists the review. Point `Review` at the plan's Review Checkpoints section and surface *every* finding in the digest, not just material ones.
+   - `For review` -- the artifact file path(s) the human opens. For multi-file gates (Phase 4.1 specs), give one `Review` line per spec checkpoint and list every spec path -- e.g. `Review: reviews/phase4.1-spec-auth.md — HIGH auth/2: ... (fixed)` and `reviews/phase4.1-spec-billing.md — no material findings`, then `For review: specs/auth/spec.md, specs/billing/spec.md`.
 
-   **Material finding** -- a finding is material, and only then gets a one-line synopsis in the digest, if it is (a) **CRITICAL** or **HIGH** severity (the artifact-review severity labels), (b) a finding you are dismissing as a false positive (surface it so a real gotcha can never hide under "reviewed clean"), or (c) a finding of any severity that you cannot confidently resolve or wave off yourself. Severity is assigned by the reviewer, not by what the human needs to see -- (c) is the safety valve for a MEDIUM or LOW that you suspect actually matters. MEDIUM and LOW findings you can confidently resolve stay in the linked checkpoint, unsurfaced. Each material line carries your take inline -- e.g. `HIGH billing/2: "appropriate error" is too vague, I'll pin it to the 402 message` or `CRITICAL auth/3: false positive, the scenario already covers it`. You must still address every CRITICAL/HIGH (agree and fix, or explain the false positive) -- the digest only shortens how it is shown, not the judgment behind it.
+   **Material finding** -- a finding is material, and only then gets a one-line synopsis in the digest, if it is (a) **CRITICAL** or **HIGH** severity (the artifact-review severity labels), (b) a finding you are dismissing as a false positive (surface it so a real gotcha can never hide under "reviewed clean"), or (c) a finding of any severity that you cannot confidently resolve or wave off yourself. Severity is assigned by the reviewer, not by what the human needs to see -- (c) is the safety valve for a MEDIUM or LOW that you suspect actually matters. MEDIUM and LOW findings you can confidently resolve stay in the linked checkpoint, unsurfaced. **Fix before you present:** resolve every CRITICAL/HIGH at the source and re-run `/artifact-review` before showing the digest -- the approve prompt must never sit above an open, unfixed CRITICAL/HIGH. So a material line reports a settled state, not a promise: `HIGH billing/2: "appropriate error" was too vague — fixed, pinned to the 402 message`, or `CRITICAL auth/3: false positive, the scenario already covers it`, or for a (c) item `MEDIUM export/1: unsure if the 10MB cap is intended — flagging for your call`.
 4. **Human decides** -- approve (`yes`), or request changes (`no` with what to change).
 
 The human can always reply `yes` to keep momentum. If changes are requested, revise and re-present the digest.
@@ -357,7 +357,7 @@ Every mission's tasks.md MUST include these closing tasks after all feature task
 
 If the design (Phase 4.2) identified refactoring needed for existing code, those tasks go before the feature tasks in tasks.md.
 
-Run `/artifact-review` on the generated `tasks.md`. Present the full task list (including closing tasks) to the human following the review pattern. If approved, proceed to Phase 4a.
+Run `/artifact-review` on the generated `tasks.md`. Present it following the review pattern (the digest links `tasks.md`; do not paste the task list). If approved, proceed to Phase 4a.
 
 After all artifacts are reviewed and approved, update the plan with the actual artifact paths.
 
@@ -415,7 +415,7 @@ The "Prerequisites met?" column applies to Substitutions only. For Interpretatio
 
 5. **Persist the coverage audit to disk.** Write the coverage table to `openspec/changes/<change-name>/coverage-audit.md`. This file is needed for mission resume (so a resumed session can see what was already mapped without re-running the audit) and for contract writing (Phase 5 cross-references it). For each Substitution deviation, include the prerequisite analysis (which prerequisites were checked, which were covered, which were gaps, and how they were resolved). This ensures a resumed session knows why a substitution was approved safe.
 
-6. Run `/artifact-review` on the persisted `coverage-audit.md`. **Present the coverage table and gap recommendations** to the human following the review pattern.
+6. Run `/artifact-review` on the persisted `coverage-audit.md` and present it following the review pattern (the digest links `coverage-audit.md`; do not paste the table). The per-item substitution and removal approvals stay in their dedicated step above -- the digest covers the audit artifact, not those decisions.
 
 7. **If specs change** (new spec requirements added to cover gaps), re-present the affected spec files for human review before proceeding. The human must approve any new or modified specs.
 
