@@ -135,7 +135,7 @@
 - The **Type Catalog** draws **Domain type** names from this glossary. **Worker briefs** list relevant **Type Catalog** entries as exact names to use in code. The **Foundation Audit** checks task 1 names against the **Type Catalog**. The **Module shape re-check** verifies all **Type Catalog** names at the end.
 - The **Foundation Audit** runs once after task 1, comparing committed code against the **Module Inventory** and **Type Catalog** from design.md
 - **Spec References** in the **Contract** trace **Checks** back to specific **Spec** capability/scenario pairs (e.g., add-todo/1), replacing arbitrary row numbers
-- **Task Topology** metadata is written per task in tasks.md and reviewed during Phase 4.3 -- tasks touching more than 2 architectural layers are flagged for human review
+- **Task Topology** metadata is written per task in tasks.md and reviewed during Phase 4.4 -- tasks touching more than 2 architectural layers are flagged for human review
 - The **Design Template** is a reference document in `templates/` -- the actual design.md generation is driven by openspec config rules that require the same sections
 - A **Task** has exactly one **Methodology** (`/tdd` or `/frontend`) and zero or more **Constraints** (`/ui-system`, `/react-perf`)
 - The **Task layer** determines the **Methodology**: `frontend/component`, `frontend/page`, `frontend/layout` map to `/frontend`; all other layers map to `/tdd`

@@ -6,11 +6,11 @@ Living architecture document. Update when you change architecture.
 
 Darkfactory uses three agent roles, each running as a separate AI conversation:
 
-**Orchestrator** -- the main Claude Code session. Plans the work, dispatches one worker at a time, runs validators, manages fix loops and circuit breakers. Uses plan mode to keep instructions alive across long conversations. Defined by `skills/mission/SKILL.md` (10 phases, 0-9). In basic mode (`--basic`), the orchestrator also acts as the builder -- no workers are dispatched. Defined by `skills/mission/basic/SKILL.md`.
+**Orchestrator** -- the main Claude Code session. Plans the work, dispatches one worker at a time, runs validators, manages fix loops and circuit breakers. Uses plan mode to keep instructions alive across long conversations. Defined by `skills/mission/SKILL.md` (10 major phases, 0-9; Phase 4 decomposes into sub-phases 4.1-4.5). In basic mode (`--basic`), the orchestrator also acts as the builder -- no workers are dispatched. Defined by `skills/mission/basic/SKILL.md`.
 
 **Workers** -- each builds a single task from a brief. Default engine is Codex (via `darkfactory-dispatch`); Claude is an alternative. A worker receives only its brief, never the contract. Makes changes in one commit and writes a handoff report.
 
-**Validators** -- check each worker's output. Two run back-to-back per task: scrutiny (build, test, lint, code review, contract check, execution check, test health) and user-test (tests the feature as a user would). Validators see the contract and the code, never the proposal or design.
+**Validators** -- check each worker's output. Two run back-to-back per task: scrutiny (15 gates spanning build, tests, lint, code review, module depth, security, contract checks, behavioral conformance, and test health) and user-test (tests the feature as a user would). Validators see the contract and the code, never the proposal or design.
 
 ## Information walls
 
@@ -30,6 +30,7 @@ openspec/changes/<change-name>/
   tasks.md                 # Ordered checklist with topology metadata
   coverage-audit.md        # Proposal-to-task traceability
   contract.md              # Observable behavior checks, traced to specs
+  reviews/                 # Artifact-review checkpoints, one per planning artifact
   mission/
     config.yaml            # Engine per role (codex or claude)
     progress.md            # Running log
@@ -46,7 +47,7 @@ Skills live in `skills/` at the repo root. `install.sh` symlinks each into `~/.c
 
 Each skill is a self-contained module. Public interface: frontmatter (name, description). Implementation: SKILL.md body. No skill imports from another at the filesystem level.
 
-The mission skill is intentionally monolithic (~900 lines). Companion files are read on demand:
+The mission skill is intentionally monolithic. Companion files are read on demand:
 - `templates/` -- artifact formats (plan, contract, worker brief, design, etc.)
 - `prompts/` -- instructions handed to validator and reviewer subagents
 
@@ -64,7 +65,7 @@ After task 1 passes, a foundation audit checks module structure and type names a
 
 `/mission --basic` is a simplified version of the full build loop designed for single-task work like bug fixes and small features. Instead of dispatching separate worker and validator agents, the orchestrator handles everything itself in one session.
 
-The flow has 5 phases: orient (read the codebase, detect build/test tooling, generate a mini-contract of 3-8 expected behaviors), build (TDD by default, or direct implementation with `--no-tdd`), validate (5 sequential gates: build, test, lint, format, contract), fix (diagnose and retry on failure), and commit (single commit at the end).
+The flow has 5 phases: orient (read the codebase, detect build/test tooling, generate a mini-contract of 3-8 expected behaviors), build (TDD by default, or direct implementation with `--no-tdd`), validate (5 sequential gates: build, tests, lint, contract checks, behavioral spot-check), fix (diagnose and retry on failure), and commit (single commit at the end).
 
 The circuit breaker works the same way -- 3 total attempts before stopping -- but unlike the full loop, it doesn't pause to ask the user. It commits whatever it has and reports what failed. There are no information walls since there's only one agent doing all the work.
 
@@ -78,7 +79,7 @@ Before task generation, the orchestrator presents a decomposition strategy (laye
 
 ## Configuration
 
-Global defaults in `~/.darkfactory/config.yaml`. Per-mission engine assignments in `mission/config.yaml` (worker, scrutiny_validator, usertest_validator, adversarial reviewers).
+Global defaults live in `~/.darkfactory/config.yaml`. Each mission has its own `mission/config.yaml` that assigns an engine (codex or claude) to every agent role and records the mission-scoped settings the orchestrator and `mission-resume` read to run and recover the build.
 
 ## Versioning
 

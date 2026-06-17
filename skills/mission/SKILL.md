@@ -428,6 +428,8 @@ The "Prerequisites met?" column applies to Substitutions only. For Interpretatio
 
 10. **Record the coverage audit** in the plan. Update the Spec Coverage Audit section with the gap count and resolutions.
 
+If approved, proceed to Phase 5.
+
 **Gate -- proceed when:**
 - [ ] Plan's `## Orchestrator Phase` field updated to this phase, step, and timestamp
 - [ ] Coverage audit complete -- every proposal requirement mapped
