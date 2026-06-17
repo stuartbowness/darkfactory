@@ -21,7 +21,7 @@
 
 - **Gate** -- A numbered step in the scrutiny validator's sequence (e.g., gate 3: tests, gate 11: contract checks). Gates report PASS, FAIL, WARN, SKIP, or N/A. *Avoid:* check (in validator-step context), step, stage
 - **Scrutiny validator** -- The first validator type that runs build, test, lint, code review, code simplify, and test health gates against the contract. *Avoid:* code reviewer, linter, static validator
-- **User-test validator** -- The second validator type that tests behavior by hitting the API (HTTP tests) or driving a browser (agent-browser). *Avoid:* QA, E2E tester, integration tester
+- **User-test validator** -- The second validator type that tests behavior by hitting the API (HTTP tests) or driving a browser via `/test-app`. *Avoid:* QA, E2E tester, integration tester
 - **Behavioral conformance** -- A scrutiny validator gate (gate 12) that verifies observable behavior by writing and executing a test script rather than reading the code. Falls back to "verified by inspection" if execution is inconclusive. *Avoid:* behavioral test, execution test, runtime check
 - **Final gates** -- Whole-repo build, test, lint, and format gates run after the last task completes but before PR creation. Catches regressions introduced by later tasks (e.g., documentation or CI tasks) after the cleanup task ran. *Avoid:* final checks, post-build gates, repo gates
 - **Module shape re-check** -- A mandatory closing task that compares design.md module descriptions and Type Catalog names to what the code actually exposes, catching cumulative drift across tasks that per-task scrutiny cannot see. *Avoid:* shape check, surface audit, drift check
@@ -131,7 +131,7 @@
 - **Diff coverage** measures added lines only -- a worker is responsible for covering the code they wrote, not backfilling pre-existing debt
 - The **Test quality review** (`/test-quality`) is an owned skill invoked by the **Scrutiny validator** as a subagent, following the same pattern as `/review` and `/simplify`
 - A **Tautological assertion** is worse than no test because it gives false confidence -- the **Scrutiny validator** treats it as a hard FAIL
-- **Deterministic Anchors** are populated from design.md during Phase 4.2 and stored in the **Plan** -- they reference the **Type Catalog**, **Module Inventory**, and **Architecture Candidate Scoring** results
+- **Deterministic Anchors** are populated from design.md during Phase 4.2 (five anchors) and Phase 4.3 (the task-strategy anchor), stored in the **Plan** -- they reference the **Type Catalog**, **Module Inventory**, and **Architecture Candidate Scoring** results
 - The **Type Catalog** draws **Domain type** names from this glossary. **Worker briefs** list relevant **Type Catalog** entries as exact names to use in code. The **Foundation Audit** checks task 1 names against the **Type Catalog**. The **Module shape re-check** verifies all **Type Catalog** names at the end.
 - The **Foundation Audit** runs once after task 1, comparing committed code against the **Module Inventory** and **Type Catalog** from design.md
 - **Spec References** in the **Contract** trace **Checks** back to specific **Spec** capability/scenario pairs (e.g., add-todo/1), replacing arbitrary row numbers
@@ -154,7 +154,7 @@
 >
 > **Dev:** "At least three -- WebSocket setup, notification delivery, and the UI. Each is a **Vertical slice** cutting through the API and frontend."
 >
-> **Orchestrator:** "That's a good fit. Let me **/grill** you on the requirements first, then I'll create the **Change** via **/opsx:propose** and write the **Contract** with its **Checks** before any **Workers** start."
+> **Orchestrator:** "That's a good fit. Let me **/grill** you on the requirements first, then I'll create the **Change** with `openspec new change`, author the **Proposal**, and generate the specs, design, and tasks one at a time, then write the **Contract** with its **Checks** before any **Workers** start."
 >
 > **Dev:** "What if the Codex **Worker** hangs during the WebSocket task?"
 >
@@ -186,7 +186,7 @@
 >
 > **Dev:** "What about coverage? The tests that do run might not even cover the new code."
 >
-> **Orchestrator:** "That's what **Diff coverage** checks. It runs the language-appropriate coverage tool and measures only the added lines in the task's diff. Below 70% is a FAIL. Below 80% is a WARNING."
+> **Orchestrator:** "That's what **Diff coverage** checks. It runs the language-appropriate coverage tool and measures only the added lines in the task's diff. 80% or higher passes, 70-79% is a WARNING, and below 70% is a FAIL."
 >
 > **Dev:** "And what if the tests do cover the code but the assertions are meaningless?"
 >
