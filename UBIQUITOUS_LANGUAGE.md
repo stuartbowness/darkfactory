@@ -71,7 +71,7 @@ _Supervisor internals (two-phase timeout, heartbeat, process group, result schem
 - **Scenario** -- One WHEN/THEN behavior inside a capability's spec.md, numbered to form its Spec Reference (capability/N). *Avoid:* case, example
 - **Spec Reference** -- A capability/scenario identifier (e.g., add-todo/1) that traces a contract check back to a formal spec requirement. *Avoid:* REQ-ID, requirement ID, spec ID
 
-_Design-artifact mechanics (the scoring rubric, deterministic anchors, task topology, foundation audit) are in `ARCH.md`._
+_Design-artifact mechanics (the scoring rubric, task topology, foundation audit) are in `ARCH.md`; the plan's deterministic anchors are defined in `skills/mission/templates/plan.md`._
 
 ## Frontend
 
