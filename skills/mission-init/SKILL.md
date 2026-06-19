@@ -142,6 +142,25 @@ jq --version 2>/dev/null || echo "NOT_INSTALLED"
 
 Report each tool as installed, not installed, or not authenticated.
 
+Then check for duplicate `codex` installs shadowing each other on `PATH`. Multiple global installs (under different Node versions, Homebrew, or npm prefixes) can leave a stale `codex` ahead of the current one, so `codex --version` silently reports an old build:
+
+```bash
+codex_count="$(which -a codex 2>/dev/null | wc -l | tr -d ' ')"
+if [ "$codex_count" -gt 1 ]; then
+  echo "DUPLICATE_CODEX"
+  which -a codex
+fi
+```
+
+If the output is `DUPLICATE_CODEX`, report:
+
+```text
+[!] codex - multiple installs on PATH (the first shadows the rest):
+    <paths from which -a>
+```
+
+Treat this as a warning, not a hard block. The fix: remove every copy except one, then reinstall once. The shadowing copy is whichever path lists first. Tell the user to delete the stray package directories and their `bin` symlinks (for each path from `which -a codex`, the real package lives at `<dir>/../lib/node_modules/@openai/codex`), then run `npm install -g @openai/codex@latest` once.
+
 - `codex`: if missing, fix with `npm install -g @openai/codex`. If installed but a Codex command reports an auth failure, fix with `codex login`.
 - `darkfactory-dispatch`: if missing, fix with `cd <darkfactory-clone>/tools/darkfactory-dispatch && make install` (where `<darkfactory-clone>` is the directory where the user cloned the Darkfactory repo).
 - `gh`: if `gh --version` is missing, fix with `brew install gh`. If `gh auth status` fails while `gh` is installed, fix with `gh auth login`.
@@ -291,7 +310,7 @@ Optional project skills:
   [ ] /demo-video (optional - project-specific)
 
 CLI tools:
-  [x] codex (authenticated)
+  [x] codex (authenticated, single install on PATH)
   [x] darkfactory-dispatch
   [x] gh (authenticated)
   [x] openspec
