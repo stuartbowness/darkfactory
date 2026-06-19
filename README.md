@@ -52,7 +52,7 @@ Restart Claude Code, then from any project run:
 /mission-init
 ```
 
-This checks your entire setup and tells you exactly what's missing. It verifies the required skill symlinks, reports on optional bundled skills, checks CLI tools (codex, gh, openspec, darkfactory-dispatch, jq), checks coverage tools for your project's language (cargo-tarpaulin for Rust, jest/c8 for TypeScript, pytest-cov for Python), and initializes OpenSpec in the current project if needed.
+This checks your entire setup and tells you exactly what's missing. It verifies the required skill symlinks, reports on optional bundled skills, checks CLI tools (codex, gh, openspec, darkfactory-dispatch, jq), warns if more than one `codex` is installed on `PATH` (a stale copy can silently shadow the current one), checks coverage tools for your project's language (cargo-tarpaulin for Rust, jest/c8 for TypeScript, pytest-cov for Python), and initializes OpenSpec in the current project if needed.
 
 ### Updating
 
@@ -181,7 +181,7 @@ Darkfactory is controlled through skills -- reusable prompt templates you invoke
 | `/mission` | Start an autonomous mission from scratch. Walks you through planning, dispatches workers, validates, and delivers a draft PR. Pass `--basic` for a lightweight single-task mode (see [Basic mode](#basic-mode)). |
 | `/mission-resume` | Resume a mission that was interrupted (session crash, closed terminal). Detects which phase it left off in (from the progress log, cross-checked against the plan file) and continues through to the draft PR and code review. If the interruption happened during planning -- even before the mission directory exists -- it tells you and hands back to `/mission` rather than skipping ahead to the build loop. |
 | `/mission-status` | Read-only progress check. Open a second terminal while a mission runs to see which tasks are done, in progress, or queued. |
-| `/mission-init` | Check your project setup. Verifies required skill symlinks, reports on optional bundled skills, checks CLI tools and coverage tools, checks chrome-devtools-mcp when `browser_tools: true`, and runs `openspec init` if needed. |
+| `/mission-init` | Check your project setup. Verifies required skill symlinks, reports on optional bundled skills, checks CLI tools and coverage tools (and warns on duplicate `codex` installs on `PATH`), checks chrome-devtools-mcp when `browser_tools: true`, and runs `openspec init` if needed. |
 | `/grill` | Alignment interview: asks pointed questions until the goals, constraints, and edge cases are clear. Used in the mission planning phase. |
 | `/prd` | Turns an interview into a structured PRD filed as a GitHub issue. Standalone -- no longer part of the mission flow (the proposal is the mission's single intent document). |
 | `/language` | Creates a shared glossary (ubiquitous language) so you, the orchestrator, and all workers use the same terms. Used in the mission planning phase. |
