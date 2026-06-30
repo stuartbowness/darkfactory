@@ -1,11 +1,3 @@
-#![cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "event emitter is consumed by the upcoming engine module"
-    )
-)]
-
 use std::io::{self, Write};
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
@@ -13,9 +5,6 @@ use std::time::Instant;
 use chrono::{SecondsFormat, Utc};
 use serde::Serialize;
 use thiserror::Error;
-use tokio::sync::watch;
-
-const DEFAULT_HEARTBEAT_INTERVAL_SECS: u64 = 15;
 
 #[derive(Debug, Error)]
 pub(crate) enum EventError {
@@ -66,38 +55,7 @@ pub(crate) struct Emitter {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum StreamMode {
-    Silent,
     Normal,
-    Verbose,
-}
-
-#[derive(Debug, Clone)]
-pub(crate) struct CancellationToken {
-    tx: watch::Sender<bool>,
-    rx: watch::Receiver<bool>,
-}
-
-impl CancellationToken {
-    pub(crate) fn new() -> Self {
-        let (tx, rx) = watch::channel(false);
-        Self { tx, rx }
-    }
-
-    pub(crate) fn cancel(&self) {
-        let _ = self.tx.send(true);
-    }
-
-    pub(crate) async fn cancelled(&self) {
-        let mut rx = self.rx.clone();
-        loop {
-            if *rx.borrow() {
-                return;
-            }
-            if rx.changed().await.is_err() {
-                return;
-            }
-        }
-    }
 }
 
 impl Emitter {
@@ -142,13 +100,6 @@ impl Emitter {
             duration_ms: Some(duration_ms),
             ..self.base_event()
         })
-    }
-
-    pub(crate) fn emit_heartbeat(
-        &self,
-        last_activity: impl Into<String>,
-    ) -> Result<(), EventError> {
-        self.emit_heartbeat_with_interval(last_activity, DEFAULT_HEARTBEAT_INTERVAL_SECS)
     }
 
     pub(crate) fn emit_timeout_warning(&self) -> Result<(), EventError> {
@@ -241,13 +192,9 @@ impl Emitter {
         Ok(())
     }
 
-    fn should_emit(&self, event_type: &str) -> bool {
+    fn should_emit(&self, _event_type: &str) -> bool {
         match self.stream_mode {
-            StreamMode::Silent => matches!(
-                event_type,
-                "dispatch_start" | "dispatch_end" | "timeout_warning" | "error"
-            ),
-            StreamMode::Normal | StreamMode::Verbose => true,
+            StreamMode::Normal => true,
         }
     }
 
@@ -276,35 +223,9 @@ impl Emitter {
     }
 }
 
-pub(crate) fn heartbeat_ticker(
-    emitter: Arc<Emitter>,
-    interval_secs: u64,
-    last_activity: Arc<Mutex<String>>,
-    cancel: CancellationToken,
-) {
-    let interval_secs = interval_secs.max(1);
-    tokio::spawn(async move {
-        let mut ticker = tokio::time::interval(std::time::Duration::from_secs(interval_secs));
-        ticker.tick().await;
-        loop {
-            tokio::select! {
-                () = cancel.cancelled() => break,
-                _ = ticker.tick() => {
-                    let activity = last_activity
-                        .lock()
-                        .expect("last activity mutex poisoned")
-                        .clone();
-                    let _ = emitter.emit_heartbeat_with_interval(activity, interval_secs);
-                }
-            }
-        }
-    });
-}
-
 #[cfg(test)]
 mod tests {
     use std::sync::{Arc, Mutex};
-    use std::time::Duration;
 
     use serde_json::Value;
 
@@ -356,7 +277,7 @@ mod tests {
         let (emitter, buffer) = emitter_with_buffer(StreamMode::Normal);
 
         emitter
-            .emit_heartbeat("running: cargo test")
+            .emit_heartbeat_with_interval("running: cargo test", 15)
             .expect("emit heartbeat");
 
         let events = buffer_lines(&buffer);
@@ -370,30 +291,6 @@ mod tests {
     }
 
     #[test]
-    fn stream_mode_filtering() {
-        let (silent, silent_buffer) = emitter_with_buffer(StreamMode::Silent);
-        silent.emit_tool_start("shell").expect("emit tool start");
-        silent.emit_timeout_warning().expect("emit timeout warning");
-
-        let silent_events = buffer_lines(&silent_buffer);
-        assert_eq!(silent_events.len(), 1);
-        assert_eq!(silent_events[0]["type"], "timeout_warning");
-
-        let (normal, normal_buffer) = emitter_with_buffer(StreamMode::Normal);
-        normal.emit_tool_start("shell").expect("emit tool start");
-        normal.emit_timeout_warning().expect("emit timeout warning");
-
-        let normal_events = buffer_lines(&normal_buffer);
-        assert_eq!(
-            normal_events
-                .iter()
-                .map(|event| event["type"].as_str().expect("type is a string"))
-                .collect::<Vec<_>>(),
-            vec!["tool_start", "timeout_warning"]
-        );
-    }
-
-    #[test]
     fn event_type_coverage() {
         let (emitter, buffer) = emitter_with_buffer(StreamMode::Normal);
 
@@ -403,7 +300,9 @@ mod tests {
         emitter
             .emit_dispatch_end("completed", 123)
             .expect("emit dispatch end");
-        emitter.emit_heartbeat("running").expect("emit heartbeat");
+        emitter
+            .emit_heartbeat_with_interval("running", 15)
+            .expect("emit heartbeat");
         emitter
             .emit_timeout_warning()
             .expect("emit timeout warning");
@@ -445,41 +344,5 @@ mod tests {
                 "error",
             ]
         );
-    }
-
-    #[tokio::test(flavor = "multi_thread")]
-    async fn heartbeat_ticker_can_be_cancelled() {
-        let (emitter, buffer) = emitter_with_buffer(StreamMode::Verbose);
-        let cancel = CancellationToken::new();
-        let last_activity = Arc::new(Mutex::new("initializing".to_string()));
-
-        heartbeat_ticker(
-            Arc::new(emitter),
-            1,
-            Arc::clone(&last_activity),
-            cancel.clone(),
-        );
-        tokio::time::sleep(Duration::from_millis(1_100)).await;
-
-        let events_before_cancel = buffer_lines(&buffer);
-        assert!(
-            events_before_cancel
-                .iter()
-                .any(|event| event["type"] == "heartbeat"),
-            "ticker should emit at least one heartbeat before cancellation"
-        );
-        let event_count_before_cancel = events_before_cancel.len();
-
-        cancel.cancel();
-        tokio::time::sleep(Duration::from_millis(1_100)).await;
-
-        let events_after_cancel = buffer_lines(&buffer);
-        assert_eq!(
-            events_after_cancel.len(),
-            event_count_before_cancel,
-            "ticker should not emit more events after cancellation"
-        );
-
-        let _stderr_emitter = Emitter::new("dispatch-456", StreamMode::Verbose);
     }
 }

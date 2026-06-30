@@ -4,7 +4,6 @@ use std::os::unix::process::ExitStatusExt;
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
 use std::sync::{Arc, Mutex};
-use std::time::Duration;
 
 use nix::libc;
 use thiserror::Error;
@@ -48,7 +47,6 @@ pub(crate) struct ExitResult {
 #[derive(Debug, Clone, Copy)]
 pub(crate) enum StdinMode {
     Null,
-    Piped,
 }
 
 #[derive(Debug)]
@@ -71,11 +69,6 @@ impl SupervisorBuilder {
             stdin: StdinMode::Null,
             parent_death_watch: true,
         }
-    }
-
-    pub(crate) fn arg(mut self, arg: impl AsRef<OsStr>) -> Self {
-        self.args.push(arg.as_ref().to_os_string());
-        self
     }
 
     pub(crate) fn args<I, S>(mut self, args: I) -> Self
@@ -115,7 +108,6 @@ impl SupervisorBuilder {
         command.args(&self.args);
         command.stdin(match self.stdin {
             StdinMode::Null => Stdio::null(),
-            StdinMode::Piped => Stdio::piped(),
         });
         command.stdout(Stdio::piped());
         command.stderr(Stdio::piped());
@@ -184,7 +176,6 @@ impl SupervisorBuilder {
 
         Ok(RunHandle {
             inner: Arc::new(RunState {
-                pid,
                 pgid,
                 stdout: Mutex::new(Some(stdout)),
                 stderr: Mutex::new(Some(stderr)),
@@ -201,7 +192,6 @@ pub(crate) struct RunHandle {
 
 #[derive(Debug)]
 struct RunState {
-    pid: u32,
     pgid: i32,
     stdout: Mutex<Option<ChildStdout>>,
     stderr: Mutex<Option<ChildStderr>>,
@@ -209,10 +199,6 @@ struct RunState {
 }
 
 impl RunHandle {
-    pub(crate) fn pid(&self) -> u32 {
-        self.inner.pid
-    }
-
     pub(crate) fn stdout(&self) -> Result<ChildStdout, SupervisorError> {
         self.inner
             .stdout
@@ -241,21 +227,6 @@ impl RunHandle {
             rx.changed()
                 .await
                 .map_err(|_| SupervisorError::WaitChannelClosed)?;
-        }
-    }
-
-    pub(crate) async fn graceful_stop(
-        &self,
-        grace_secs: u64,
-    ) -> Result<ExitResult, SupervisorError> {
-        signal_group(self.inner.pgid, libc::SIGTERM)?;
-
-        tokio::select! {
-            result = self.wait() => result,
-            () = tokio::time::sleep(Duration::from_secs(grace_secs)) => {
-                self.kill()?;
-                self.wait().await
-            }
         }
     }
 

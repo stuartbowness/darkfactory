@@ -7,10 +7,6 @@ use ulid::Ulid;
 mod cli;
 mod engine;
 mod event;
-#[expect(
-    dead_code,
-    reason = "supervisor has helper APIs consumed across upcoming async CLI work"
-)]
 mod supervisor;
 mod types;
 

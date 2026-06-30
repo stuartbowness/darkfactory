@@ -45,31 +45,8 @@ async fn kill_terminates_the_whole_process_group() -> Result<(), Box<dyn std::er
 }
 
 #[tokio::test(flavor = "multi_thread")]
-async fn graceful_stop_kills_after_grace_when_sigterm_is_ignored(
-) -> Result<(), Box<dyn std::error::Error>> {
-    let handle = SupervisorBuilder::new("sh")
-        .args(["-c", "trap '' TERM; echo ready; sleep 300"])
-        .spawn()?;
-    let mut lines = BufReader::new(handle.stdout()?).lines();
-    let ready = tokio::time::timeout(Duration::from_secs(2), lines.next_line())
-        .await??
-        .ok_or("child did not become ready")?;
-    assert_eq!(ready, "ready");
-
-    let started = Instant::now();
-    let result = handle.graceful_stop(1).await?;
-    let elapsed = started.elapsed();
-
-    assert_eq!(result.signal, Some(libc::SIGKILL));
-    assert!(elapsed >= Duration::from_secs(1));
-    assert!(elapsed < Duration::from_secs(3));
-
-    Ok(())
-}
-
-#[tokio::test(flavor = "multi_thread")]
 async fn kill_soft_sends_sigterm() -> Result<(), Box<dyn std::error::Error>> {
-    let handle = SupervisorBuilder::new("sleep").arg("300").spawn()?;
+    let handle = SupervisorBuilder::new("sleep").args(["300"]).spawn()?;
 
     handle.kill_soft()?;
     let result = handle.wait().await?;
@@ -92,12 +69,13 @@ async fn normal_exit_reports_code_without_signal() -> Result<(), Box<dyn std::er
 
 #[tokio::test(flavor = "multi_thread")]
 async fn wait_reports_sigterm_and_sigkill() -> Result<(), Box<dyn std::error::Error>> {
-    let term_handle = SupervisorBuilder::new("sleep").arg("300").spawn()?;
-    let term_result = term_handle.graceful_stop(10).await?;
+    let term_handle = SupervisorBuilder::new("sleep").args(["300"]).spawn()?;
+    term_handle.kill_soft()?;
+    let term_result = term_handle.wait().await?;
     assert_eq!(term_result.signal, Some(libc::SIGTERM));
     assert_eq!(term_handle.wait().await?, term_result);
 
-    let kill_handle = SupervisorBuilder::new("sleep").arg("300").spawn()?;
+    let kill_handle = SupervisorBuilder::new("sleep").args(["300"]).spawn()?;
     kill_handle.kill()?;
     let kill_result = kill_handle.wait().await?;
     assert_eq!(kill_result.signal, Some(libc::SIGKILL));

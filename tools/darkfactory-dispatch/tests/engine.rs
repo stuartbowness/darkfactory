@@ -504,7 +504,7 @@ fn emitter(dispatch_id: &str) -> (Arc<Emitter>, Arc<Mutex<Vec<u8>>>) {
     let buffer = Arc::new(Mutex::new(Vec::new()));
     let emitter = Emitter::with_writer(
         dispatch_id,
-        StreamMode::Verbose,
+        StreamMode::Normal,
         SharedBuffer {
             inner: Arc::clone(&buffer),
         },
