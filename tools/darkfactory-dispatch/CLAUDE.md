@@ -14,7 +14,7 @@ src/
                   parent-death detection (kqueue on macOS, prctl on Linux)
   types.rs        DispatchSpec, DispatchResult, DispatchError, HarnessEvent,
                   TokenUsage, Activity
-  event.rs        NDJSON event emitter, heartbeat ticker, stream mode filtering
+  event.rs        NDJSON event emitter, heartbeat ticker
 tests/
   cli.rs          Integration tests (binary smoke tests via assert_cmd)
   supervisor.rs   Process group and signal tests

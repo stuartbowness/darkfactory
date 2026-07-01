@@ -17,7 +17,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, LazyLock, Mutex};
 use std::time::{Duration, Instant};
 
-use event::{Emitter, StreamMode};
+use event::Emitter;
 use nix::libc;
 use serde_json::Value;
 use tokio::sync::Mutex as AsyncMutex;
@@ -457,7 +457,6 @@ fn emitter(dispatch_id: &str) -> (Arc<Emitter>, Arc<Mutex<Vec<u8>>>) {
     let buffer = Arc::new(Mutex::new(Vec::new()));
     let emitter = Emitter::with_writer(
         dispatch_id,
-        StreamMode::Normal,
         SharedBuffer {
             inner: Arc::clone(&buffer),
         },

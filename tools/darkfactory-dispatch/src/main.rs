@@ -11,7 +11,7 @@ mod supervisor;
 mod types;
 
 use cli::Cli;
-use event::{Emitter, StreamMode};
+use event::Emitter;
 use types::DispatchError;
 
 const EXIT_DISPATCH_FAILURE: u8 = 1;
@@ -34,7 +34,7 @@ async fn run() -> Result<u8, (u8, String)> {
     let json = cli.json;
     let spec = cli.dispatch_spec().map_err(cli_error)?;
     let dispatch_id = Ulid::new().to_string();
-    let emitter = Arc::new(Emitter::new(dispatch_id.clone(), StreamMode::Normal));
+    let emitter = Arc::new(Emitter::new(dispatch_id.clone()));
 
     let result = match engine::dispatch(spec, dispatch_id.clone(), emitter).await {
         Ok(result) => result,

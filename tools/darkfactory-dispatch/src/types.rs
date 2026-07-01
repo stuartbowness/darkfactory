@@ -1,8 +1,3 @@
-#![cfg_attr(
-    not(test),
-    expect(dead_code, reason = "types are consumed by upcoming modules")
-)]
-
 use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
@@ -49,21 +44,22 @@ pub(crate) enum DispatchStatus {
     Failed,
 }
 
+impl DispatchStatus {
+    pub(crate) fn as_str(&self) -> &'static str {
+        match self {
+            DispatchStatus::Completed => "completed",
+            DispatchStatus::TimedOut => "timed_out",
+            DispatchStatus::Failed => "failed",
+        }
+    }
+}
+
 #[derive(thiserror::Error, Debug)]
 pub(crate) enum DispatchError {
     #[error("codex binary not found on PATH")]
     BinaryNotFound,
     #[error("process spawn failed: {0}")]
     SpawnFailed(#[from] std::io::Error),
-    #[error("dispatch timed out after {timeout_sec}s (grace {grace_sec}s)")]
-    TimedOut { timeout_sec: u64, grace_sec: u64 },
-    #[error("child process failed: exit code {exit_code:?}, signal {signal:?}")]
-    ProcessFailed {
-        exit_code: Option<i32>,
-        signal: Option<i32>,
-    },
-    #[error("NDJSON parse error: {0}")]
-    ParseError(String),
     #[error("{0}")]
     Other(String),
 }
@@ -185,26 +181,6 @@ mod tests {
         assert_eq!(
             DispatchError::SpawnFailed(io::Error::other("permission denied")).to_string(),
             "process spawn failed: permission denied"
-        );
-        assert_eq!(
-            DispatchError::TimedOut {
-                timeout_sec: 900,
-                grace_sec: 30
-            }
-            .to_string(),
-            "dispatch timed out after 900s (grace 30s)"
-        );
-        assert_eq!(
-            DispatchError::ProcessFailed {
-                exit_code: Some(1),
-                signal: None
-            }
-            .to_string(),
-            "child process failed: exit code Some(1), signal None"
-        );
-        assert_eq!(
-            DispatchError::ParseError("bad line".to_string()).to_string(),
-            "NDJSON parse error: bad line"
         );
         assert_eq!(
             DispatchError::Other("unexpected error".to_string()).to_string(),

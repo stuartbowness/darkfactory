@@ -49,29 +49,21 @@ pub(crate) struct DispatchEvent {
 pub(crate) struct Emitter {
     dispatch_id: String,
     start: Instant,
-    stream_mode: StreamMode,
     writer: Arc<Mutex<Box<dyn Write + Send>>>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum StreamMode {
-    Normal,
-}
-
 impl Emitter {
-    pub(crate) fn new(dispatch_id: impl Into<String>, stream_mode: StreamMode) -> Self {
-        Self::with_writer(dispatch_id, stream_mode, io::stderr())
+    pub(crate) fn new(dispatch_id: impl Into<String>) -> Self {
+        Self::with_writer(dispatch_id, io::stderr())
     }
 
     pub(crate) fn with_writer(
         dispatch_id: impl Into<String>,
-        stream_mode: StreamMode,
         writer: impl Write + Send + 'static,
     ) -> Self {
         Self {
             dispatch_id: dispatch_id.into(),
             start: Instant::now(),
-            stream_mode,
             writer: Arc::new(Mutex::new(Box::new(writer))),
         }
     }
@@ -178,10 +170,6 @@ impl Emitter {
     }
 
     fn emit(&self, event: DispatchEvent) -> Result<(), EventError> {
-        if !self.should_emit(&event.event_type) {
-            return Ok(());
-        }
-
         let mut line = serde_json::to_vec(&event)?;
         line.push(b'\n');
 
@@ -190,12 +178,6 @@ impl Emitter {
         writer.flush()?;
 
         Ok(())
-    }
-
-    fn should_emit(&self, _event_type: &str) -> bool {
-        match self.stream_mode {
-            StreamMode::Normal => true,
-        }
     }
 
     fn base_event(&self) -> DispatchEvent {
@@ -249,11 +231,10 @@ mod tests {
         }
     }
 
-    fn emitter_with_buffer(stream_mode: StreamMode) -> (Emitter, Arc<Mutex<Vec<u8>>>) {
+    fn emitter_with_buffer() -> (Emitter, Arc<Mutex<Vec<u8>>>) {
         let buffer = Arc::new(Mutex::new(Vec::new()));
         let emitter = Emitter::with_writer(
             "dispatch-123",
-            stream_mode,
             SharedBuffer {
                 inner: Arc::clone(&buffer),
             },
@@ -274,7 +255,7 @@ mod tests {
 
     #[test]
     fn heartbeat_event_format() {
-        let (emitter, buffer) = emitter_with_buffer(StreamMode::Normal);
+        let (emitter, buffer) = emitter_with_buffer();
 
         emitter
             .emit_heartbeat_with_interval("running: cargo test", 15)
@@ -292,7 +273,7 @@ mod tests {
 
     #[test]
     fn event_type_coverage() {
-        let (emitter, buffer) = emitter_with_buffer(StreamMode::Normal);
+        let (emitter, buffer) = emitter_with_buffer();
 
         emitter
             .emit_dispatch_start("codex", "gpt-5.5")

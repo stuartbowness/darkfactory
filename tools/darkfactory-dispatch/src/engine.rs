@@ -185,7 +185,7 @@ pub(crate) async fn dispatch(
         stderr,
     });
     emitter
-        .emit_dispatch_end(status_name(&result.status), result.duration_ms)
+        .emit_dispatch_end(result.status.as_str(), result.duration_ms)
         .map_err(dispatch_event_error)?;
 
     Ok(result)
@@ -791,14 +791,6 @@ fn effective_heartbeat_sec(heartbeat_sec: u64) -> u64 {
         DEFAULT_HEARTBEAT_INTERVAL_SECS
     } else {
         heartbeat_sec
-    }
-}
-
-fn status_name(status: &DispatchStatus) -> &'static str {
-    match status {
-        DispatchStatus::Completed => "completed",
-        DispatchStatus::TimedOut => "timed_out",
-        DispatchStatus::Failed => "failed",
     }
 }
 

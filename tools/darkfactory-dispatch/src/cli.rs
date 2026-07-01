@@ -144,7 +144,7 @@ pub(crate) fn print_result(result: &DispatchResult, json: bool) -> Result<(), St
         return Ok(());
     }
 
-    println!("status: {}", status_name(&result.status));
+    println!("status: {}", result.status.as_str());
     println!("duration_ms: {}", result.duration_ms);
     println!("output: {}", result.output.as_deref().unwrap_or("<none>"));
     Ok(())
@@ -154,14 +154,6 @@ pub(crate) fn exit_code_for_result(result: &DispatchResult) -> u8 {
     match result.status {
         DispatchStatus::Completed => 0,
         DispatchStatus::Failed | DispatchStatus::TimedOut => 1,
-    }
-}
-
-fn status_name(status: &DispatchStatus) -> &'static str {
-    match status {
-        DispatchStatus::Completed => "completed",
-        DispatchStatus::TimedOut => "timed_out",
-        DispatchStatus::Failed => "failed",
     }
 }
 

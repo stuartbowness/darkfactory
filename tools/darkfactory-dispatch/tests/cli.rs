@@ -193,6 +193,68 @@ fn json_dispatch_without_store_paths_creates_no_dispatch_files(
 }
 
 #[test]
+fn json_failed_dispatch_exits_1_and_reports_worker_exit_code(
+) -> Result<(), Box<dyn std::error::Error>> {
+    let env = MockEnv::new("json-failed-dispatch")?;
+    let output = env.home.join("failed-result.md");
+    let result = env
+        .dispatch_command()
+        .args([
+            "--json",
+            "--prompt",
+            "review",
+            "--output",
+            output.to_str().expect("utf-8 output path"),
+            "--cwd",
+            env.home.to_str().expect("utf-8 home path"),
+        ])
+        .env("CODEX_MOCK_MODE", "failed")
+        .output()?;
+
+    assert_eq!(result.status.code(), Some(1));
+    let parsed: Value = serde_json::from_slice(&result.stdout)?;
+    assert_eq!(parsed["status"], "failed");
+    assert_eq!(parsed["exit_code"], 1);
+    assert_eq!(parsed["signal"], Value::Null);
+    assert_eq!(parsed["error"]["code"], "process_failed");
+
+    Ok(())
+}
+
+#[test]
+fn plain_dispatch_output_reports_status_duration_and_output(
+) -> Result<(), Box<dyn std::error::Error>> {
+    let env = MockEnv::new("plain-output")?;
+    let output = env.home.join("plain-result.md");
+    let result = env
+        .dispatch_command()
+        .args([
+            "--prompt",
+            "review",
+            "--output",
+            output.to_str().expect("utf-8 output path"),
+            "--cwd",
+            env.home.to_str().expect("utf-8 home path"),
+        ])
+        .env("CODEX_MOCK_MODE", "success")
+        .output()?;
+
+    assert_eq!(result.status.code(), Some(0));
+    let stdout = String::from_utf8(result.stdout)?;
+    let lines = stdout.lines().collect::<Vec<_>>();
+    assert_eq!(lines.len(), 3, "{stdout}");
+    assert_eq!(lines[0], "status: completed");
+    let duration_ms = lines[1]
+        .strip_prefix("duration_ms: ")
+        .expect("duration_ms line");
+    duration_ms.parse::<u64>().expect("duration is numeric");
+    assert_eq!(lines[2], format!("output: {}", output.display()));
+    assert_eq!(std::fs::read_to_string(&output)?, "mock output\n");
+
+    Ok(())
+}
+
+#[test]
 fn existing_files_under_old_store_paths_are_unchanged() -> Result<(), Box<dyn std::error::Error>> {
     let _guard = STORE_PATH_LOCK.lock().expect("store path mutex poisoned");
     let env = MockEnv::new("store-sentinels")?;
