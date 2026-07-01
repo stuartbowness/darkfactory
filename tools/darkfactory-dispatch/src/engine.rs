@@ -5,8 +5,6 @@ use std::pin::Pin;
 use std::sync::Arc;
 use std::time::Instant as StdInstant;
 
-use chrono::{SecondsFormat, Utc};
-use serde::Deserialize;
 use serde_json::Value;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::sync::Mutex;
@@ -16,11 +14,10 @@ use crate::event::Emitter;
 use crate::supervisor::{ExitResult, StdinMode, SupervisorBuilder, SupervisorError};
 use crate::types::{
     Activity, DispatchError, DispatchErrorInfo, DispatchResult, DispatchSpec, DispatchStatus,
-    EventKind, HarnessEvent, LiveStatus, TokenUsage, DEFAULT_HEARTBEAT_INTERVAL_SECS,
+    EventKind, HarnessEvent, TokenUsage, DEFAULT_HEARTBEAT_INTERVAL_SECS,
 };
 
 const STDOUT_BUFFER_BYTES: usize = 4 * 1024 * 1024;
-const WATCHDOG_INTERVAL_SECS: u64 = 5;
 const DISPATCH_DEPTH_ENV: &str = "DARKFACTORY_DISPATCH_DEPTH";
 
 pub(crate) async fn dispatch(
@@ -43,7 +40,7 @@ pub(crate) async fn dispatch(
         .current_dir(&spec.cwd)
         .env(DISPATCH_DEPTH_ENV, (depth + 1).to_string())
         .stdin(StdinMode::Null)
-        .parent_death_watch(spec.store_dir.is_none())
+        .parent_death_watch(true)
         .spawn()
         .map_err(map_supervisor_error)?;
 
@@ -55,21 +52,12 @@ pub(crate) async fn dispatch(
     let mut stdout_reader = BufReader::with_capacity(STDOUT_BUFFER_BYTES, stdout).lines();
     let mut tracker = ActivityTracker::new();
     let output_path = spec.output.clone();
-    let cleanup_status_dir = spec.store_dir.is_none();
-    let status_dir = spec
-        .store_dir
-        .clone()
-        .unwrap_or_else(|| status_dir(&dispatch_id));
 
     let soft_sleep = time::sleep(Duration::from_secs(spec.timeout_sec));
     tokio::pin!(soft_sleep);
     let mut soft_armed = true;
     let mut stdout_open = true;
     let mut hard_sleep: Option<Pin<Box<Sleep>>> = None;
-    let mut watchdog_interval = time::interval_at(
-        Instant::now() + Duration::from_secs(WATCHDOG_INTERVAL_SECS),
-        Duration::from_secs(WATCHDOG_INTERVAL_SECS),
-    );
     let mut heartbeat_interval = time::interval_at(
         Instant::now() + Duration::from_secs(heartbeat_sec),
         Duration::from_secs(heartbeat_sec),
@@ -161,45 +149,6 @@ pub(crate) async fn dispatch(
                 break (exit, true, None);
             }
 
-            _ = watchdog_interval.tick() => {
-                if let Some(control) = read_control_file(&status_dir) {
-                    if control.abort {
-                        tracker.last_activity = "abort requested".to_string();
-                        run_handle.kill().map_err(map_supervisor_error)?;
-                        let exit = run_handle.wait().await.map_err(map_supervisor_error)?;
-                        // Drain remaining stdout with a 1s ceiling after kill.
-                        let drain_deadline = time::sleep(Duration::from_secs(1));
-                        tokio::pin!(drain_deadline);
-                        loop {
-                            tokio::select! {
-                                line = stdout_reader.next_line() => {
-                                    match line {
-                                        Ok(Some(line)) => {
-                                            write_log_line(&log, &line).await?;
-                                            if let Some(event) = parse_codex_event(&line) {
-                                                tracker.apply(event, &emitter)?;
-                                            }
-                                        }
-                                        _ => break,
-                                    }
-                                }
-                                () = &mut drain_deadline => break,
-                            }
-                        }
-                        break (exit, false, Some(abort_error(control.reason)));
-                    }
-                }
-                let _ = write_status_json_atomic(
-                    &status_dir,
-                    "running",
-                    &dispatch_id,
-                    started.elapsed().as_secs(),
-                    tracker.last_activity.clone(),
-                    tracker.activity.tool_calls,
-                    tracker.activity.files_changed.len() as u64,
-                );
-            }
-
             _ = heartbeat_interval.tick() => {
                 emitter
                     .emit_heartbeat_with_interval(
@@ -238,18 +187,6 @@ pub(crate) async fn dispatch(
     emitter
         .emit_dispatch_end(status_name(&result.status), result.duration_ms)
         .map_err(dispatch_event_error)?;
-    let _ = write_status_json_atomic(
-        &status_dir,
-        status_name(&result.status),
-        &result.dispatch_id,
-        result.duration_ms / 1000,
-        "done".to_string(),
-        result.activity.tool_calls,
-        result.activity.files_changed.len() as u64,
-    );
-    if cleanup_status_dir {
-        let _ = std::fs::remove_dir_all(&status_dir);
-    }
 
     Ok(result)
 }
@@ -775,21 +712,6 @@ fn output_parse_error(parse_errors: u64) -> DispatchErrorInfo {
     }
 }
 
-fn abort_error(reason: Option<String>) -> DispatchErrorInfo {
-    let reason = reason
-        .map(|reason| reason.trim().to_string())
-        .filter(|reason| !reason.is_empty());
-    let message = match reason {
-        Some(reason) => format!("Abort requested via control file: {reason}"),
-        None => "Abort requested via control file.".to_string(),
-    };
-    DispatchErrorInfo {
-        code: "abort_requested".to_string(),
-        message,
-        retryable: false,
-    }
-}
-
 fn failure_message(
     exit: ExitResult,
     output_requested: bool,
@@ -856,59 +778,6 @@ fn write_output_no_clobber(path: &Path, contents: &str) -> io::Result<()> {
     file.write_all(contents.as_bytes())
 }
 
-fn write_status_json_atomic(
-    dir: &Path,
-    state: &str,
-    dispatch_id: &str,
-    elapsed_s: u64,
-    last_activity: String,
-    tools_used: u64,
-    files_changed: u64,
-) -> io::Result<()> {
-    std::fs::create_dir_all(dir)?;
-    let status = LiveStatus {
-        state: state.to_string(),
-        elapsed_s,
-        last_activity,
-        tools_used,
-        files_changed,
-        dispatch_id: dispatch_id.to_string(),
-        ts: Utc::now().to_rfc3339_opts(SecondsFormat::Secs, true),
-    };
-    let final_path = dir.join("status.json");
-    let tmp_path = dir.join(format!("status.json.tmp.{}", std::process::id()));
-    {
-        let mut file = std::fs::File::create(&tmp_path)?;
-        serde_json::to_writer(&mut file, &status)?;
-        file.write_all(b"\n")?;
-        file.sync_all()?;
-    }
-    std::fs::rename(&tmp_path, final_path)?;
-    if let Ok(dir_file) = std::fs::File::open(dir) {
-        let _ = dir_file.sync_all();
-    }
-    Ok(())
-}
-
-fn status_dir(dispatch_id: &str) -> PathBuf {
-    std::env::temp_dir()
-        .join("darkfactory-dispatch")
-        .join(dispatch_id)
-}
-
-#[derive(Debug, Deserialize)]
-struct ControlFile {
-    #[serde(default)]
-    abort: bool,
-    #[serde(default)]
-    reason: Option<String>,
-}
-
-fn read_control_file(dir: &Path) -> Option<ControlFile> {
-    let text = std::fs::read_to_string(dir.join("control.json")).ok()?;
-    serde_json::from_str(&text).ok()
-}
-
 fn effective_grace_sec(timeout_sec: u64, grace_sec: u64) -> u64 {
     if grace_sec == 0 {
         (timeout_sec / 2).max(1)
@@ -966,7 +835,6 @@ mod tests {
             output: Some(PathBuf::from("out.txt")),
             cwd: PathBuf::from("."),
             log: None,
-            store_dir: None,
         };
 
         let args = build_codex_args(&spec, 0)
@@ -1008,7 +876,6 @@ mod tests {
             output: None,
             cwd: PathBuf::from("."),
             log: None,
-            store_dir: None,
         };
 
         let args = build_codex_args(&spec, 1)
@@ -1037,7 +904,6 @@ mod tests {
             output: None,
             cwd: PathBuf::from("."),
             log: None,
-            store_dir: None,
         };
 
         let args = build_codex_args(&spec, 0)

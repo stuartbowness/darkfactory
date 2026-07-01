@@ -25,7 +25,6 @@ pub(crate) struct DispatchSpec {
     pub(crate) output: Option<PathBuf>,
     pub(crate) cwd: PathBuf,
     pub(crate) log: Option<PathBuf>,
-    pub(crate) store_dir: Option<PathBuf>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -117,17 +116,6 @@ pub(crate) enum EventKind {
     TurnFailed,
     Error,
     RawPassthrough,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub(crate) struct LiveStatus {
-    pub(crate) state: String,
-    pub(crate) elapsed_s: u64,
-    pub(crate) last_activity: String,
-    pub(crate) tools_used: u64,
-    pub(crate) files_changed: u64,
-    pub(crate) dispatch_id: String,
-    pub(crate) ts: String,
 }
 
 #[cfg(test)]
