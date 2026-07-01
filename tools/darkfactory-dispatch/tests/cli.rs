@@ -1,6 +1,7 @@
+use std::fs::OpenOptions;
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
-use std::process::Command as StdCommand;
+use std::process::{Command as StdCommand, Stdio};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{LazyLock, Mutex};
 
@@ -288,6 +289,47 @@ fn retained_flags_are_accepted_and_output_is_reported() -> Result<(), Box<dyn st
     assert_eq!(parsed["output_exists"], true);
     assert_eq!(std::fs::read_to_string(&output)?, "mock output\n");
     assert!(std::fs::read_to_string(log)?.contains("thread.started"));
+
+    Ok(())
+}
+
+#[test]
+fn log_file_combines_worker_output_and_redirected_dispatcher_events(
+) -> Result<(), Box<dyn std::error::Error>> {
+    let env = MockEnv::new("combined-log")?;
+    let output = env.home.join("artifact.md");
+    let log = env.home.join("combined.log");
+    let stderr_log = OpenOptions::new().create(true).append(true).open(&log)?;
+
+    let result = env
+        .dispatch_command()
+        .args([
+            "--json",
+            "--prompt",
+            "review",
+            "--output",
+            output.to_str().expect("utf-8 output path"),
+            "--cwd",
+            env.home.to_str().expect("utf-8 home path"),
+            "--log",
+            log.to_str().expect("utf-8 log path"),
+            "--heartbeat",
+            "1",
+        ])
+        .env("CODEX_MOCK_MODE", "delayed_success")
+        .stderr(Stdio::from(stderr_log))
+        .output()?;
+
+    assert!(result.status.success(), "stderr: {:?}", result.stderr);
+    let parsed: Value = serde_json::from_slice(&result.stdout)?;
+    assert_eq!(parsed["status"], "completed");
+
+    let log_text = std::fs::read_to_string(&log)?;
+    assert!(
+        log_text.contains(r#""type":"thread.started""#),
+        "{log_text}"
+    );
+    assert!(log_text.contains(r#""type":"heartbeat""#), "{log_text}");
 
     Ok(())
 }
