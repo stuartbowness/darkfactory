@@ -61,6 +61,8 @@ Save the diff content once and pass the identical content to both reviewers.
 
 Start Codex first and do not block before launching Claude. Dispatch with `darkfactory-dispatch --json` in a single Bash tool call with `run_in_background: true`. The backgrounded script must capture the dispatcher output, parse `.status`, remove the prompt file, and print a final stdout line beginning with `REVIEW_COMPLETE` or `REVIEW_FAILED`.
 
+The backgrounded script runs in its own shell, so it must be self-contained: resolve the model inside it rather than relying on `$DEFAULT_MODEL` from the Startup Config call, which does not survive into a separate Bash tool call.
+
 `--output "<codex-report-path>"` writes Codex's **final message** to that path. So the prompt asks Codex to return the report as its final message and not write any files itself -- if Codex wrote the report to that path with its own tools, its closing assistant message would overwrite it. (Claude in Step 3 has no `--output`, so it writes its file directly.)
 
 Prompt:
@@ -74,6 +76,11 @@ You are an adversarial code reviewer. Review the following diff for bugs, logic 
 Dispatch command:
 
 ```bash
+# Resolve the model inside this backgrounded script (see note above).
+DARKFACTORY_ROOT="$(cd "$(readlink "$HOME/.claude/skills/adversarial")/../.." 2>/dev/null && pwd -P)"
+DEFAULT_MODEL=$(awk -F: '/^[[:space:]]*default_model[[:space:]]*:/ { gsub(/^[[:space:]]+|[[:space:]]+$/, "", $2); print $2; exit }' "$DARKFACTORY_ROOT/config.yaml" 2>/dev/null)
+: "${DEFAULT_MODEL:=gpt-5.5}"
+
 REPORT_PATH="<codex-report-path>"
 LOG_PATH="<codex-log-path>"
 PROMPT_PATH=$(mktemp /tmp/adversarial-prompt.XXXXXX)
