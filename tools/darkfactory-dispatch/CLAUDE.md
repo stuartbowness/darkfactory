@@ -6,14 +6,14 @@ Rust process supervisor for Codex CLI subprocesses. Spawns `codex exec` with pro
 
 ```text
 src/
-  main.rs         Entrypoint: dispatch, status, result, wait subcommands
-  cli.rs          Clap CLI structure, argument parsing, async routing
+  main.rs         Entrypoint: parse args, dispatch synchronously, print result
+  cli.rs          Clap CLI structure, argument parsing
   engine.rs       Core dispatch loop: codex arg construction, NDJSON parsing,
-                  timeout select loop, heartbeat, watchdog, result finalization
+                  timeout select loop, heartbeat, result finalization
   supervisor.rs   Process spawning, process groups, signals, GracefulStop,
                   parent-death detection (kqueue on macOS, prctl on Linux)
   types.rs        DispatchSpec, DispatchResult, DispatchError, HarnessEvent,
-                  TokenUsage, Activity, LiveStatus
+                  TokenUsage, Activity
   event.rs        NDJSON event emitter, heartbeat ticker, stream mode filtering
 tests/
   cli.rs          Integration tests (binary smoke tests via assert_cmd)
@@ -55,12 +55,11 @@ The dispatch machinery is modeled on buildoak/agent-mux (`~/Code/agent-mux`). Ke
 | supervisor | `internal/supervisor/supervisor.go` | Setpgid, -pgid signal delivery, GracefulStop, WasSignaled |
 | supervisor | `internal/supervisor/reaper_darwin.go` | kqueue EVFILT_PROC + NOTE_EXIT |
 | supervisor | `internal/supervisor/reaper_linux.go` | PR_SET_PDEATHSIG via prctl |
-| engine | `internal/engine/loop.go:167-981` | Dispatch function, two-phase timeout, heartbeat, watchdog |
+| engine | `internal/engine/loop.go:167-981` | Dispatch function, two-phase timeout, heartbeat |
 | engine | `internal/engine/adapter/codex.go` | codex exec arg construction + NDJSON event parsing |
 | engine | `internal/event/event.go` | Event emitter, heartbeat ticker |
 | types | `internal/types/types.go` | DispatchSpec, DispatchResult, HarnessAdapter |
 | cli | `cmd/agent-mux/main.go` | CLI routing, flag parsing |
-| cli | `cmd/agent-mux/async.go` | Async dispatch, host.pid, detached mode |
 
 ## Testing
 
