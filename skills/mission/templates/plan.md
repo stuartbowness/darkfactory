@@ -3,7 +3,7 @@
 ## Status: PLANNING | APPROVED | BUILDING | COMPLETE | PAUSED
 
 ## Orchestrator Phase
-<!-- The current major phase (0-9, 4a) and step. Update on entering any phase and at every phase gate. -->
+<!-- The current major phase (0-9, 4.5) and step. Update on entering any phase and at every phase gate. -->
 <!-- Examples: "Phase 5 -- Contract Writing (awaiting human approval)" -->
 <!--           "Phase 7 -- Launch Confirmation (awaiting human go-ahead)" -->
 <!--           "Phase 8 Task 3 -- Scrutiny Validation" -->
@@ -34,10 +34,10 @@ Captured so this mission can be reproduced against the exact skill version that 
 Defaults defined in Phase 6 config.yaml. 
 
 ## Deterministic Anchors
-Filled during Phase 4.2 (5 anchors) and Phase 4.2a (task strategy anchor). The orchestrator references these when populating worker briefs and making phase decisions.
+Filled during Phase 4.2 (5 anchors) and Phase 4.3 (task strategy anchor). The orchestrator references these when populating worker briefs and making phase decisions.
 
 - Workspace layout: <e.g., "two-crate workspace: core lib + cli binary" (see design.md Architecture Decision)>
-- Task decomposition strategy: <e.g., "layered, 7 feature tasks + 5 closing" (see Phase 4.2a approval)>
+- Task decomposition strategy: <e.g., "layered, 7 feature tasks + 5 closing" (see Phase 4.3 approval)>
 - Primary domain types: <e.g., "Todo, TodoStatus, IronTodoError" (see design.md Type Catalog)>
 - Error handling strategy: <e.g., "thiserror in core, never anyhow" (see design.md Error Strategy)>
 - Test strategy: <e.g., "unit + integration, serial with DB" (see design.md)>

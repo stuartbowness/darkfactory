@@ -1,0 +1,16 @@
+engines:
+  worker: codex
+  scrutiny_validator: claude
+  usertest_validator: claude
+  adversarial_reviewer_a: codex
+  adversarial_reviewer_b: claude
+  demo_video: claude
+
+# No /frontend tasks (Rust change).
+browser_tools: false
+
+# Durable operating plan written in Phase 0.
+plan_file: /home/ironbank/.claude/plans/dispatch-sync-only.md
+
+# Captured in Phase 7 (launch), before the first task commit.
+base_sha: 98a1d35f42a8e017f16d8f2a33e2e2716dd40d50

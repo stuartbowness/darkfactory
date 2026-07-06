@@ -71,7 +71,7 @@ darkfactory-dispatch --version
 
 ## Usage
 
-### Sync dispatch (most common)
+### Dispatch
 
 Dispatch a task and wait for the result:
 
@@ -116,29 +116,6 @@ The dispatch result is a single JSON object on stdout. In `--json` mode stdout c
 }
 ```
 
-### Async dispatch
-
-Dispatch a task and return immediately:
-
-```bash
-darkfactory-dispatch \
-  --async \
-  --model gpt-5.5 \
-  --effort high \
-  --timeout 1800 \
-  --prompt "Refactor the auth module"
-```
-
-Returns `{"kind":"async_started","dispatch_id":"..."}` on stdout. The dispatch continues in the background. Manage the lifecycle with subcommands:
-
-```bash
-darkfactory-dispatch status <dispatch-id>   # Check state (running/completed/failed/timed_out/orphaned)
-darkfactory-dispatch wait <dispatch-id>     # Block until complete
-darkfactory-dispatch result <dispatch-id>   # Get the full dispatch result JSON
-```
-
-Async state lives in the dispatch store at `~/.darkfactory/dispatches/<dispatch-id>/`, containing `status.json`, `result.json`, `host.pid`, and `events.jsonl`. Dispatch directories older than 7 days are pruned automatically.
-
 ### Monitoring progress
 
 The dispatcher emits NDJSON events to stderr during a dispatch:
@@ -168,6 +145,7 @@ tail -f dispatch.log
 | `--effort` | (none) | Reasoning effort (maps to `-c model_reasoning_effort`) |
 | `--timeout` | `900` | Seconds before soft timeout fires (SIGTERM) |
 | `--grace` | half of timeout, min 1s | Seconds between soft timeout and hard timeout (SIGKILL) |
+| `--heartbeat` | `15` | Seconds between heartbeat events emitted to stderr |
 | `--sandbox` | `workspace-write` | Codex sandbox mode |
 | `--config` | (none) | Repeatable. Key=value passed to Codex `-c` flag |
 | `--prompt` | (none) | Task prompt (mutually exclusive with `--prompt-file`; must be non-empty) |
@@ -175,8 +153,7 @@ tail -f dispatch.log
 | `--output` | (none) | Path for Codex to write results (passed to `-o`) |
 | `--cwd` | current dir | Working directory for the Codex process |
 | `--log` | (none) | File to capture Codex stdout and stderr |
-| `--json` | false | Emit dispatch result as JSON on stdout (mutually exclusive with `--async`) |
-| `--async` | false | Return immediately with dispatch ID (mutually exclusive with `--json`) |
+| `--json` | false | Emit dispatch result as JSON on stdout |
 
 ## Two-phase timeout
 
@@ -195,12 +172,10 @@ Every Codex worker runs in its own process group (via `setpgid`). When the dispa
 
 ## Parent-death detection
 
-In sync mode, the dispatcher detects when its parent process (the orchestrator) dies and kills the worker to prevent orphans:
+The dispatcher detects when its parent process (the orchestrator) dies and kills the worker to prevent orphans:
 
 - **macOS**: Uses kqueue with `EVFILT_PROC` + `NOTE_EXIT` to watch the parent PID
 - **Linux**: Uses `PR_SET_PDEATHSIG` to arrange SIGKILL on parent death
-
-In async mode, parent-death detection is disabled so the dispatcher survives the caller exiting.
 
 ## Exit codes
 

@@ -35,11 +35,13 @@ Before dispatching reviewers, choose report paths:
 - If the repo contains a Darkfactory mission directory matching `openspec/changes/*/mission/`, excluding any path that contains `openspec/changes/archive/`, write reports under that mission:
   - `mission/validations/adversarial-codex.md`
   - `mission/validations/adversarial-claude.md`
+  - `mission/logs/adversarial-codex.log`
 - Otherwise, write reports to temp files and tell the user both paths:
   - `/tmp/adversarial-codex-<timestamp>.md`
   - `/tmp/adversarial-claude-<timestamp>.md`
+  - `/tmp/adversarial-codex-<timestamp>.log`
 
-When a mission path is used, create `mission/validations/` if needed.
+When a mission path is used, create `mission/validations/` and `mission/logs/` if needed.
 
 ## Step 1: Get The Diff
 
@@ -57,9 +59,9 @@ Save the diff content once and pass the identical content to both reviewers.
 
 ## Step 2: Dispatch Codex Reviewer
 
-Start Codex first and do not wait for it before launching Claude. Dispatch with `darkfactory-dispatch --async` and use the Bash tool with `run_in_background: true`. Capture the `dispatch_id` from the `async_started` JSON on stdout.
+Start Codex first and do not block before launching Claude. Dispatch with `darkfactory-dispatch --json` in a single Bash tool call with `run_in_background: true`. The backgrounded script must capture the dispatcher output, parse `.status`, remove the prompt file, and print a final stdout line beginning with `REVIEW_COMPLETE` or `REVIEW_FAILED`.
 
-Do NOT pass `--json` alongside `--async` -- they are mutually exclusive flags. Async mode prints its own JSON to stdout.
+The backgrounded script runs in its own shell, so it must be self-contained: resolve the model inside it rather than relying on `$DEFAULT_MODEL` from the Startup Config call, which does not survive into a separate Bash tool call.
 
 `--output "<codex-report-path>"` writes Codex's **final message** to that path. So the prompt asks Codex to return the report as its final message and not write any files itself -- if Codex wrote the report to that path with its own tools, its closing assistant message would overwrite it. (Claude in Step 3 has no `--output`, so it writes its file directly.)
 
@@ -74,6 +76,13 @@ You are an adversarial code reviewer. Review the following diff for bugs, logic 
 Dispatch command:
 
 ```bash
+# Resolve the model inside this backgrounded script (see note above).
+DARKFACTORY_ROOT="$(cd "$(readlink "$HOME/.claude/skills/adversarial")/../.." 2>/dev/null && pwd -P)"
+DEFAULT_MODEL=$(awk -F: '/^[[:space:]]*default_model[[:space:]]*:/ { gsub(/^[[:space:]]+|[[:space:]]+$/, "", $2); print $2; exit }' "$DARKFACTORY_ROOT/config.yaml" 2>/dev/null)
+: "${DEFAULT_MODEL:=gpt-5.5}"
+
+REPORT_PATH="<codex-report-path>"
+LOG_PATH="<codex-log-path>"
 PROMPT_PATH=$(mktemp /tmp/adversarial-prompt.XXXXXX)
 # Use >| : mktemp pre-creates the file, and zsh `noclobber` makes a bare `>` fail on it.
 cat >| "$PROMPT_PATH" << 'PROMPT'
@@ -82,20 +91,30 @@ You are an adversarial code reviewer. Review the following diff for bugs, logic 
 <diff content>
 PROMPT
 
-ASYNC_RESULT=$(darkfactory-dispatch \
-  --async \
+DISPATCH_RESULT=$(darkfactory-dispatch \
   --model "$DEFAULT_MODEL" \
   --effort high \
   --timeout 900 \
   --sandbox workspace-write \
   --prompt-file "$PROMPT_PATH" \
-  --output "<codex-report-path>" \
-  --cwd "$(pwd)")
+  --output "$REPORT_PATH" \
+  --cwd "$(pwd)" \
+  --log "$LOG_PATH" \
+  --json 2>>"$LOG_PATH")
 
-DISPATCH_ID=$(printf '%s\n' "$ASYNC_RESULT" | jq -r 'select(.kind == "async_started") | .dispatch_id // empty')
-if [ -z "$DISPATCH_ID" ]; then
-  echo "Failed to start Codex reviewer: $ASYNC_RESULT"
-  exit 1
+rm -f "$PROMPT_PATH"
+
+if [ -z "$DISPATCH_RESULT" ]; then
+  echo "REVIEW_FAILED: dispatcher crashed with no output. Log: $LOG_PATH"
+else
+  DISPATCH_STATUS=$(printf '%s\n' "$DISPATCH_RESULT" | jq -r '.status')
+  DISPATCH_ERROR=$(printf '%s\n' "$DISPATCH_RESULT" | jq -r '.error.message // empty')
+
+  if [ "$DISPATCH_STATUS" = "completed" ] && [ -f "$REPORT_PATH" ]; then
+    echo "REVIEW_COMPLETE: report written"
+  else
+    echo "REVIEW_FAILED: dispatch status $DISPATCH_STATUS${DISPATCH_ERROR:+; error: $DISPATCH_ERROR}; report $([ -f "$REPORT_PATH" ] && echo present || echo missing). Log: $LOG_PATH"
+  fi
 fi
 ```
 
@@ -107,14 +126,9 @@ Claude must write its report to `adversarial-claude.md` at the selected report p
 
 ## Step 4: Collect Results
 
-After Claude finishes, run `darkfactory-dispatch wait <dispatch-id>` using the dispatch ID captured in Step 2:
+After Claude finishes, retrieve the backgrounded Codex Bash call's stdout with BashOutput. If the Codex shell task has not completed yet, collect it again after the task completion notification.
 
-```bash
-darkfactory-dispatch wait "$DISPATCH_ID"
-rm -f "$PROMPT_PATH"
-```
-
-Only read both report files after `darkfactory-dispatch wait <dispatch-id>` completes successfully. If the wait command fails, report the dispatch failure and do not claim the Codex report completed.
+Treat a final stdout line beginning with `REVIEW_COMPLETE` as success. Only then read the Codex report file. Treat a final stdout line beginning with `REVIEW_FAILED`, or a dispatcher `.status` of `failed` or `timed_out`, as a Codex review failure. On failure, report the dispatch failure and log path instead of claiming the Codex report completed.
 
 For each report, count findings by severity:
 

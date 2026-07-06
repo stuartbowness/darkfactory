@@ -1,11 +1,11 @@
 #[path = "../src/engine.rs"]
 mod engine;
-#[path = "../src/event.rs"]
-mod event;
 #[expect(
     dead_code,
-    reason = "integration tests exercise selected supervisor APIs indirectly"
+    reason = "integration tests exercise event emission through Emitter::with_writer"
 )]
+#[path = "../src/event.rs"]
+mod event;
 #[path = "../src/supervisor.rs"]
 mod supervisor;
 #[path = "../src/types.rs"]
@@ -17,7 +17,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, LazyLock, Mutex};
 use std::time::{Duration, Instant};
 
-use event::{Emitter, StreamMode};
+use event::Emitter;
 use nix::libc;
 use serde_json::Value;
 use tokio::sync::Mutex as AsyncMutex;
@@ -423,53 +423,6 @@ async fn soft_timeout_reports_timed_out_after_sigterm_exit(
 }
 
 #[tokio::test(flavor = "multi_thread")]
-async fn control_file_abort_kills_child_and_reports_failed(
-) -> Result<(), Box<dyn std::error::Error>> {
-    let _path_guard = TestPath::install("sleep").await?;
-    let tmp = temp_test_dir("control-abort")?;
-    let output = tmp.join("result.md");
-    let store_dir = tmp.join("store");
-    std::fs::create_dir_all(&store_dir)?;
-    let pid_file = tmp.join("pid");
-    std::env::set_var("CODEX_MOCK_PID_FILE", &pid_file);
-
-    let mut dispatch_spec = spec(&tmp, &output, None, 60, 1);
-    dispatch_spec.store_dir = Some(store_dir.clone());
-    let control_dir = store_dir.clone();
-    let writer = tokio::spawn(async move {
-        tokio::time::sleep(Duration::from_millis(100)).await;
-        std::fs::write(
-            control_dir.join("control.json"),
-            r#"{"abort": true, "reason": "test abort"}"#,
-        )
-    });
-
-    let result = engine::dispatch(
-        dispatch_spec,
-        "dispatch-control-abort".to_string(),
-        emitter("dispatch-control-abort").0,
-    )
-    .await?;
-    writer.await??;
-
-    std::env::remove_var("CODEX_MOCK_PID_FILE");
-    assert_eq!(result.status, DispatchStatus::Failed);
-    assert_eq!(
-        result.error.as_ref().map(|error| error.code.as_str()),
-        Some("abort_requested")
-    );
-    assert!(result
-        .error
-        .as_ref()
-        .is_some_and(|error| error.message.contains("test abort")));
-
-    let pid = std::fs::read_to_string(pid_file)?.trim().parse::<i32>()?;
-    assert_process_exits(pid).await?;
-
-    Ok(())
-}
-
-#[tokio::test(flavor = "multi_thread")]
 async fn custom_heartbeat_interval_controls_heartbeat_rate(
 ) -> Result<(), Box<dyn std::error::Error>> {
     let _path_guard = TestPath::install("delayed_success_5").await?;
@@ -504,7 +457,6 @@ fn emitter(dispatch_id: &str) -> (Arc<Emitter>, Arc<Mutex<Vec<u8>>>) {
     let buffer = Arc::new(Mutex::new(Vec::new()));
     let emitter = Emitter::with_writer(
         dispatch_id,
-        StreamMode::Verbose,
         SharedBuffer {
             inner: Arc::clone(&buffer),
         },
@@ -539,7 +491,6 @@ fn spec(
         output: Some(output.to_path_buf()),
         cwd: cwd.to_path_buf(),
         log,
-        store_dir: None,
     }
 }
 

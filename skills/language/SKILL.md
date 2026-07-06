@@ -26,6 +26,8 @@ Write a `UBIQUITOUS_LANGUAGE.md` file with this structure:
 ```md
 # Ubiquitous Language
 
+> Scope: ambiguity-prone domain terms only. Mechanics and how-it-works detail belong in the architecture doc; skill-specific vocabulary belongs in the owning skill. Reference those, don't duplicate them here.
+
 ## Order lifecycle
 
 - **Order** -- A customer's request to purchase one or more items. *Avoid:* purchase, transaction
@@ -55,6 +57,8 @@ Write a `UBIQUITOUS_LANGUAGE.md` file with this structure:
 
 ## Rules
 
+- **Apply the inclusion bar.** A term earns an entry only if all four hold: (1) it names a domain concept, not a mechanism or process; (2) it is ambiguity-prone -- the same word is used for two things, or two words for one, so there is an alias worth flagging; (3) you can define it in one sentence as what it IS; (4) it is shared across more than one role or file. If it fails any of the four, leave it out.
+- **Exclude mechanics and tooling.** Never add implementation mechanics (how a step works), tool internals, file or config names, gate-by-gate behavior, or coding rules. These belong in the architecture document (e.g. `ARCH.md`) or the owning skill -- point to them, do not define them here. A glossary that documents how the system works will go stale; keep it to vocabulary.
 - **Be opinionated.** When multiple words exist for the same concept, pick the best one and list the others as aliases to avoid.
 - **Flag conflicts explicitly.** If a term is used ambiguously in the conversation, call it out in the "Flagged ambiguities" section with a clear recommendation.
 - **Only include terms relevant for domain experts.** Skip the names of modules or classes unless they have meaning in the domain language.
@@ -84,7 +88,7 @@ Write a `UBIQUITOUS_LANGUAGE.md` file with this structure:
 When invoked again in the same conversation:
 
 1. Read the existing `UBIQUITOUS_LANGUAGE.md`
-2. Incorporate any new terms from subsequent discussion
+2. Re-apply the inclusion bar to the whole file, not just the additions: add new terms that pass it, and **prune** any that have drifted into mechanics or moved into a skill. Re-running is as much about removing drift as adding terms -- the file should not grow monotonically.
 3. Update definitions if understanding has evolved
 4. Re-flag any new ambiguities
 5. Rewrite the example dialogue to incorporate new terms

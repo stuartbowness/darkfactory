@@ -48,7 +48,7 @@ Source: [docs/reference_pocock_talk.md](reference_pocock_talk.md)
 | Adversarial alignment interview | 40-100 questions to reach shared understanding before any work | Phase 1: /grill. Adds a safeguard Pocock didn't describe: warns if user tries to skip. |
 | Ubiquitous language | DDD-inspired glossary with canonical terms, aliases to avoid, relationships | Phase 2: /language. Glossary threaded through briefs, documentation, and all phases. |
 | TDD as speed limit | Force small steps -- write test, make pass, refactor. Prevents AI from outracing its headlights. | Worker briefs mandate /tdd. Scrutiny validator enforces with automatic FAIL if diff has zero new tests (test presence gate). |
-| Deep modules | Wrap related code in deep modules. Large functionality behind simple interfaces. Test at the interface. | Phase 4.3 (design) requires module depth analysis: describe the interface, what it hides, why that boundary. Flags shallow modules. |
+| Deep modules | Wrap related code in deep modules. Large functionality behind simple interfaces. Test at the interface. | Phase 4.2 (design) requires module depth analysis: describe the interface, what it hides, why that boundary. Flags shallow modules. |
 
 ### Implemented differently
 

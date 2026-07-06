@@ -1,17 +1,17 @@
-use std::io::{BufRead, BufReader};
+use std::fs::OpenOptions;
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::process::{Command as StdCommand, Stdio};
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::time::{Duration, SystemTime};
+use std::sync::{LazyLock, Mutex};
 
 use assert_cmd::Command;
-use nix::libc;
 use predicates::prelude::*;
 use serde_json::Value;
 use ulid::Ulid;
 
 static TEST_ID: AtomicU64 = AtomicU64::new(1);
+static STORE_PATH_LOCK: LazyLock<Mutex<()>> = LazyLock::new(|| Mutex::new(()));
 
 #[test]
 fn help_lists_dispatch_flags() {
@@ -31,7 +31,6 @@ fn help_lists_dispatch_flags() {
             .and(predicate::str::contains("--cwd"))
             .and(predicate::str::contains("--log"))
             .and(predicate::str::contains("--json"))
-            .and(predicate::str::contains("--async"))
             .and(predicate::str::contains("--version")),
     );
 }
@@ -92,196 +91,41 @@ fn prompt_and_prompt_file_are_mutually_exclusive() {
 }
 
 #[test]
-fn json_and_async_are_mutually_exclusive() {
-    let mut cmd = Command::cargo_bin("darkfactory-dispatch").expect("binary exists");
-
-    cmd.args(["--json", "--async", "--prompt", "test"])
-        .assert()
-        .code(2);
-}
-
-#[test]
-fn status_unknown_id_exits_nonzero() {
-    let mut cmd = Command::cargo_bin("darkfactory-dispatch").expect("binary exists");
-    let dispatch_id = unknown_dispatch_id();
-
-    cmd.args(["status", &dispatch_id])
-        .assert()
-        .failure()
-        .stderr(
-            predicate::str::contains("dispatch not found")
-                .and(predicate::str::contains(dispatch_id)),
-        );
-}
-
-#[test]
-fn result_unknown_id_exits_nonzero() {
-    let mut cmd = Command::cargo_bin("darkfactory-dispatch").expect("binary exists");
-    let dispatch_id = unknown_dispatch_id();
-
-    cmd.args(["result", &dispatch_id]).assert().failure();
-}
-
-#[test]
-fn wait_unknown_id_exits_nonzero() {
-    let mut cmd = Command::cargo_bin("darkfactory-dispatch").expect("binary exists");
-    let dispatch_id = unknown_dispatch_id();
-
-    cmd.args(["wait", &dispatch_id]).assert().failure();
-}
-
-#[test]
-fn async_dispatch_flow_reports_status_and_result() -> Result<(), Box<dyn std::error::Error>> {
-    let env = MockEnv::new("async-flow")?;
-    let output = env.home.join("result.md");
-    let mut child = env.dispatch_command();
-    child
-        .args([
-            "--async",
-            "--prompt",
-            "echo test",
-            "--output",
-            output.to_str().expect("utf-8 output path"),
-        ])
-        .env("CODEX_MOCK_MODE", "delayed_success")
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped());
-
-    let mut child = child.spawn()?;
-    let stdout = child.stdout.take().expect("stdout piped");
-    let mut lines = BufReader::new(stdout).lines();
-    let ack: Value = serde_json::from_str(&lines.next().expect("ack line")?)?;
-    assert_eq!(ack["kind"], "async_started");
-    let dispatch_id = ack["dispatch_id"]
-        .as_str()
-        .expect("dispatch id")
-        .to_string();
-
-    let status = env
-        .dispatch_command()
-        .args(["status", &dispatch_id])
-        .output()?;
-    assert!(
-        status.status.success(),
-        "status stderr: {:?}",
-        status.stderr
-    );
-    let status_json: Value = serde_json::from_slice(&status.stdout)?;
-    assert_eq!(status_json["state"], "running");
-
-    let wait = env
-        .dispatch_command()
-        .args(["wait", &dispatch_id])
-        .output()?;
-    assert!(wait.status.success(), "wait stderr: {:?}", wait.stderr);
-
+fn async_flag_is_rejected_without_dispatch_files() -> Result<(), Box<dyn std::error::Error>> {
+    let env = MockEnv::new("async-rejected")?;
     let result = env
         .dispatch_command()
-        .args(["result", &dispatch_id])
+        .args(["--async", "--prompt", "x"])
         .output()?;
-    assert!(
-        result.status.success(),
-        "result stderr: {:?}",
-        result.stderr
-    );
-    let result_json: Value = serde_json::from_slice(&result.stdout)?;
-    assert_eq!(result_json["status"], "completed");
-    assert_eq!(result_json["dispatch_id"], dispatch_id);
 
-    assert!(child.wait()?.success());
-    assert!(env
-        .home
-        .join(".darkfactory/dispatches")
-        .join(dispatch_id)
-        .join("events.jsonl")
-        .exists());
+    assert_eq!(result.status.code(), Some(2));
+    assert!(result.stdout.is_empty());
+    let stderr = String::from_utf8(result.stderr)?;
+    assert!(stderr.contains("unexpected argument") || stderr.contains("Usage:"));
+    assert!(!stderr.contains("dispatch not found"));
+    assert!(!String::from_utf8_lossy(&result.stdout).contains("async_started"));
+    assert!(!home_dispatch_root(&env.home).exists());
 
     Ok(())
 }
 
 #[test]
-fn status_reports_orphaned_when_async_dispatcher_dies() -> Result<(), Box<dyn std::error::Error>> {
-    let env = MockEnv::new("orphan")?;
-    let output = env.home.join("result.md");
-    let pid_file = env.home.join("codex.pid");
-    let mut child = env.dispatch_command();
-    child
-        .args([
-            "--async",
-            "--prompt",
-            "sleep",
-            "--timeout",
-            "60",
-            "--output",
-            output.to_str().expect("utf-8 output path"),
-        ])
-        .env("CODEX_MOCK_MODE", "sleep")
-        .env("CODEX_MOCK_PID_FILE", &pid_file)
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped());
-
-    let mut child = child.spawn()?;
-    let stdout = child.stdout.take().expect("stdout piped");
-    let mut lines = BufReader::new(stdout).lines();
-    let ack: Value = serde_json::from_str(&lines.next().expect("ack line")?)?;
-    let dispatch_id = ack["dispatch_id"]
-        .as_str()
-        .expect("dispatch id")
-        .to_string();
-
-    child.kill()?;
-    let _ = child.wait()?;
-
-    let status = env
-        .dispatch_command()
-        .args(["status", &dispatch_id])
-        .output()?;
-    assert!(
-        status.status.success(),
-        "status stderr: {:?}",
-        status.stderr
-    );
-    let status_json: Value = serde_json::from_slice(&status.stdout)?;
-    assert_eq!(status_json["state"], "orphaned");
-
-    if let Ok(pid) = std::fs::read_to_string(pid_file) {
-        kill_process_group(pid.trim().parse()?);
+fn lifecycle_subcommands_are_rejected_by_parser() -> Result<(), Box<dyn std::error::Error>> {
+    for subcommand in ["status", "wait", "result"] {
+        let mut cmd = Command::cargo_bin("darkfactory-dispatch").expect("binary exists");
+        let result = cmd.args([subcommand, "01TEST"]).output()?;
+        assert_eq!(result.status.code(), Some(2), "{subcommand}");
+        let stderr = String::from_utf8(result.stderr)?;
+        assert!(
+            stderr.contains("unrecognized subcommand") || stderr.contains("unexpected argument"),
+            "{subcommand}: {stderr}"
+        );
+        assert!(
+            !stderr.contains("dispatch not found"),
+            "{subcommand}: {stderr}"
+        );
+        assert!(result.stdout.is_empty(), "{subcommand}");
     }
-
-    Ok(())
-}
-
-#[test]
-fn async_dispatch_prunes_old_store_directories() -> Result<(), Box<dyn std::error::Error>> {
-    let env = MockEnv::new("cleanup")?;
-    let store_root = env.home.join(".darkfactory/dispatches");
-    std::fs::create_dir_all(&store_root)?;
-    let old_id =
-        Ulid::from_datetime(SystemTime::now() - Duration::from_secs(8 * 24 * 60 * 60)).to_string();
-    let old_dir = store_root.join(old_id);
-    std::fs::create_dir_all(&old_dir)?;
-
-    let output = env.home.join("result.md");
-    let mut child = env.dispatch_command();
-    child
-        .args([
-            "--async",
-            "--prompt",
-            "echo test",
-            "--output",
-            output.to_str().expect("utf-8 output path"),
-        ])
-        .env("CODEX_MOCK_MODE", "success")
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped());
-
-    let mut child = child.spawn()?;
-    let stdout = child.stdout.take().expect("stdout piped");
-    let mut lines = BufReader::new(stdout).lines();
-    let ack: Value = serde_json::from_str(&lines.next().expect("ack line")?)?;
-    assert_eq!(ack["kind"], "async_started");
-    assert!(!old_dir.exists());
-    assert!(child.wait()?.success());
 
     Ok(())
 }
@@ -314,6 +158,240 @@ fn json_stdout_is_single_object() -> Result<(), Box<dyn std::error::Error>> {
         .expect("commands_run array");
     assert_eq!(commands.len(), 1);
     assert_eq!(commands[0], r#"grep -n "foo\bar" baz | jq .x"#);
+
+    Ok(())
+}
+
+#[test]
+fn json_dispatch_without_store_paths_creates_no_dispatch_files(
+) -> Result<(), Box<dyn std::error::Error>> {
+    let _guard = STORE_PATH_LOCK.lock().expect("store path mutex poisoned");
+    let env = MockEnv::new("no-store-files")?;
+    let tmp_store = tmp_dispatch_root();
+    std::fs::remove_dir_all(&tmp_store).ok();
+    std::fs::remove_dir_all(home_dispatch_root(&env.home)).ok();
+
+    let result = env
+        .dispatch_command()
+        .args([
+            "--json",
+            "--prompt",
+            "review",
+            "--cwd",
+            env.home.to_str().expect("utf-8 home path"),
+        ])
+        .env("CODEX_MOCK_MODE", "success")
+        .output()?;
+
+    assert!(result.status.success(), "stderr: {:?}", result.stderr);
+    let parsed: Value = serde_json::from_slice(&result.stdout)?;
+    assert_eq!(parsed["status"], "completed");
+    assert!(!tmp_store.exists());
+    assert!(!home_dispatch_root(&env.home).exists());
+
+    Ok(())
+}
+
+#[test]
+fn json_failed_dispatch_exits_1_and_reports_worker_exit_code(
+) -> Result<(), Box<dyn std::error::Error>> {
+    let env = MockEnv::new("json-failed-dispatch")?;
+    let output = env.home.join("failed-result.md");
+    let result = env
+        .dispatch_command()
+        .args([
+            "--json",
+            "--prompt",
+            "review",
+            "--output",
+            output.to_str().expect("utf-8 output path"),
+            "--cwd",
+            env.home.to_str().expect("utf-8 home path"),
+        ])
+        .env("CODEX_MOCK_MODE", "failed")
+        .output()?;
+
+    assert_eq!(result.status.code(), Some(1));
+    let parsed: Value = serde_json::from_slice(&result.stdout)?;
+    assert_eq!(parsed["status"], "failed");
+    assert_eq!(parsed["exit_code"], 1);
+    assert_eq!(parsed["signal"], Value::Null);
+    assert_eq!(parsed["error"]["code"], "process_failed");
+
+    Ok(())
+}
+
+#[test]
+fn plain_dispatch_output_reports_status_duration_and_output(
+) -> Result<(), Box<dyn std::error::Error>> {
+    let env = MockEnv::new("plain-output")?;
+    let output = env.home.join("plain-result.md");
+    let result = env
+        .dispatch_command()
+        .args([
+            "--prompt",
+            "review",
+            "--output",
+            output.to_str().expect("utf-8 output path"),
+            "--cwd",
+            env.home.to_str().expect("utf-8 home path"),
+        ])
+        .env("CODEX_MOCK_MODE", "success")
+        .output()?;
+
+    assert_eq!(result.status.code(), Some(0));
+    let stdout = String::from_utf8(result.stdout)?;
+    let lines = stdout.lines().collect::<Vec<_>>();
+    assert_eq!(lines.len(), 3, "{stdout}");
+    assert_eq!(lines[0], "status: completed");
+    let duration_ms = lines[1]
+        .strip_prefix("duration_ms: ")
+        .expect("duration_ms line");
+    duration_ms.parse::<u64>().expect("duration is numeric");
+    assert_eq!(lines[2], format!("output: {}", output.display()));
+    assert_eq!(std::fs::read_to_string(&output)?, "mock output\n");
+
+    Ok(())
+}
+
+#[test]
+fn existing_files_under_old_store_paths_are_unchanged() -> Result<(), Box<dyn std::error::Error>> {
+    let _guard = STORE_PATH_LOCK.lock().expect("store path mutex poisoned");
+    let env = MockEnv::new("store-sentinels")?;
+    let tmp_store = tmp_dispatch_root();
+    let home_store = home_dispatch_root(&env.home);
+    std::fs::create_dir_all(&tmp_store)?;
+    std::fs::create_dir_all(&home_store)?;
+    let tmp_sentinel = tmp_store.join("sentinel.bin");
+    let home_sentinel = home_store.join("sentinel.bin");
+    let tmp_bytes = b"tmp sentinel bytes\n";
+    let home_bytes = b"home sentinel bytes\n";
+    std::fs::write(&tmp_sentinel, tmp_bytes)?;
+    std::fs::write(&home_sentinel, home_bytes)?;
+
+    let result = env
+        .dispatch_command()
+        .args([
+            "--json",
+            "--prompt",
+            "review",
+            "--cwd",
+            env.home.to_str().expect("utf-8 home path"),
+        ])
+        .env("CODEX_MOCK_MODE", "success")
+        .output()?;
+
+    assert!(result.status.success(), "stderr: {:?}", result.stderr);
+    assert_eq!(std::fs::read(&tmp_sentinel)?, tmp_bytes);
+    assert_eq!(std::fs::read(&home_sentinel)?, home_bytes);
+
+    Ok(())
+}
+
+#[test]
+fn missing_engine_binary_emits_failed_json_and_cli_error_exit(
+) -> Result<(), Box<dyn std::error::Error>> {
+    let env = MockEnv::new("missing-engine")?;
+    let empty_bin = env.home.join("empty-bin");
+    std::fs::create_dir_all(&empty_bin)?;
+
+    let result = StdCommand::new(env!("CARGO_BIN_EXE_darkfactory-dispatch"))
+        .env("HOME", &env.home)
+        .env("PATH", empty_bin)
+        .args([
+            "--json",
+            "--prompt",
+            "review",
+            "--cwd",
+            env.home.to_str().expect("utf-8 home path"),
+        ])
+        .output()?;
+
+    assert_eq!(result.status.code(), Some(2));
+    let lines = String::from_utf8(result.stdout)?;
+    assert_eq!(lines.lines().count(), 1, "{lines}");
+    let parsed: Value = serde_json::from_str(lines.trim())?;
+    assert_eq!(parsed["status"], "failed");
+    assert_eq!(parsed["error"]["code"], "startup_failed");
+    assert!(String::from_utf8(result.stderr)?.contains("codex binary not found"));
+
+    Ok(())
+}
+
+#[test]
+fn retained_flags_are_accepted_and_output_is_reported() -> Result<(), Box<dyn std::error::Error>> {
+    let env = MockEnv::new("retained-flags")?;
+    let output = env.home.join("artifact.md");
+    let log = env.home.join("dispatch.log");
+
+    let result = env
+        .dispatch_command()
+        .args([
+            "--json",
+            "--prompt",
+            "review",
+            "--output",
+            output.to_str().expect("utf-8 output path"),
+            "--cwd",
+            env.home.to_str().expect("utf-8 home path"),
+            "--log",
+            log.to_str().expect("utf-8 log path"),
+            "--grace",
+            "2",
+            "--heartbeat",
+            "1",
+        ])
+        .env("CODEX_MOCK_MODE", "success")
+        .output()?;
+
+    assert!(result.status.success(), "stderr: {:?}", result.stderr);
+    let parsed: Value = serde_json::from_slice(&result.stdout)?;
+    assert_eq!(parsed["status"], "completed");
+    assert_eq!(parsed["output"], output.display().to_string());
+    assert_eq!(parsed["output_exists"], true);
+    assert_eq!(std::fs::read_to_string(&output)?, "mock output\n");
+    assert!(std::fs::read_to_string(log)?.contains("thread.started"));
+
+    Ok(())
+}
+
+#[test]
+fn log_file_combines_worker_output_and_redirected_dispatcher_events(
+) -> Result<(), Box<dyn std::error::Error>> {
+    let env = MockEnv::new("combined-log")?;
+    let output = env.home.join("artifact.md");
+    let log = env.home.join("combined.log");
+    let stderr_log = OpenOptions::new().create(true).append(true).open(&log)?;
+
+    let result = env
+        .dispatch_command()
+        .args([
+            "--json",
+            "--prompt",
+            "review",
+            "--output",
+            output.to_str().expect("utf-8 output path"),
+            "--cwd",
+            env.home.to_str().expect("utf-8 home path"),
+            "--log",
+            log.to_str().expect("utf-8 log path"),
+            "--heartbeat",
+            "1",
+        ])
+        .env("CODEX_MOCK_MODE", "delayed_success")
+        .stderr(Stdio::from(stderr_log))
+        .output()?;
+
+    assert!(result.status.success(), "stderr: {:?}", result.stderr);
+    let parsed: Value = serde_json::from_slice(&result.stdout)?;
+    assert_eq!(parsed["status"], "completed");
+
+    let log_text = std::fs::read_to_string(&log)?;
+    assert!(
+        log_text.contains(r#""type":"thread.started""#),
+        "{log_text}"
+    );
+    assert!(log_text.contains(r#""type":"heartbeat""#), "{log_text}");
 
     Ok(())
 }
@@ -359,12 +437,10 @@ fn temp_test_dir(name: &str) -> std::io::Result<PathBuf> {
     Ok(path)
 }
 
-fn unknown_dispatch_id() -> String {
-    format!("unknown-id-{}", Ulid::new())
+fn tmp_dispatch_root() -> PathBuf {
+    PathBuf::from("/tmp/darkfactory-dispatch")
 }
 
-fn kill_process_group(pid: i32) {
-    if pid > 0 {
-        let _ = unsafe { libc::kill(-pid, libc::SIGKILL) };
-    }
+fn home_dispatch_root(home: &Path) -> PathBuf {
+    home.join(".darkfactory").join("dispatches")
 }
