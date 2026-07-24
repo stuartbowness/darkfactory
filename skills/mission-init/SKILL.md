@@ -97,6 +97,23 @@ done
 
 If any are missing, the fix is the same as Step 1: run `install.sh` from the Darkfactory clone directory.
 
+## Step 1c: Check Agent Definition Symlink
+
+Claude-engine mission roles are spawned with `subagent_type=darkfactory-claude`, which pins the model and reasoning effort. Claude Code only reads agent definitions from `~/.claude/agents/`, so the definition must be symlinked there or every Claude spawn fails.
+
+```bash
+link="$HOME/.claude/agents/darkfactory-claude.md"
+if [ ! -L "$link" ]; then
+  echo "[ ] darkfactory-claude - missing in ~/.claude/agents/"
+elif [ ! -e "$link" ]; then
+  echo "[!] darkfactory-claude - broken symlink in ~/.claude/agents/"
+else
+  echo "[x] darkfactory-claude - symlink OK"
+fi
+```
+
+If it is missing or broken, the fix is the same as Step 1: run `install.sh` from the Darkfactory clone directory, then restart Claude Code so the agent registers.
+
 ## Step 2: Initialize OpenSpec
 
 Check for `openspec/config.yaml` in the current directory.
@@ -204,7 +221,7 @@ Run a lightweight dispatch to verify chrome-devtools-mcp actually works inside `
 
 ```bash
 darkfactory-dispatch \
-  --model gpt-5.5 \
+  --model gpt-5.6-terra \
   --effort low \
   --timeout 120 \
   --sandbox read-only \

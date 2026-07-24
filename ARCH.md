@@ -81,6 +81,8 @@ Before task generation, the orchestrator presents a decomposition strategy (laye
 
 Global defaults live in `~/.darkfactory/config.yaml`. Each mission has its own `mission/config.yaml` that assigns an engine (codex or claude) to every agent role and records the mission-scoped settings the orchestrator and `mission-resume` read to run and recover the build.
 
+Model selection is split by engine. The Codex side reads `default_model` from the global `config.yaml` (`gpt-5.6-terra`) and passes `--effort high` per dispatch. The Claude side is pinned by agent definitions in `agents/`, which `install.sh` symlinks into `~/.claude/agents/` -- that directory is the only place Claude Code reads model and reasoning-effort frontmatter from. `agents/darkfactory-claude.md` sets `model: opus` and `effort: xhigh`, and every Claude-engine role spawns with `subagent_type=darkfactory-claude` so it does not inherit the orchestrator session's model.
+
 ## Versioning
 
 One version for the whole repo: the GitHub release tag (v1.x). Internal tools (darkfactory-dispatch) have their own Cargo.toml version pinned at 1.0.0, which is never bumped. When releasing, increment the repo tag only.

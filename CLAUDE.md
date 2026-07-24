@@ -6,6 +6,7 @@ Darkfactory is an agent skill system for running autonomous software missions. S
 
 - `ARCH.md` — Top-level architecture. Read first. Update when you change architecture.
 - `skills/` — Agent skills, each with a SKILL.md. Symlinked to ~/.claude/skills/ and ~/.codex/skills/ by install.sh
+- `agents/` — Agent definitions pinning model and reasoning effort for Claude-engine mission roles. Symlinked to ~/.claude/agents/ by install.sh
 - `skills/mission/` — Mission orchestrator: the main build loop (grill, plan, dispatch, validate, fix, merge)
 - `skills/frontend/` — React/TypeScript component workflow with visual verification via chrome-devtools-mcp
 - `skills/dispatch/` — Thin wrapper around darkfactory-dispatch for user-facing task dispatch

@@ -685,7 +685,7 @@ find /tmp -mindepth 1 -maxdepth 1 -user "$(whoami)" -mmin +30 -not -name "claude
 
 # Dispatch via darkfactory-dispatch: process supervisor with timeout, heartbeat, and structured JSON result
 DISPATCH_RESULT=$(darkfactory-dispatch \
-  --model gpt-5.5 \
+  --model gpt-5.6-terra \
   --effort high \
   --timeout 1800 \
   --sandbox workspace-write \
@@ -719,7 +719,7 @@ The Bash tool returns a shell task ID immediately and notifies you when it compl
 
 #### If engine is `claude`:
 
-Use the Agent tool to spawn a subagent. Pass the full brief content as the prompt. Instruct the subagent to write its handoff to the same path (`mission/handoffs/task-N.md`).
+Use the Agent tool with `subagent_type=darkfactory-claude` to spawn a subagent. Pass the full brief content as the prompt. Instruct the subagent to write its handoff to the same path (`mission/handoffs/task-N.md`).
 
 ### Step 3: Handle Result
 
@@ -743,7 +743,7 @@ Read the handoff file at `mission/handoffs/task-N.md`.
 
   Then log to progress.md: `<timestamp> -- Task N: worker completed. Commit: <SHA>` (the re-committed SHA if the guard fired, otherwise the original). Proceed to Step 4.
 - **TASK_FAILED** (handoff missing or no commit SHA):
-  1. If engine is `codex` and this is the first failure for this task: log to progress.md: `<timestamp> -- Task N: codex worker failed. Falling back to claude worker.` Append a line to `mission/fallbacks.log`: `task-N|<task-name>|<reason for failure>`. Then dispatch a claude worker (Opus 4.6, extended thinking high) using the existing "If engine is `claude`" dispatch path with the same brief. Wait for the result.
+  1. If engine is `codex` and this is the first failure for this task: log to progress.md: `<timestamp> -- Task N: codex worker failed. Falling back to claude worker.` Append a line to `mission/fallbacks.log`: `task-N|<task-name>|<reason for failure>`. Then dispatch a claude worker using the existing "If engine is `claude`" dispatch path with the same brief. Wait for the result.
      - If the claude fallback produces `TASK_COMPLETE`: log to progress.md: `<timestamp> -- Task N: claude fallback succeeded. Commit: <SHA>.` Proceed to Step 4.
      - If the claude fallback also fails: fall through to the human escalation below.
   2. Human escalation (reached when: engine is `claude`, engine is `codex` and both attempts failed, or any second failure): log to progress.md: `<timestamp> -- Task N: worker FAILED. <reason>.` Ask the human: retry, skip, or abort. If skip: mark the task as `- [~]` in tasks.md and log `<timestamp> -- Task N: SKIPPED by human.` to progress.md. The build loop ignores `- [~]` tasks.
@@ -751,7 +751,7 @@ Read the handoff file at `mission/handoffs/task-N.md`.
 
 ### Step 4: Scrutiny Validation
 
-Spawn a Claude subagent (via the Agent tool) with this prompt:
+Spawn a Claude subagent (via the Agent tool, `subagent_type=darkfactory-claude`) with this prompt:
 
 #### Scrutiny Validator Prompt
 
@@ -789,7 +789,7 @@ Track the attempt number (starts at 1 for the initial worker, increments on each
    - **Skip:** Mark the task as `- [~]` in tasks.md. Log to progress.md: `<timestamp> -- Task N: SKIPPED by human after <attempt> failed attempts.` Continue to the next unchecked task. The build loop ignores `- [~]` tasks (they are neither unchecked nor complete).
    - **Abort:** Update plan status to PAUSED. Stop the build loop. Report to the human.
 
-3. **Diagnostic triage.** Spawn a lightweight Claude subagent to diagnose the failure. The subagent receives:
+3. **Diagnostic triage.** Spawn a Claude subagent (`subagent_type=darkfactory-claude`) to diagnose the failure. The subagent receives:
    - The validator report (from `mission/validations/task-N-scrutiny.md` or `task-N-usertest.md` -- whichever triggered this fix loop entry)
    - The worker's diff (`git show <commit-sha>`)
 
@@ -815,7 +815,7 @@ The fix brief must carry forward the original task's `Skill:` and `Constraints:`
 
 ### Step 6: User-Test Validation
 
-Spawn a Claude subagent (via the Agent tool) with this prompt:
+Spawn a Claude subagent (via the Agent tool, `subagent_type=darkfactory-claude`) with this prompt:
 
 #### User-Test Validator Prompt
 
@@ -833,7 +833,7 @@ The orchestrator decides whether this task has a frontend component by checking 
 
 **If frontend component exists:**
 
-Spawn a Claude subagent to run `/demo-video`. The subagent should save the recording to `mission/validations/task-N-demo.mp4`.
+Spawn a Claude subagent (`subagent_type=darkfactory-claude`) to run `/demo-video`. The subagent should save the recording to `mission/validations/task-N-demo.mp4`.
 
 **Demo failure is non-blocking.** If the demo fails to record:
 - Log to progress.md: `<timestamp> -- Task N: demo video FAILED to record. <reason>. Continuing.`
@@ -923,7 +923,7 @@ Also check `mission/deferrals.md`. If the file exists and contains entries, pres
 
 After final gates pass, verify that the built codebase actually contains what the coverage audit promised.
 
-Spawn a Claude subagent. Read [prompts/spec-delta-checker.md](prompts/spec-delta-checker.md) and use it as the subagent prompt. Fill in the coverage-audit.md content and the report output path.
+Spawn a Claude subagent (`subagent_type=darkfactory-claude`). Read [prompts/spec-delta-checker.md](prompts/spec-delta-checker.md) and use it as the subagent prompt. Fill in the coverage-audit.md content and the report output path.
 
 Read the delta check report from `mission/validations/spec-delta.md`.
 
@@ -950,7 +950,7 @@ After the draft PR is created, run a final adversarial review that walks every m
 
 Run two independent reviewers in parallel:
 - **Reviewer A** (engine from `adversarial_reviewer_a` in config.yaml, default: codex) -- dispatched via Bash with `run_in_background: true`
-- **Reviewer B** (engine from `adversarial_reviewer_b` in config.yaml, default: claude) -- dispatched via Agent tool
+- **Reviewer B** (engine from `adversarial_reviewer_b` in config.yaml, default: claude) -- dispatched via Agent tool with `subagent_type=darkfactory-claude`
 
 Both receive the **pinned base SHA** (`base_sha` from config.yaml, captured in Phase 7), the full contract.md, and the report path. The prompt instructs each reviewer to run `git log --reverse --format="%h %s" <base-sha>..HEAD` itself and iterate. Pinning to a SHA keeps the review scope fixed even if branches move during the review.
 
@@ -984,7 +984,7 @@ find /tmp -mindepth 1 -maxdepth 1 -user "$(whoami)" -mmin +30 -not -name "claude
 
 # Dispatch via darkfactory-dispatch: process supervisor with timeout, heartbeat, and structured JSON result
 DISPATCH_RESULT=$(darkfactory-dispatch \
-  --model gpt-5.5 \
+  --model gpt-5.6-terra \
   --effort high \
   --timeout 2700 \
   --sandbox workspace-write \

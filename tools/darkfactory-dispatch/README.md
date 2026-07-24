@@ -77,7 +77,7 @@ Dispatch a task and wait for the result:
 
 ```bash
 darkfactory-dispatch \
-  --model gpt-5.5 \
+  --model gpt-5.6-terra \
   --effort high \
   --timeout 1800 \
   --sandbox workspace-write \
@@ -121,7 +121,7 @@ The dispatch result is a single JSON object on stdout. In `--json` mode stdout c
 The dispatcher emits NDJSON events to stderr during a dispatch:
 
 ```jsonl
-{"type":"dispatch_start","dispatch_id":"...","ts":"...","engine":"codex","model":"gpt-5.5"}
+{"type":"dispatch_start","dispatch_id":"...","ts":"...","engine":"codex","model":"gpt-5.6-terra"}
 {"type":"heartbeat","dispatch_id":"...","ts":"...","elapsed_s":15,"last_activity":"running: cargo test"}
 {"type":"command_run","dispatch_id":"...","ts":"...","command":"cargo test"}
 {"type":"file_write","dispatch_id":"...","ts":"...","file":"src/lib.rs"}
@@ -141,7 +141,7 @@ tail -f dispatch.log
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `--model` | `gpt-5.5` | Codex model to use |
+| `--model` | `gpt-5.6-terra` | Codex model to use |
 | `--effort` | (none) | Reasoning effort (maps to `-c model_reasoning_effort`) |
 | `--timeout` | `900` | Seconds before soft timeout fires (SIGTERM) |
 | `--grace` | half of timeout, min 1s | Seconds between soft timeout and hard timeout (SIGKILL) |

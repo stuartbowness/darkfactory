@@ -20,7 +20,7 @@ Source: [docs/reference_factory_talk.md](reference_factory_talk.md)
 | Serial execution | One worker at a time to avoid conflicts | Rule 1: "One worker at a time. Never dispatch two workers in parallel." |
 | Structured handoffs | Workers produce reports with what was done, commands, exit codes, issues | Handoff template: commit SHA, approach, commands run, concerns. |
 | Two validator types | Scrutiny validator (tests, lint, review) and user-testing validator (spawns app, interacts) | Scrutiny (Phase 8 Step 4): build/test/lint/review/standards/simplify/security/checks/behavioral conformance. User-test (Phase 8 Step 6): HTTP tests or browser. |
-| Multi-model strategy | Different LLMs for different roles | config.yaml: workers default to Codex (GPT-5.4), validators to Claude, adversarial reviewers use one of each. |
+| Multi-model strategy | Different LLMs for different roles | config.yaml: workers default to Codex (gpt-5.6-terra), validators to Claude, adversarial reviewers use one of each. |
 | Read-only parallelization | Only parallelize read-only operations | Only parallel dispatch is the two adversarial reviewers in Phase 9, which are read-only. |
 
 ### Implemented differently
