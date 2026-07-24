@@ -56,7 +56,7 @@ echo ""
 # --- Test 1: Simple task (write a file) ---
 echo "Test 1: Simple task"
 "$DISPATCH" \
-    --model gpt-5.5 \
+    --model gpt-5.6-terra \
     --effort low \
     --timeout 60 \
     --sandbox workspace-write \
@@ -73,7 +73,7 @@ echo ""
 # --- Test 2: Timeout (child killed) ---
 echo "Test 2: Timeout handling"
 "$DISPATCH" \
-    --model gpt-5.5 \
+    --model gpt-5.6-terra \
     --effort high \
     --timeout 10 \
     --grace 5 \
@@ -91,7 +91,7 @@ echo "Test 3: Prompt file"
 printf 'Create a file called %s/prompt-test.txt containing "prompt file works".\n' "$TMPDIR" > "$TMPDIR/prompt.txt"
 
 "$DISPATCH" \
-    --model gpt-5.5 \
+    --model gpt-5.6-terra \
     --effort low \
     --timeout 60 \
     --sandbox workspace-write \

@@ -8,7 +8,8 @@ use crate::types::{
     DEFAULT_HEARTBEAT_INTERVAL_SECS,
 };
 
-const DEFAULT_MODEL: &str = "gpt-5.5";
+const DEFAULT_MODEL: &str = "gpt-5.6-terra";
+const DISPATCH_RETENTION_SECS: u64 = 7 * 24 * 60 * 60;
 
 #[derive(Parser)]
 #[command(
@@ -19,14 +20,14 @@ const DEFAULT_MODEL: &str = "gpt-5.5";
 EXAMPLES:
     # Sync dispatch with JSON result on stdout
     darkfactory-dispatch \\
-      --model gpt-5.5 --effort high --timeout 900 \\
+      --model gpt-5.6-terra --effort high --timeout 900 \\
       --sandbox workspace-write \\
       --prompt \"Create hello.py that prints hello world\" \\
       --json
 
     # Dispatch with prompt file, output path, and log
     darkfactory-dispatch \\
-      --model gpt-5.5 --effort high --timeout 1800 \\
+      --model gpt-5.6-terra --effort high --timeout 1800 \\
       --sandbox workspace-write \\
       --config 'sandbox_workspace_write.writable_roots=[\".git\"]' \\
       --prompt-file brief.md --output handoff.md \\

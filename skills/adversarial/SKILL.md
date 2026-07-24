@@ -10,12 +10,12 @@ Run two independent reviewers against the same diff, then compare their reports.
 
 ## Startup Config
 
-At startup, resolve the Darkfactory repo root from the skill symlink and read `default_model` from its `config.yaml`. If the file or key is absent, use `gpt-5.5`.
+At startup, resolve the Darkfactory repo root from the skill symlink and read `default_model` from its `config.yaml`. If the file or key is absent, use `gpt-5.6-terra`.
 
 ```bash
 DARKFACTORY_ROOT="$(cd "$(readlink "$HOME/.claude/skills/adversarial")/../.." 2>/dev/null && pwd -P)"
 DEFAULT_MODEL=$(awk -F: '/^[[:space:]]*default_model[[:space:]]*:/ { gsub(/^[[:space:]]+|[[:space:]]+$/, "", $2); print $2; exit }' "$DARKFACTORY_ROOT/config.yaml" 2>/dev/null)
-: "${DEFAULT_MODEL:=gpt-5.5}"
+: "${DEFAULT_MODEL:=gpt-5.6-terra}"
 ```
 
 ## Input Modes
@@ -79,7 +79,7 @@ Dispatch command:
 # Resolve the model inside this backgrounded script (see note above).
 DARKFACTORY_ROOT="$(cd "$(readlink "$HOME/.claude/skills/adversarial")/../.." 2>/dev/null && pwd -P)"
 DEFAULT_MODEL=$(awk -F: '/^[[:space:]]*default_model[[:space:]]*:/ { gsub(/^[[:space:]]+|[[:space:]]+$/, "", $2); print $2; exit }' "$DARKFACTORY_ROOT/config.yaml" 2>/dev/null)
-: "${DEFAULT_MODEL:=gpt-5.5}"
+: "${DEFAULT_MODEL:=gpt-5.6-terra}"
 
 REPORT_PATH="<codex-report-path>"
 LOG_PATH="<codex-log-path>"
@@ -120,7 +120,7 @@ fi
 
 ## Step 3: Dispatch Claude Reviewer
 
-While Codex is running in the background, dispatch Claude via the Agent tool. Give Claude the same diff content and the same reviewer prompt, changing only the report path to `<claude-report-path>`.
+While Codex is running in the background, dispatch Claude via the Agent tool with `subagent_type=darkfactory-claude`. Give Claude the same diff content and the same reviewer prompt, changing only the report path to `<claude-report-path>`.
 
 Claude must write its report to `adversarial-claude.md` at the selected report path.
 

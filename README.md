@@ -26,7 +26,7 @@ Inspired by [Factory's Missions architecture](https://www.factory.ai/) and [Matt
 
 ### First-time install
 
-Clone Darkfactory and symlink its skills into your global Claude Code skills directory. You can clone to any path -- `~/.darkfactory` is the conventional default:
+Clone Darkfactory and symlink its skills and agent definitions into your global Claude Code directories. You can clone to any path -- `~/.darkfactory` is the conventional default:
 
 ```bash
 git clone https://github.com/layercodedev/darkfactory.git ~/.darkfactory
@@ -44,7 +44,7 @@ If you cloned to a different path, replace `~/.darkfactory` with your clone dire
 
 This compiles a Rust binary and copies it to `~/.local/bin/darkfactory-dispatch`. It supervises Codex subprocess dispatches with process group isolation, two-phase timeout, NDJSON heartbeat events, and structured JSON results.
 
-Symlinks mean the skills always point to your local clone, so updating is just a `git pull` (see below).
+`install.sh` symlinks each skill into `~/.claude/skills/`, `~/.codex/skills/`, and `~/.agents/skills/`, and each agent definition in `agents/` into `~/.claude/agents/`. Symlinks mean everything always points to your local clone, so updating is just a `git pull` (see below).
 
 Restart Claude Code, then from any project run:
 
@@ -232,10 +232,19 @@ All Darkfactory skills are bundled in this repo. `/mission` also calls two built
 Darkfactory reads global defaults from `config.yaml` at the repo root (resolved at runtime from skill symlinks):
 
 ```yaml
-default_model: gpt-5.5
+default_model: gpt-5.6-terra
 ```
 
-The `/dispatch` and `/adversarial` skills use `default_model` for Codex dispatches. If the file or key is missing, they fall back to `gpt-5.5`.
+The `/dispatch`, `/adversarial`, and `/artifact-review` skills use `default_model` for Codex dispatches. If the file or key is missing, they fall back to `gpt-5.6-terra`. Codex dispatches run at `high` reasoning effort, set per call site with `--effort`.
+
+The Claude side is pinned by an agent definition instead, `agents/darkfactory-claude.md`, which `install.sh` symlinks into `~/.claude/agents/`:
+
+```yaml
+model: opus      # claude-opus-5
+effort: xhigh
+```
+
+Every Claude-engine role -- workers, both validators, adversarial reviewer B, diagnostic triage, spec-delta checks, demo recording -- is spawned with `subagent_type=darkfactory-claude`, so they all inherit that model and effort rather than the orchestrator session's. Change the frontmatter and restart Claude Code to change them.
 
 Each mission creates a `config.yaml` that controls which AI engine handles each role. You can change these before approving the plan:
 
