@@ -9,7 +9,6 @@ use crate::types::{
 };
 
 const DEFAULT_MODEL: &str = "gpt-5.6-terra";
-const DISPATCH_RETENTION_SECS: u64 = 7 * 24 * 60 * 60;
 
 #[derive(Parser)]
 #[command(
