@@ -1,0 +1,31 @@
+name: Checks
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  verify:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install Rust components
+        run: |
+          rustup toolchain install stable --profile minimal --component rustfmt --component clippy
+          rustup default stable
+      - name: Shell and installer checks
+        run: |
+          sh -n install.sh migrate.sh
+          python3 -m unittest discover -s tests -v
+          sh skills/lint-audit/tests/audit-sh.sh
+          sh skills/lint-audit/tests/validate-rules-json.sh
+      - name: Rust formatting, lint, and tests
+        working-directory: tools/darkfactory-dispatch
+        run: make check
+      - name: Offline dispatcher demo
+        run: python3 examples/dispatch-demo.py

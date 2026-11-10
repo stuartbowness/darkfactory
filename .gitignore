@@ -2,3 +2,13 @@
 *.mp4
 dispatches/
 tools/darkfactory-dispatch/openspec/
+
+# Local development output; keep reviewed examples under examples/.
+/openspec/changes/
+/.claude/commands/opsx/
+**/mission/logs/
+__pycache__/
+*.pyc
+.env
+.env.*
+.firecrawl/

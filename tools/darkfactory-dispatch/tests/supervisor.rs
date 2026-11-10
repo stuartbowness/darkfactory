@@ -6,9 +6,12 @@
 mod supervisor;
 
 use std::io;
+#[cfg(target_os = "linux")]
 use std::path::{Path, PathBuf};
+#[cfg(target_os = "linux")]
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
+#[cfg(target_os = "linux")]
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use nix::libc;
@@ -159,6 +162,7 @@ fn parse_pids(line: &str) -> Result<Vec<i32>, Box<dyn std::error::Error>> {
         .map_err(Into::into)
 }
 
+#[cfg(target_os = "linux")]
 fn temp_test_dir(name: &str) -> io::Result<PathBuf> {
     let nanos = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -172,6 +176,7 @@ fn temp_test_dir(name: &str) -> io::Result<PathBuf> {
     Ok(path)
 }
 
+#[cfg(target_os = "linux")]
 async fn wait_for_pid_file(path: &Path) -> Result<i32, Box<dyn std::error::Error>> {
     let deadline = Instant::now() + Duration::from_secs(3);
     loop {

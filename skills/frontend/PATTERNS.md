@@ -8,7 +8,7 @@ Use these examples as reference points when applying the deep-component rules fr
 
 Rule: Small Semantic Interfaces + Collapse Coordination
 
-Source: `~/Code/toyo` file management drawer
+Source: the internal Toyo application’s file management drawer
 
 ```typescript
 interface FilesDrawerProps {
@@ -24,7 +24,7 @@ Three props, two semantic events. The component owns file upload, delete, direct
 
 Rule: Derive Don't Sync
 
-Source: `~/Code/toyo` browser preview pane
+Source: the internal Toyo application’s browser preview pane
 
 ```typescript
 const iframeUrl = useMemo(
@@ -41,7 +41,7 @@ The iframe URL is derived during render via `useMemo`, not stored in state and s
 
 Rule: Allowed-shallow exception - design system leaf
 
-Source: `~/Code/toyo` UI primitives
+Source: the internal Toyo application’s UI primitives
 
 ```tsx
 function Button({
@@ -68,7 +68,7 @@ Zero logic. CVA handles variants, Slot handles polymorphism, and the rest spread
 
 Rule: Composition over Configuration, design system side
 
-Source: `~/Code/toyo` UI primitives
+Source: the internal Toyo application’s UI primitives
 
 ```tsx
 function Card({ className, ...props }: React.ComponentProps<"div">) {
@@ -100,7 +100,7 @@ Each sub-component is a thin wrapper. Callers compose: `<Card><CardHeader>...</C
 
 Rule: Derive Don't Sync
 
-Source: `~/Code/toyo` chat scroll behavior
+Source: the internal Toyo application’s chat scroll behavior
 
 ```typescript
 export function isAtBottomPosition(

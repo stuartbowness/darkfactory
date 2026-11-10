@@ -1,5 +1,8 @@
 # Ubiquitous Language
 
+Context separation is a prompt policy, not an enforced filesystem boundary.
+All roles may read the shared repository.
+
 > Scope: this file holds **ambiguity-prone domain terms** only — the words people and agents would otherwise confuse. How-it-works mechanics live in `ARCH.md`; skill-specific vocabulary and rules live in the owning skill; dispatcher internals live in `tools/darkfactory-dispatch/README.md`. A term earns a place here only if it is domain (not a mechanism), ambiguity-prone, definable in one sentence as what it IS, and shared across roles. Mechanics, tool internals, file/config names, and coding rules do not belong here.
 
 ## Mission system
@@ -89,8 +92,8 @@ _The four deep-component rules and the component workflow are in the `/frontend`
 - Each **Task** maps to one **Worker** invocation, one git commit, and one validation cycle.
 - A **Contract** contains **Checks** grouped by **Task**.
 - The **Orchestrator** writes **Briefs** and reads **Handoffs**; it spawns Codex **Workers** through the **Dispatcher**, and Claude **Workers** and **Validators** through the Agent tool.
-- **Workers** read **Briefs** and write **Handoffs** -- they never see the **Contract**.
-- **Validators** read the **Contract** and the commit diff -- they never see the **Proposal** or **Design**.
+- **Workers** read **Briefs** and write **Handoffs** -- their briefs omit the **Contract**.
+- **Validators** read the **Contract** and the commit diff -- their prompts omit the **Proposal** and **Design**.
 - The **Fix loop** re-runs both **Validators**; the **Circuit breaker** halts it and returns control to the human.
 - A **Task** has exactly one **Methodology** and zero or more **Constraints**.
 
@@ -102,7 +105,7 @@ _The four deep-component rules and the component workflow are in the `/frontend`
 >
 > **Dev:** "Three -- WebSocket setup, delivery, and the UI."
 >
-> **Orchestrator:** "Good fit. I'll **/grill** you, create the **Change**, and write the **Contract** with its **Checks** before any **Workers** start. **Workers** never see the **Contract** -- the **Validators** do."
+> **Orchestrator:** "Good fit. I'll **/grill** you, create the **Change**, and write the **Contract** with its **Checks** before any **Workers** start. **Worker briefs** omit the **Contract**; **Validators** receive it."
 >
 > **Dev:** "What if the Codex **Worker** hangs?"
 >
