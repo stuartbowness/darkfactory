@@ -2,9 +2,8 @@
 name: factory-missions-talk-reference
 description: Reference material from Factory's "Assembling Agent Teams" talk at AI Engineer Europe -- core architecture details for the Missions multi-agent system
 type: reference
-originSessionId: d0be7010-3858-4b92-8153-32045af7ab9b
 ---
-Source: Talk by Factory's core agent harness lead at AI Engineer Europe (April 2026). Slide images in `/Users/stuart/Downloads/talkimages/` (13 JPEGs). Full transcript and summary provided by Stuart in the initial conversation.
+Source: Talk by Factory's core agent harness lead at AI Engineer Europe (April 2026). Historical notes supplied during the initial design discussion; not a verified transcript.
 
 ## Key Architecture Details
 

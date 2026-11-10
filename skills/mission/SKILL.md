@@ -551,6 +551,11 @@ engines:
   demo_video: claude
 
 # Auto-set to true during Phase 4.3 when any task has Skill: /frontend.
+
+Context-separation rules in this workflow control what is supplied in prompts.
+They do not restrict filesystem access: roles share the repository. Do not
+present these instructions as an enforced security or confidentiality boundary.
+
 browser_tools: false
 
 # Absolute path to the durable plan file (the one written in Phase 0, normally

@@ -2,7 +2,6 @@
 name: pocock-skills-talk-reference
 description: Reference material from Matt Pocock's "Code Skills" talk -- design alignment, ubiquitous language, TDD, deep modules, and strategic AI development patterns
 type: reference
-originSessionId: d0be7010-3858-4b92-8153-32045af7ab9b
 ---
 Source: Matt Pocock talk at AI Engineer Europe (April 2026). Skills repo: github.com/mattpocock/skills
 

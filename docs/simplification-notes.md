@@ -1,5 +1,9 @@
 # Darkfactory simplification notes
 
+> Historical design discussion, not a description of the current implementation.
+> The async store was subsequently removed. See [ARCH.md](../ARCH.md) for current
+> boundaries and guarantees, including the limits of prompt separation.
+
 Working notes from an exhaustive pass over the whole suite, looking for what to remove, merge, or thin to tighten the core product. Reviewer perspective: senior architect seeing the repo fresh. Date: 2026-06-16.
 
 The core product is the autonomous mission loop: orchestrator dispatches workers, validators check them against a contract behind information walls, a draft PR ships. Everything is measured against whether it serves that loop.

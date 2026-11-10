@@ -4,19 +4,19 @@ export PATH := $(HOME)/.cargo/bin:$(PATH)
 .PHONY: build release install test lint fmt check smoke
 
 build:
-	cargo build
+	cargo build --locked
 
 release:
-	cargo build --release
+	cargo build --locked --release
 
 install:
-	cargo build --release && mkdir -p ~/.local/bin && cp target/release/darkfactory-dispatch ~/.local/bin/
+	cargo build --locked --release && mkdir -p ~/.local/bin && cp target/release/darkfactory-dispatch ~/.local/bin/
 
 test:
-	cargo test
+	cargo test --locked
 
 lint:
-	cargo clippy --all-targets -- -D warnings
+	cargo clippy --locked --all-targets -- -D warnings
 
 fmt:
 	cargo fmt --check

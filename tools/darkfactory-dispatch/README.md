@@ -10,9 +10,9 @@ Without the dispatcher, the orchestrator calls `codex exec` directly as a raw su
 
 The dispatcher solves this by wrapping the Codex subprocess in a supervisor that:
 
-- **Isolates the process group** so killing Codex also kills any shell commands it spawned
+- **Creates a process group** so timeout signals reach the worker and descendants that remain in that group
 - **Enforces a two-phase timeout** -- SIGTERM at the soft timeout, SIGKILL after the grace period
-- **Emits heartbeat events** every 15 seconds so the orchestrator can distinguish "thinking" from "dead"
+- **Emits heartbeat events** every 15 seconds so the orchestrator can observe dispatcher activity (not model progress)
 - **Parses Codex NDJSON events** in real-time, tracking files changed, commands run, and tokens consumed
 - **Returns a structured JSON result** with status, exit code, signal, token usage, and activity summary
 
@@ -168,14 +168,18 @@ If the worker exits cleanly after SIGTERM (during the grace period), the dispatc
 
 ## Process group isolation
 
-Every Codex worker runs in its own process group (via `setpgid`). When the dispatcher sends SIGTERM or SIGKILL, the signal goes to the entire group -- not just the Codex process, but every shell command and subprocess it spawned. This prevents orphaned processes from accumulating.
+Every Codex worker runs in its own process group (via `setpgid`). When the dispatcher sends SIGTERM or SIGKILL, the signal goes to the entire group -- not just the Codex process, but every shell command and subprocess it spawned. Descendants that leave the process group are outside this cleanup boundary.
 
 ## Parent-death detection
 
-The dispatcher detects when its parent process (the orchestrator) dies and kills the worker to prevent orphans:
+Parent-death cleanup is best-effort and differs by platform:
 
 - **macOS**: Uses kqueue with `EVFILT_PROC` + `NOTE_EXIT` to watch the parent PID
 - **Linux**: Uses `PR_SET_PDEATHSIG` to arrange SIGKILL on parent death
+
+Linux parent-death signals do not cover every descendant. On macOS the watcher
+cannot act if the dispatcher itself has already died. See
+[known limitations](../../docs/known-limitations.md) for the full boundary.
 
 ## Exit codes
 
@@ -193,16 +197,26 @@ The dispatcher detects when its parent process (the orchestrator) dies and kills
 | `timed_out` | Two-phase timeout fired. `error.retryable` is true. |
 | `failed` | Worker exited non-zero, output file missing, or spawn error |
 
+## Offline demonstration
+
+From the repository root, run `python3 examples/dispatch-demo.py`. It builds this
+crate and drives the real binary through local success, failure, and timeout
+fixtures. No model credentials are needed.
+
 ## Development
 
 ```bash
 make build     # Debug build
-make test      # Run 78 Rust tests
+make test      # Run subprocess and unit tests
 make lint      # cargo clippy -D warnings
 make fmt       # cargo fmt --check
 make check     # fmt + lint + test
 make smoke     # Live-codex end-to-end tests (requires codex CLI)
 make install   # Release build + copy to ~/.local/bin/
 ```
+
+The log destination is opened before the worker starts. Invalid log paths fail
+without launching a worker. A completed result is not evidence that the generated
+code meets its task; validate the handoff separately.
 
 See [CLAUDE.md](CLAUDE.md) for code standards, module structure, and testing rules.

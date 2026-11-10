@@ -35,6 +35,9 @@ pub(crate) async fn dispatch(
 
     let depth = dispatch_depth();
     let args = build_codex_args(&spec, depth);
+    // Fail before spawning if the log destination is unusable. Otherwise this
+    // setup error can leave a worker running outside the supervision loop.
+    let log = open_log(spec.log.as_deref()).await?;
     let run_handle = SupervisorBuilder::new("codex")
         .args(args)
         .current_dir(&spec.cwd)
@@ -46,7 +49,6 @@ pub(crate) async fn dispatch(
 
     let stdout = run_handle.stdout().map_err(map_supervisor_error)?;
     let stderr = run_handle.stderr().map_err(map_supervisor_error)?;
-    let log = open_log(spec.log.as_deref()).await?;
     let stderr_task = tokio::spawn(capture_stderr(stderr, log.clone()));
 
     let mut stdout_reader = BufReader::with_capacity(STDOUT_BUFFER_BYTES, stdout).lines();

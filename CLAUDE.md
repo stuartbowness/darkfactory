@@ -12,13 +12,16 @@ Darkfactory is an agent skill system for running autonomous software missions. S
 - `skills/dispatch/` — Thin wrapper around darkfactory-dispatch for user-facing task dispatch
 - `skills/artifact-review/` — Dispatches planning artifacts to Codex for review
 - `tools/darkfactory-dispatch/` — Rust process supervisor for Codex workers (timeout, heartbeat, structured JSON)
-- `docs/` — Design decisions, reference material, architecture diagrams
+- `docs/` — Workflow guide, design decisions, known limitations, and provenance
+- `examples/dispatch-demo.py` — Credential-free process lifecycle demo
+- `tests/test_install.py` — Installer tests with disposable prefixes
+- `LICENSE` and `THIRD_PARTY_NOTICES.md` — MIT license and upstream attribution
 - `openspec/` — OpenSpec change management (proposals, specs, designs, tasks, contracts)
 - `install.sh` — Symlinks all skills to ~/.claude/skills/, ~/.codex/skills/, ~/.agents/skills/
 
 ## OpenSpec
 
-Planning artifacts follow the OpenSpec change lifecycle: propose -> spec -> design -> tasks -> contract -> build. Each change lives in `openspec/changes/<change-name>/`. Run `openspec --help` for CLI usage.
+Planning artifacts follow the OpenSpec change lifecycle: propose -> spec -> design -> tasks -> contract -> build. Local changes live in `openspec/changes/<change-name>/` (ignored by Git). Curated public examples belong in `examples/`. Run `openspec --help` for CLI usage.
 
 ## Rules
 
@@ -34,3 +37,10 @@ The darkfactory repo has one version: the GitHub release tag (v1.4.x). Internal 
 ## darkfactory-dispatch
 
 Use `darkfactory-dispatch` to dispatch coding tasks to Codex with process supervision (timeout, heartbeat, process group isolation, structured JSON results). Run `darkfactory-dispatch --help` for full usage and examples.
+
+## Release checks
+
+Run the commands in CONTRIBUTING.md. Do not install into the real home during
+tests; use `install.sh --prefix` with a disposable directory. Preserve user
+configuration on conflicts. Keep generated mission records and secrets out of
+the public tree. Context separation is prompt policy, not access control.

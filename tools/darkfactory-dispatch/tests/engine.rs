@@ -453,6 +453,32 @@ async fn custom_heartbeat_interval_controls_heartbeat_rate(
     Ok(())
 }
 
+#[tokio::test(flavor = "multi_thread")]
+async fn invalid_log_path_does_not_start_worker() -> Result<(), Box<dyn std::error::Error>> {
+    let _path_guard = TestPath::install("success").await?;
+    let tmp = temp_test_dir("invalid-log")?;
+    let output = tmp.join("result.md");
+    let pid_file = tmp.join("pid");
+    // A directory cannot be opened as an append-only log on either platform.
+    std::env::set_var("CODEX_MOCK_PID_FILE", &pid_file);
+    let result = engine::dispatch(
+        spec(&tmp, &output, Some(tmp.clone()), 10, 1),
+        "invalid-log".to_string(),
+        emitter("invalid-log").0,
+    )
+    .await;
+    // Give an incorrectly spawned fixture time to leave observable evidence.
+    tokio::time::sleep(Duration::from_millis(300)).await;
+    std::env::remove_var("CODEX_MOCK_PID_FILE");
+    assert!(result.is_err());
+    assert!(
+        !pid_file.exists(),
+        "worker started despite invalid log destination"
+    );
+    assert!(!output.exists());
+    Ok(())
+}
+
 fn emitter(dispatch_id: &str) -> (Arc<Emitter>, Arc<Mutex<Vec<u8>>>) {
     let buffer = Arc::new(Mutex::new(Vec::new()));
     let emitter = Emitter::with_writer(

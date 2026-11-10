@@ -48,7 +48,7 @@ make check       # fmt + lint + test
 
 ## Reference implementation
 
-The dispatch machinery is modeled on buildoak/agent-mux (`~/Code/agent-mux`). Key reference files:
+The dispatch machinery is modeled on buildoak/agent-mux (https://github.com/buildoak/agent-mux). Key reference files:
 
 | Module | agent-mux file | What to learn |
 |---|---|---|

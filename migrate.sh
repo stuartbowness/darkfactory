@@ -1,44 +1,6 @@
 #!/bin/sh
-# Run this once when upgrading from the pre-skill-decomposition setup.
-# Removes old ~/.claude/skills symlinks for skills that have been renamed
-# or are now owned by this repo, then re-runs install.sh.
-
-CLAUDE_SKILLS="$HOME/.claude/skills"
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-
-OLD_SKILLS="
-darkfactory-init
-grill-me
-write-a-prd
-ubiquitous-language
-test-quality-review
-security-review
-"
-
-removed=0
-for name in $OLD_SKILLS; do
-    target="$CLAUDE_SKILLS/$name"
-    if [ -L "$target" ]; then
-        rm "$target"
-        echo "removed: $target"
-        removed=$((removed + 1))
-    elif [ -e "$target" ]; then
-        echo "warning: $target exists and is not a symlink -- skipping"
-    fi
-done
-
-if [ "$removed" -eq 0 ]; then
-    echo "Nothing to remove (already clean)."
-else
-    echo "Removed $removed old symlink(s)."
-fi
-
-echo ""
-echo "Running install.sh..."
-"$SCRIPT_DIR/install.sh"
-
-echo ""
-echo "Manual step: if you have a local clone of layercodedev/skills, you can now delete it."
-echo "  Find it with:"
-echo "    find ~ -name '.git' -maxdepth 5 -exec sh -c 'git -C \"\$(dirname {})\" remote -v 2>/dev/null | grep -q layercodedev/skills && echo \"\$(dirname {})\"' \; 2>/dev/null"
-echo "  Then: rm -rf <path-to-clone>"
+# Compatibility entry point: migration no longer removes existing user skills.
+set -eu
+SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)"
+echo "Migration uses the conflict-safe installer; old skill names are left intact."
+exec sh "$SCRIPT_DIR/install.sh" "$@"
