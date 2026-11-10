@@ -20,11 +20,13 @@ Prepared on 2026-11-10 against main commit `940d77d`.
 
 ## Publication boundary
 
-The repository remains private during preparation. Generated mission records and
+The MIT source release was made public on 2026-11-10 after Linux/macOS CI passed.
+Generated mission records and
 OpenSpec-generated commands were removed from the current tree and backed up
 outside the repository. History, other branches, tags, releases, issues, and PRs
 were preserved. Their attachments and discussions have not received an exhaustive
-publication review. Review that exposure before changing repository visibility.
+publication review. Publication intentionally preserves that history; cleanup
+was scoped to the current repository files.
 
 The Linux descendant-cleanup issue remains open; see [known limitations](known-limitations.md).
 No live model mission or model-quality benchmark was run as part of this cleanup.
