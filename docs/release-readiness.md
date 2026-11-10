@@ -16,6 +16,7 @@ Prepared on 2026-11-10 against main commit `940d77d`.
 - Added Linux/macOS CI for those checks. Hosted results are recorded on the PR.
 - Gitleaks scanned all local Git refs: 200 commits, no detected secrets. This is
   automated pattern detection, not proof that all historical material is public-safe.
+  The cleaned source tree also passed a separate scan.
 
 ## Publication boundary
 

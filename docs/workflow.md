@@ -279,7 +279,7 @@ The default uses Codex for workers and one of the two independent code reviewers
 
 A full mission involves an interview, planning documents, multiple AI workers, validators, and human approval gates. That's the right approach for large features, but it's more than you need for a bug fix or a small feature.
 
-Basic mode is a lightweight alternative that runs everything in a single session. One agent reads your codebase, writes the code, checks its own work, and commits the result. You describe the task, walk away, and come back to a finished commit.
+Basic mode is a lightweight alternative that runs everything in a single session. One agent reads your codebase, writes the code, checks its own work, and commits the result. It reports the result and any failed checks for your review.
 
 It keeps the parts of the full mission that matter even for small tasks: writing a contract before coding (so it knows what "done" looks like), test-driven development, automated validation, and a self-healing fix loop. It drops the parts that only help with larger work: planning documents, multi-agent coordination, and human review gates.
 
@@ -293,7 +293,7 @@ When you run this, it goes through 5 phases automatically:
 2. **Build** -- writes the code using test-driven development by default: write a failing test, write the code to make it pass, repeat.
 3. **Validate** -- runs 5 checks in order: does the project build? do the tests pass? does the linter pass? does the code satisfy the mini-contract? and does a behavioral spot-check of the contract's executable checks pass?
 4. **Fix** -- if any check fails, it diagnoses the problem and applies a fix, then re-runs all checks from scratch. If it fails 3 times in a row, it stops and tells you what went wrong.
-5. **Commit** -- creates a single commit after all checks pass.
+5. **Commit** -- commits the result and reports validation status. Its failure path can also commit partial work; review the reported checks before using it.
 
 The entire process runs without asking you any questions.
 
@@ -346,7 +346,7 @@ If your session crashes or you close the terminal:
 /mission-resume
 ```
 
-This is a separate skill, not a flag on `/mission`. It reads the files on disk, figures out exactly where the mission was interrupted -- including tasks where the code was committed but validation never ran -- and continues from that point. Once all tasks are done, it creates a draft PR and runs the independent code review.
+This is a separate skill, not a flag on `/mission`. It reads the files on disk, infers where the mission was interrupted -- including tasks where the code was committed but validation never ran -- and continues from that point. Once all tasks are done, it creates a draft PR and runs the independent code review.
 
 ### When it's done
 
@@ -377,8 +377,8 @@ The first version was hand-written during a `/grill` session that produced the d
 - [Architecture](../ARCH.md) -- living architecture document covering the three-role agent model, information walls, build loop, and planning constraints
 - [Factory Missions talk](reference_factory_talk.md) -- the multi-agent architecture that inspired this project
 - [Matt Pocock skills talk](reference_pocock_talk.md) -- design alignment, ubiquitous language, and TDD patterns
-- [Provenance](provenance.md) -- how Darkfactory relates to both sources: what's faithful, what's different, and what's new
-- [Design decisions](design-decisions.md) -- every architectural choice with rationale
+- [Provenance](provenance.md) -- upstream influences, adaptations, and project contributions
+- [Design decisions](design-decisions.md) -- selected architectural choices and rationale
 - [Ubiquitous language](../UBIQUITOUS_LANGUAGE.md) -- shared terminology used throughout the codebase
 
 ## License
